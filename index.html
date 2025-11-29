@@ -1,683 +1,642 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { initializeApp } from 'firebase/app';
-import { 
-    getAuth, signInAnonymously, signInWithCustomToken, 
-    onAuthStateChanged, User 
-} from 'firebase/auth';
-import { 
-    getFirestore, collection, onSnapshot, query, addDoc, 
-    Timestamp, orderBy, setLogLevel 
-} from 'firebase/firestore';
-import { 
-    List, Send, Phone, MapPin, Search, Loader2, X, Frown, 
-    Zap, Droplets, Heart, Shield, Clock, MessageSquare, AlertOctagon, AlertTriangle, CloudSun, Calendar, Sun
-} from 'lucide-react';
-
-// --- Global Firebase Configuration Variables ---
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-// The collection path for public data
-const PUBLIC_REPORTS_COLLECTION_PATH = `/artifacts/${appId}/public/data/liquid-reports-v2`; 
-
-/**
- * @typedef {'browse' | 'report' | 'contact'} Page
- * @typedef {'Water' | 'Energy' | 'Health' | 'Safety'} ReportType
- * @typedef {Object} Report
- * @property {string} id
- * @property {ReportType} type
- * @property {string} location
- * @property {string} description
- * @property {Timestamp} timestamp
- */
-
-/**
- * Utility function to convert Firebase Timestamp to a readable string.
- * @param {Timestamp} timestamp 
- * @returns {string}
- */
-const formatTimestamp = (timestamp) => {
-    if (!timestamp || !timestamp.toDate) return 'Unknown Time';
-    const date = timestamp.toDate();
-    return date.toLocaleString('en-US', { 
-        hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' 
-    });
-};
-
-/**
- * Custom hook for Firebase initialization and state management.
- */
-const useFirebase = () => {
-    const [db, setDb] = useState(null);
-    const [isAuthReady, setIsAuthReady] = useState(false);
-
-    useEffect(() => {
-        if (!firebaseConfig) {
-            console.error("Firebase config is missing.");
-            setIsAuthReady(true);
-            return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquid Glass Field Reporter</title>
+    <!-- Load Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Liquid Glass Gradient Background */
+            background: linear-gradient(135deg, #1e3a8a 0%, #4f46e5 50%, #db2777 100%);
+            min-height: 100vh;
         }
 
-        try {
-            const app = initializeApp(firebaseConfig);
-            setLogLevel('debug');
+        /* Custom Shadow Classes for Liquid Depth */
+        .shadow-glass-sm {
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+        .shadow-glass-md {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+        .shadow-glass-lg {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2);
+        }
 
-            const newAuth = getAuth(app);
-            const newDb = getFirestore(app);
-            setDb(newDb);
+        /* Adjust main content padding to accommodate the fixed header and navbar */
+        #app-container {
+            padding-top: 100px; /* Space for Dynamic Island Header */
+            padding-bottom: 96px; /* Space for fixed Nav Bar */
+        }
+        @media (min-width: 640px) {
+            #app-container {
+                padding-top: 24px;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div id="root" class="min-h-screen flex flex-col">
+        <!-- Application will be rendered here -->
+    </div>
 
-            const setupAuth = async () => {
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(newAuth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(newAuth);
-                    }
-                } catch (error) {
-                    console.error("Firebase Auth Error:", error);
-                    await signInAnonymously(newAuth); 
-                }
+    <!-- Firebase SDK Imports (Module style required for modern use) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, query, addDoc, Timestamp, orderBy, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- Global Configuration ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const PUBLIC_REPORTS_COLLECTION_PATH = `/artifacts/${appId}/public/data/liquid-reports-v2`; 
+
+        let db = null;
+        let auth = null;
+        let isAuthReady = false;
+        let currentReports = [];
+        let currentPage = 'browse';
+        let selectedReport = null; // for modal state
+
+        // --- Utility Functions ---
+
+        /**
+         * @param {string} type 
+         * @returns {{ icon: string, color: string, ring: string }}
+         */
+        const getTypeDetails = (type) => {
+            switch (type) {
+                case 'Water': return { icon: '💧', color: 'text-blue-400', ring: 'ring-blue-500/50' };
+                case 'Energy': return { icon: '⚡', color: 'text-amber-400', ring: 'ring-amber-500/50' };
+                case 'Health': return { icon: '❤️', color: 'text-pink-400', ring: 'ring-pink-500/50' };
+                default: return { icon: '🛡️', color: 'text-green-400', ring: 'ring-green-500/50' };
+            }
+        };
+
+        const formatTimestamp = (timestamp) => {
+            if (!timestamp || !timestamp.toDate) return 'Unknown Time';
+            const date = timestamp.toDate();
+            return date.toLocaleString('en-US', { 
+                hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' 
+            });
+        };
+
+        const createElement = (tag, classes = '', content = '', attributes = {}) => {
+            const el = document.createElement(tag);
+            if (classes) el.className = classes;
+            if (content) el.innerHTML = content;
+            Object.keys(attributes).forEach(key => el.setAttribute(key, attributes[key]));
+            return el;
+        };
+
+        const generateUUID = () => crypto.randomUUID();
+
+        // --- Component Rendering Functions ---
+
+        const renderDynamicIsland = () => {
+            const now = new Date();
+            const dateString = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            
+            // Mock Weather/Status Info
+            const weather = {
+                icon: '☀️',
+                temp: '28°C',
+                color: 'text-amber-400'
             };
 
-            setupAuth();
+            const island = createElement('div', 'max-w-xs mx-auto flex items-center justify-between h-12 bg-white/20 backdrop-blur-xl rounded-full border border-white/40 shadow-glass-md px-5 space-x-4');
+            
+            const dateSection = createElement('div', 'flex items-center space-x-2');
+            dateSection.append(
+                createElement('span', 'text-xl', '🗓️'),
+                createElement('span', 'text-sm font-semibold text-white tracking-wide', dateString)
+            );
 
-            const unsubscribe = onAuthStateChanged(newAuth, () => {
-                setIsAuthReady(true);
+            const weatherSection = createElement('div', 'flex items-center space-x-1');
+            weatherSection.append(
+                createElement('span', 'text-xl', weather.icon),
+                createElement('span', 'text-sm font-semibold text-white', weather.temp)
+            );
+
+            island.append(dateSection, weatherSection);
+
+            const container = createElement('div', 'fixed top-0 left-0 right-0 z-20 pointer-events-none p-4 pt-8 pb-4 w-full');
+            container.append(island);
+            
+            // Remove the pointer-events-none on the direct children to make links/buttons accessible
+            island.classList.remove('pointer-events-none'); 
+
+            return container;
+        };
+
+        const renderNavBar = () => {
+            const nav = createElement('nav', 'fixed bottom-0 left-0 right-0 z-10');
+            const inner = createElement('div', 'max-w-xl mx-auto p-3');
+            const bar = createElement('div', 'flex justify-around items-center h-16 bg-white/20 backdrop-blur-xl rounded-full border border-white/40 shadow-glass-md');
+
+            const createNavItem = (label, page) => {
+                const isActive = currentPage === page;
+                const iconMap = {
+                    'Browse': '👀',
+                    'Report': '📝',
+                    'Contact': '📞'
+                };
+
+                const button = createElement('button', `flex flex-col items-center text-xs font-semibold p-2 rounded-full transition-all duration-300 w-1/4`, '', {
+                    'data-page': page,
+                    'aria-current': isActive ? 'page' : undefined,
+                    'onclick': `window.setCurrentPage('${page}')`
+                });
+
+                if (isActive) {
+                    button.classList.add('bg-white/80', 'text-gray-900', 'shadow-glass-sm');
+                } else {
+                    button.classList.add('text-white', 'hover:text-gray-200');
+                }
+
+                button.append(
+                    createElement('span', 'w-6 h-6 text-xl', iconMap[label]),
+                    createElement('span', 'mt-0.5', label)
+                );
+                return button;
+            };
+
+            bar.append(
+                createNavItem('Browse', 'browse'),
+                createNavItem('Report', 'report'),
+                createNavItem('Contact', 'contact')
+            );
+            inner.append(bar);
+            nav.append(inner);
+            return nav;
+        };
+
+        const renderLoading = () => {
+            return createElement('div', 'flex flex-col items-center justify-center h-full min-h-[300px] p-8 text-white', `
+                <svg class="animate-spin h-8 w-8 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="font-semibold text-lg">Connecting to Real-time Data...</p>
+            `);
+        };
+
+        const renderBrowseFeed = (reports) => {
+            const container = createElement('div', 'p-4 space-y-6');
+            container.innerHTML = `
+                <h1 class="text-4xl font-extrabold text-white tracking-tight pt-2">Browse Reports</h1>
+                <p class="text-gray-300 text-sm opacity-80">Tap on any report to view full details.</p>
+                <!-- Search Input -->
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/70">🔍</span>
+                    <input type="text" id="search-input" placeholder="Search location or type..." 
+                        class="w-full py-3 pl-12 pr-4 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 transition duration-300 shadow-glass-sm"
+                    />
+                </div>
+                <!-- Filter Buttons -->
+                <div class="flex flex-wrap gap-2 justify-start" id="filter-buttons"></div>
+                <!-- Report Cards -->
+                <div class="space-y-4" id="reports-list"></div>
+            `;
+            
+            const filterContainer = container.querySelector('#filter-buttons');
+            const types = ['All', 'Water', 'Energy', 'Health', 'Safety'];
+            let currentFilter = 'All';
+            let currentSearchTerm = '';
+
+            const updateReportList = () => {
+                const listContainer = container.querySelector('#reports-list');
+                listContainer.innerHTML = '';
+                
+                const filteredReports = reports.filter(report => 
+                    (currentFilter === 'All' || report.type === currentFilter) &&
+                    (report.description.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+                     report.location.toLowerCase().includes(currentSearchTerm.toLowerCase()))
+                );
+
+                if (filteredReports.length === 0) {
+                     listContainer.innerHTML = `
+                        <div class="text-center py-12 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-glass-md">
+                            <span class="text-4xl block mb-3 text-white/70">😞</span>
+                            <p class="font-semibold text-xl text-white">No Active Reports</p>
+                            <p class="text-sm text-gray-300">Share your observations using the Report tab.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                filteredReports.forEach(report => {
+                    const { icon, color, ring } = getTypeDetails(report.type);
+                    const card = createElement('div', 'bg-white/20 p-5 rounded-2xl backdrop-blur-lg border border-white/30 shadow-glass-md transition-all active:scale-[0.99] cursor-pointer hover:bg-white/30', '', {
+                        'data-report-id': report.id
+                    });
+
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center space-x-3">
+                                <div class="p-2 rounded-full bg-white/90 ring-4 ${ring}">
+                                    <span class="w-5 h-5 text-xl ${color}">${icon}</span>
+                                </div>
+                                <p class="text-lg font-bold text-white leading-snug">${report.type} Incident</p>
+                            </div>
+                            <p class="text-xs text-gray-300 opacity-70">${formatTimestamp(report.timestamp)}</p>
+                        </div>
+                        
+                        <p class="text-sm font-semibold text-gray-200 mt-3 flex items-center">
+                            <span class="inline w-4 h-4 mr-2 text-pink-400 flex-shrink-0">📍</span>
+                            ${report.location}
+                        </p>
+                        <p class="text-sm text-gray-300 mt-2 line-clamp-2">${report.description}</p>
+                    `;
+
+                    card.addEventListener('click', () => window.handleReportClick(report));
+                    listContainer.append(card);
+                });
+            };
+
+            const renderFilters = () => {
+                filterContainer.innerHTML = '';
+                types.forEach(type => {
+                    const isActive = currentFilter === type;
+                    const button = createElement('button', `px-4 py-1.5 text-sm font-semibold rounded-full border border-white/40 transition-all duration-300 shadow-glass-sm`, type, {
+                        'onclick': `window.setFilterType('${type}')`
+                    });
+
+                    if (isActive) {
+                        button.classList.add('bg-white/70', 'text-gray-900', 'shadow-glass-lg');
+                    } else {
+                        button.classList.add('bg-white/10', 'text-white', 'hover:bg-white/20');
+                    }
+                    filterContainer.append(button);
+                });
+            };
+
+            // Global functions for interaction
+            window.setFilterType = (type) => {
+                currentFilter = type;
+                renderFilters();
+                updateReportList();
+            };
+
+            window.handleSearchInput = (event) => {
+                currentSearchTerm = event.target.value;
+                updateReportList();
+            };
+
+            container.querySelector('#search-input').addEventListener('input', window.handleSearchInput);
+
+            // Initial render
+            renderFilters();
+            updateReportList();
+            
+            return container;
+        };
+        
+        const renderReportDetailModal = () => {
+            if (!selectedReport) return null;
+
+            const report = selectedReport;
+            const { icon, color, ring } = getTypeDetails(report.type);
+            
+            const modal = createElement('div', 'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300');
+            modal.addEventListener('click', window.handleCloseModal);
+
+            const content = createElement('div', 'w-full max-w-lg bg-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-glass-lg border border-white/30 text-white transition-transform duration-300 scale-100', '', {
+                'onclick': 'event.stopPropagation()'
             });
 
-            return () => unsubscribe();
-
-        } catch (error) {
-            console.error("Error initializing Firebase:", error);
-            setIsAuthReady(true);
-        }
-    }, []);
-
-    return { db, isAuthReady };
-};
-
-// --- New Dynamic Island Header Component ---
-
-const DynamicIslandHeader = () => {
-    const [currentDateTime, setCurrentDateTime] = useState(new Date());
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentDateTime(new Date());
-        }, 60000); // Update every minute
-
-        return () => clearInterval(timer);
-    }, []);
-
-    // Format for Dynamic Island look: Time, then Date/Weather compact info
-    const timeString = currentDateTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    const dateString = currentDateTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    
-    // Mock Weather/Status Info
-    const weather = {
-        icon: Sun,
-        temp: '28°C',
-        status: 'Clear',
-        color: 'text-amber-400'
-    };
-
-    return (
-        <div className="p-4 pt-8 pb-4 w-full">
-            <div className="max-w-xs mx-auto flex items-center justify-between h-12 bg-white/20 backdrop-blur-xl rounded-full border border-white/40 shadow-glass-md px-5 space-x-4">
-                
-                {/* Time & Date */}
-                <div className="flex items-center space-x-2">
-                    <Calendar className="w-5 h-5 text-white/80" />
-                    <span className="text-sm font-semibold text-white tracking-wide">
-                        {dateString}
-                    </span>
-                </div>
-                
-                {/* Weather Info */}
-                <div className="flex items-center space-x-1">
-                    <weather.icon className={`w-5 h-5 ${weather.color}`} />
-                    <span className="text-sm font-semibold text-white">
-                        {weather.temp}
-                    </span>
-                </div>
-
-            </div>
-        </div>
-    );
-};
-
-// --- Modal Component (Re-used Liquid Glass Style) ---
-
-/**
- * Modal to display full report details (Liquid Glass Style).
- * @param {{ report: Report | null, onClose: () => void }} props
- */
-const ReportDetailModal = ({ report, onClose }) => {
-    if (!report) return null;
-
-    const getTypeDetails = (type) => {
-        switch (type) {
-            case 'Water': return { icon: Droplets, color: 'text-blue-400', ring: 'ring-blue-500/50' };
-            case 'Energy': return { icon: Zap, color: 'text-amber-400', ring: 'ring-amber-500/50' };
-            case 'Health': return { icon: Heart, color: 'text-pink-400', ring: 'ring-pink-500/50' };
-            default: return { icon: Shield, color: 'text-green-400', ring: 'ring-green-500/50' };
-        }
-    };
-
-    const { icon: Icon, color, ring } = getTypeDetails(report.type);
-
-    return (
-        <div 
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300"
-            onClick={onClose}
-        >
-            {/* Modal Content (Glass Card) */}
-            <div 
-                className="w-full max-w-lg bg-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-glass-lg border border-white/30 text-white transition-transform duration-300 scale-100"
-                onClick={(e) => e.stopPropagation()} 
-            >
-                <div className="flex justify-between items-start mb-6">
-                    <div className="flex items-center space-x-3">
-                        <div className={`p-3 rounded-full bg-white/90 ring-4 ${ring}`}>
-                            <Icon className={`w-7 h-7 ${color}`} />
+            content.innerHTML = `
+                <div class="flex justify-between items-start mb-6">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-3 rounded-full bg-white/90 ring-4 ${ring}">
+                            <span class="w-7 h-7 text-3xl ${color}">${icon}</span>
                         </div>
-                        <h2 className="text-2xl font-bold leading-snug">{report.type} Incident</h2>
+                        <h2 class="text-2xl font-bold leading-snug">${report.type} Incident</h2>
                     </div>
                     <button 
-                        onClick={onClose}
-                        className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors text-white/80 border border-white/40"
+                        onclick="window.handleCloseModal()"
+                        class="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors text-white/80 border border-white/40"
                     >
-                        <X className="w-5 h-5" />
+                        &times;
                     </button>
                 </div>
 
-                <div className="space-y-4">
-                    {/* Location */}
-                    <div className="border-b border-white/20 pb-2">
-                        <p className="text-sm font-medium text-gray-300 flex items-center mb-1">
-                            <MapPin className="w-4 h-4 mr-2 text-pink-400"/>
+                <div class="space-y-4">
+                    <div class="border-b border-white/20 pb-2">
+                        <p class="text-sm font-medium text-gray-300 flex items-center mb-1">
+                            <span class="w-4 h-4 mr-2 text-pink-400">📍</span>
                             Location
                         </p>
-                        <p className="text-lg font-bold">{report.location}</p>
+                        <p class="text-lg font-bold">${report.location}</p>
                     </div>
 
-                    {/* Timestamp */}
-                    <div className="border-b border-white/20 pb-2">
-                        <p className="text-sm font-medium text-gray-300 flex items-center mb-1">
-                            <Clock className="w-4 h-4 mr-2 text-pink-400"/>
+                    <div class="border-b border-white/20 pb-2">
+                        <p class="text-sm font-medium text-gray-300 flex items-center mb-1">
+                            <span class="w-4 h-4 mr-2 text-pink-400">🕒</span>
                             Reported Time
                         </p>
-                        <p className="text-lg font-bold">{formatTimestamp(report.timestamp)}</p>
+                        <p class="text-lg font-bold">${formatTimestamp(report.timestamp)}</p>
                     </div>
 
-                    {/* Description */}
                     <div>
-                        <p className="text-sm font-medium text-gray-300 flex items-center mb-1">
-                            <MessageSquare className="w-4 h-4 mr-2 text-pink-400"/>
+                        <p class="text-sm font-medium text-gray-300 flex items-center mb-1">
+                            <span class="w-4 h-4 mr-2 text-pink-400">💬</span>
                             Detailed Description
                         </p>
-                        <p className="text-base text-white/90 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/10 shadow-inner">
-                            {report.description}
+                        <p class="text-base text-white/90 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/10 shadow-inner">
+                            ${report.description}
                         </p>
                     </div>
                 </div>
-            </div>
-        </div>
-    );
-};
-
-// --- Page Components (Browse, Report, Contact) ---
-
-/**
- * @param {{ reports: Report[], onReportClick: (report: Report) => void }} props
- */
-const BrowseFeed = React.memo(({ reports, onReportClick }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterType, setFilterType] = useState('All');
-
-    const filteredReports = useMemo(() => {
-        return reports
-            .filter(report => 
-                (filterType === 'All' || report.type === filterType) &&
-                (report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                 report.location.toLowerCase().includes(searchTerm.toLowerCase()))
-            );
-    }, [reports, searchTerm, filterType]);
-
-    const getTypeDetails = (type) => {
-        switch (type) {
-            case 'Water': return { icon: Droplets, color: 'text-blue-400', ring: 'ring-blue-500/50' };
-            case 'Energy': return { icon: Zap, color: 'text-amber-400', ring: 'ring-amber-500/50' };
-            case 'Health': return { icon: Heart, color: 'text-pink-400', ring: 'ring-pink-500/50' };
-            default: return { icon: Shield, color: 'text-green-400', ring: 'ring-green-500/50' };
-        }
-    };
-
-    const types = ['All', 'Water', 'Energy', 'Health', 'Safety'];
-
-    return (
-        <div className="p-4 space-y-6">
-            <h1 className="text-4xl font-extrabold text-white tracking-tight pt-2">Browse Reports</h1>
-            <p className="text-gray-300 text-sm opacity-80">Tap on any report to view full details.</p>
-            
-            {/* Search Input (Liquid Capsule) */}
-            <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/70" />
-                <input
-                    type="text"
-                    placeholder="Search location or type..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full py-3 pl-12 pr-4 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 transition duration-300 shadow-glass-sm"
-                />
-            </div>
-
-            {/* Filter Buttons (Fluid Pills) */}
-            <div className="flex flex-wrap gap-2 justify-start">
-                {types.map(type => {
-                    const isActive = filterType === type;
-                    return (
-                        <button
-                            key={type}
-                            onClick={() => setFilterType(type)}
-                            className={`px-4 py-1.5 text-sm font-semibold rounded-full border border-white/40 transition-all duration-300 shadow-glass-sm
-                                ${isActive 
-                                    ? 'bg-white/70 text-gray-900 shadow-glass-lg' 
-                                    : 'bg-white/10 text-white hover:bg-white/20'
-                                }`}
-                        >
-                            {type}
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* Report Cards (Glass Widgets) */}
-            <div className="space-y-4">
-                {filteredReports.length === 0 ? (
-                    <div className="text-center py-12 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-glass-md">
-                        <Frown className="w-10 h-10 mx-auto mb-3 text-white/70" />
-                        <p className="font-semibold text-xl text-white">No Active Reports</p>
-                        <p className="text-sm text-gray-300">Share your observations using the Report tab.</p>
-                    </div>
-                ) : (
-                    filteredReports.map((report) => {
-                        const { icon: Icon, color, ring } = getTypeDetails(report.type);
-                        return (
-                            <div 
-                                key={report.id} 
-                                className="bg-white/20 p-5 rounded-2xl backdrop-blur-lg border border-white/30 shadow-glass-md transition-all active:scale-[0.99] cursor-pointer hover:bg-white/30"
-                                onClick={() => onReportClick(report)}
-                            >
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center space-x-3">
-                                        <div className={`p-2 rounded-full bg-white/90 ring-4 ${ring}`}>
-                                            <Icon className={`w-5 h-5 ${color}`} />
-                                        </div>
-                                        <p className="text-lg font-bold text-white leading-snug">{report.type} Incident</p>
-                                    </div>
-                                    <p className="text-xs text-gray-300 opacity-70">{formatTimestamp(report.timestamp)}</p>
-                                </div>
-                                
-                                {/* Location */}
-                                <p className="text-sm font-semibold text-gray-200 mt-3 flex items-center">
-                                    <MapPin className="inline w-4 h-4 mr-2 text-pink-400 flex-shrink-0"/>
-                                    {report.location}
-                                </p>
-                                {/* Description Preview */}
-                                <p className="text-sm text-gray-300 mt-2 line-clamp-2">{report.description}</p>
-                            </div>
-                        );
-                    })
-                )}
-            </div>
-        </div>
-    );
-});
-
-/**
- * @param {{ db: import('firebase/firestore').Firestore }} props
- */
-const ReportSubmitForm = ({ db }) => {
-    const [type, setType] = useState('Water');
-    const [location, setLocation] = useState('');
-    const [description, setDescription] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [message, setMessage] = useState(null);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!location.trim() || !description.trim()) {
-            setMessage({ type: 'error', text: 'Location and Description are mandatory fields.' });
-            return;
-        }
-
-        setIsSubmitting(true);
-        setMessage(null);
-
-        const newReport = {
-            type: type,
-            location: location.trim(),
-            description: description.trim(),
-            timestamp: Timestamp.now(),
+            `;
+            modal.append(content);
+            return modal;
         };
 
-        try {
-            await addDoc(collection(db, PUBLIC_REPORTS_COLLECTION_PATH), newReport);
-            setMessage({ type: 'success', text: 'Report successfully submitted. Thank you.' });
-            setLocation('');
-            setDescription('');
-        } catch (error) {
-            console.error("Error submitting report: ", error);
-            setMessage({ type: 'error', text: 'Submission failed. Check your connection.' });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+        const renderReportForm = () => {
+            const container = createElement('form', 'p-4 space-y-6', '', { 'id': 'report-form' });
+            container.innerHTML = `
+                <h1 class="text-4xl font-extrabold text-white tracking-tight pt-2">Report Hazard</h1>
+                <p class="text-gray-300 text-sm opacity-80">Submit your report to the network.</p>
 
-    const inputClasses = "w-full p-3 bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 rounded-xl transition duration-300 shadow-glass-sm";
+                <div id="message-area"></div>
 
-    return (
-        <form onSubmit={handleSubmit} className="p-4 space-y-6">
-            <h1 className="text-4xl font-extrabold text-white tracking-tight pt-2">Report Hazard</h1>
-            <p className="text-gray-300 text-sm opacity-80">Submit your report to the network.</p>
+                <div class="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-4 border border-white/30">
+                    <div class="space-y-1">
+                        <label for="report-type" class="text-sm text-gray-300 font-semibold block">Incident Type</label>
+                        <select id="report-type" class="w-full p-3 bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 rounded-xl transition duration-300 shadow-glass-sm" style="appearance: none;">
+                            <option value="Water" class="bg-gray-800 text-white">Water Hazard (Flood/Spill)</option>
+                            <option value="Energy" class="bg-gray-800 text-white">Energy Failure (Fire/Power)</option>
+                            <option value="Health" class="bg-gray-800 text-white">Health Emergency</option>
+                            <option value="Safety" class="bg-gray-800 text-white">General Safety Threat</option>
+                        </select>
+                    </div>
 
-            {/* Message Card (Glass Notification) */}
-            {message && (
-                <div className={`p-4 rounded-xl text-base font-semibold border-l-4 backdrop-blur-xl shadow-glass-md flex items-center ${
-                    message.type === 'success' 
-                        ? 'bg-green-500/20 text-white border-green-400' 
-                        : 'bg-red-500/20 text-white border-red-400'
-                }`}>
-                    <AlertOctagon className="w-5 h-5 mr-3"/>
-                    {message.text}
-                </div>
-            )}
-
-            {/* Input Groups (Glass Panels) */}
-            <div className="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-4 border border-white/30">
-                {/* Report Type Selector */}
-                <div className="space-y-1">
-                    <label htmlFor="report-type" className="text-sm text-gray-300 font-semibold block">Incident Type</label>
-                    <select
-                        id="report-type"
-                        value={type}
-                        onChange={(e) => setType(e.target.value)}
-                        className={inputClasses}
-                        style={{ appearance: 'none' }} // Remove default select arrow for liquid look
-                    >
-                        <option value="Water" className="bg-gray-800 text-white">Water Hazard (Flood/Spill)</option>
-                        <option value="Energy" className="bg-gray-800 text-white">Energy Failure (Fire/Power)</option>
-                        <option value="Health" className="bg-gray-800 text-white">Health Emergency</option>
-                        <option value="Safety" className="bg-gray-800 text-white">General Safety Threat</option>
-                    </select>
-                </div>
-
-                {/* Location Input */}
-                <div className="space-y-1">
-                    <label htmlFor="location" className="text-sm text-gray-300 font-semibold block">Location</label>
-                    <input
-                        id="location"
-                        type="text"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        placeholder="Address or nearest landmark"
-                        className={inputClasses}
-                        disabled={isSubmitting}
-                    />
-                </div>
-            </div>
-
-            {/* Description Textarea */}
-            <div className="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-2 border border-white/30">
-                <label htmlFor="description" className="text-sm text-gray-300 font-semibold block">Description</label>
-                <textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows="4"
-                    placeholder="Describe the situation clearly..."
-                    className={inputClasses + " resize-none"}
-                    disabled={isSubmitting}
-                ></textarea>
-            </div>
-
-            {/* Submit Button (Fluid Button) */}
-            <button
-                type="submit"
-                disabled={isSubmitting}
-                className={`w-full py-4 px-4 rounded-full font-bold text-lg transition duration-300 transform shadow-glass-lg active:scale-[0.98]
-                    ${isSubmitting 
-                        ? 'bg-gray-400 text-gray-700 cursor-not-allowed' 
-                        : 'bg-white text-gray-900 hover:bg-gray-100'
-                    }`}
-            >
-                {isSubmitting ? (
-                    <span className="flex items-center justify-center">
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Sending Data...
-                    </span>
-                ) : (
-                    'Submit Report Anonymously'
-                )}
-            </button>
-        </form>
-    );
-};
-
-const ContactPage = () => (
-    <div className="p-4 space-y-6">
-        <h1 className="text-4xl font-extrabold text-white tracking-tight pt-2">Contact Info</h1>
-        <p className="text-gray-300 text-sm opacity-80">Essential contacts and platform information.</p>
-        
-        {/* Contact Module (Glass Panel) */}
-        <div className="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-4 border border-white/30">
-            <p className="text-xl font-bold text-white border-b border-white/30 pb-3 flex items-center">
-                <Phone className="w-6 h-6 mr-3 text-white/80"/>
-                Emergency Contacts
-            </p>
-            <ContactLink 
-                title="IMMEDIATE EMERGENCY (Police / Fire / Medical)" 
-                detail="911" 
-                color="text-red-400"
-                icon={AlertTriangle}
-                isCritical={true}
-            />
-            <ContactLink 
-                title="LOCAL COORDINATION CENTER" 
-                detail="(555) 123-4567" 
-                color="text-blue-400"
-                icon={Shield}
-            />
-        </div>
-
-        {/* Info Module */}
-        <div className="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-3 border border-white/30">
-            <p className="text-xl font-bold text-white border-b border-white/30 pb-3">
-                About This Platform
-            </p>
-            <p className="text-base text-gray-300">
-                This network uses public, real-time data to help the community. All reports are anonymous and shared globally. Data persistence is managed via secure cloud services (Firebase).
-            </p>
-            <p className="text-xs text-gray-400 pt-3 border-t border-white/30">
-                Warning: Always contact official emergency services first in life-threatening situations.
-            </p>
-        </div>
-    </div>
-);
-
-/**
- * Liquid Glass Contact Item
- */
-const ContactLink = ({ title, detail, color, icon: Icon, isCritical = false }) => (
-    <div className={`flex items-center space-x-3 p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors cursor-pointer border border-white/20 ${isCritical ? 'ring-2 ring-red-500/50' : ''}`}>
-        <div className={`p-2 rounded-full ${isCritical ? 'bg-red-500/70' : 'bg-white/90'}`}>
-            <Icon className={`w-6 h-6 ${color} flex-shrink-0`} />
-        </div>
-        <div className="flex-1">
-            <p className="text-sm text-gray-300 font-semibold">{title}</p>
-            <p className={`text-xl font-extrabold text-white`}>{detail}</p>
-        </div>
-    </div>
-);
-
-// --- Main Application Component ---
-const App = () => {
-    const { db, isAuthReady } = useFirebase();
-    const [currentPage, setCurrentPage] = useState('browse');
-    const [reports, setReports] = useState([]);
-    const [isLoadingData, setIsLoadingData] = useState(true);
-    const [selectedReport, setSelectedReport] = useState(null); // State for modal
-    
-    /**
-     * Effect to set up the real-time reports listener
-     */
-    useEffect(() => {
-        if (!isAuthReady || !db) return;
-
-        const q = query(
-            collection(db, PUBLIC_REPORTS_COLLECTION_PATH),
-            orderBy('timestamp', 'desc')
-        );
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedReports = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setReports(fetchedReports);
-            setIsLoadingData(false);
-        }, (error) => {
-            console.error("Error listening to reports:", error);
-            setIsLoadingData(false);
-        });
-
-        return () => unsubscribe();
-    }, [db, isAuthReady]);
-
-    const handleReportClick = useCallback((report) => {
-        setSelectedReport(report);
-    }, []);
-
-    const handleCloseModal = useCallback(() => {
-        setSelectedReport(null);
-    }, []);
-
-    const renderPage = useCallback(() => {
-        if (!isAuthReady || isLoadingData) {
-            return (
-                <div className="flex flex-col items-center justify-center h-full min-h-[300px] p-8 text-white">
-                    <Loader2 className="w-8 h-8 animate-spin mb-4" />
-                    <p className="font-semibold text-lg">Connecting to Real-time Data...</p>
-                </div>
-            );
-        }
-
-        switch (currentPage) {
-            case 'report':
-                return db ? <ReportSubmitForm db={db} /> : <p className="p-4 text-red-400 font-bold">Error: Database connection failed.</p>;
-            case 'contact':
-                return <ContactPage />;
-            case 'browse':
-            default:
-                return <BrowseFeed reports={reports} onReportClick={handleReportClick} />;
-        }
-    }, [currentPage, isAuthReady, db, reports, isLoadingData, handleReportClick]);
-
-    return (
-        // Liquid Glass Theme: Vibrant gradient background, subtle blur effects
-        <div className="min-h-screen flex flex-col font-sans antialiased" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #4f46e5 50%, #db2777 100%)' }}>
-            
-            {/* Custom Shadow Classes for Liquid Depth */}
-            <style jsx="true">{`
-                .shadow-glass-sm {
-                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1);
-                }
-                .shadow-glass-md {
-                    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.15);
-                }
-                .shadow-glass-lg {
-                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2);
-                }
-                /* Adjust main padding to account for fixed header layout on mobile */
-                .main-content {
-                    padding-top: 100px; /* Give space for the island */
-                }
-                @media (min-width: 640px) {
-                    .main-content {
-                        padding-top: 24px;
-                    }
-                }
-            `}</style>
-            
-            {/* Dynamic Island Header (Fixed for the "Always On" look) */}
-            <div className="fixed top-0 left-0 right-0 z-20 pointer-events-none">
-                 <DynamicIslandHeader />
-            </div>
-
-            {/* Main Content Area - Padding for bottom bar and header */}
-            <main className="flex-grow pb-24 max-w-xl mx-auto w-full main-content">
-                {renderPage()}
-            </main>
-
-            {/* Navigation Bar (Floating Glass Bar) */}
-            <nav className="fixed bottom-0 left-0 right-0 z-10">
-                <div className="max-w-xl mx-auto p-3">
-                    <div className="flex justify-around items-center h-16 bg-white/20 backdrop-blur-xl rounded-full border border-white/40 shadow-glass-md">
-                        <NavItem 
-                            icon={List} 
-                            label="Browse" 
-                            page="browse" 
-                            current={currentPage} 
-                            onClick={setCurrentPage}
-                        />
-                        <NavItem 
-                            icon={Send} 
-                            label="Report" 
-                            page="report" 
-                            current={currentPage} 
-                            onClick={setCurrentPage}
-                        />
-                        <NavItem 
-                            icon={Phone} 
-                            label="Contact" 
-                            page="contact" 
-                            current={currentPage} 
-                            onClick={setCurrentPage}
+                    <div class="space-y-1">
+                        <label for="location" class="text-sm text-gray-300 font-semibold block">Location</label>
+                        <input id="location" type="text" placeholder="Address or nearest landmark" 
+                            class="w-full p-3 bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 rounded-xl transition duration-300 shadow-glass-sm"
                         />
                     </div>
                 </div>
-            </nav>
 
-            {/* Report Detail Modal */}
-            <ReportDetailModal 
-                report={selectedReport} 
-                onClose={handleCloseModal} 
-            />
-        </div>
-    );
-};
+                <div class="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-2 border border-white/30">
+                    <label for="description" class="text-sm text-gray-300 font-semibold block">Description</label>
+                    <textarea id="description" rows="4" placeholder="Describe the situation clearly..." 
+                        class="w-full p-3 bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 rounded-xl transition duration-300 shadow-glass-sm resize-none"
+                    ></textarea>
+                </div>
 
-/**
- * Liquid Glass Navigation Item Component
- */
-const NavItem = ({ icon: Icon, label, page, current, onClick }) => {
-    const isActive = current === page;
-    return (
-        <button
-            onClick={() => onClick(page)}
-            className={`flex flex-col items-center text-xs font-semibold p-2 rounded-full transition-all duration-300 w-1/4
-                ${isActive 
-                    ? 'bg-white/80 text-gray-900 shadow-glass-sm' 
-                    : 'text-white hover:text-gray-200'
-                }`}
-            aria-current={isActive ? 'page' : undefined}
-        >
-            <Icon className="w-6 h-6" strokeWidth={isActive ? 3 : 2}/>
-            <span className="mt-0.5">{label}</span>
-        </button>
-    );
-};
+                <button type="submit" id="submit-button" class="w-full py-4 px-4 rounded-full font-bold text-lg transition duration-300 transform shadow-glass-lg active:scale-[0.98] bg-white text-gray-900 hover:bg-gray-100">
+                    Submit Report Anonymously
+                </button>
+            `;
 
-export default App;
+            container.addEventListener('submit', handleReportSubmit);
+            return container;
+        };
+        
+        const renderContactPage = () => {
+            const container = createElement('div', 'p-4 space-y-6');
+            container.innerHTML = `
+                <h1 class="text-4xl font-extrabold text-white tracking-tight pt-2">Contact Info</h1>
+                <p class="text-gray-300 text-sm opacity-80">Essential contacts and platform information.</p>
+                
+                <div class="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-4 border border-white/30">
+                    <p class="text-xl font-bold text-white border-b border-white/30 pb-3 flex items-center">
+                        <span class="w-6 h-6 mr-3 text-white/80">📞</span>
+                        Emergency Contacts
+                    </p>
+                    ${renderContactLink("IMMEDIATE EMERGENCY (Police / Fire / Medical)", "911", "text-red-400", "🚨", true)}
+                    ${renderContactLink("LOCAL COORDINATION CENTER", "(555) 123-4567", "text-blue-400", "🛡️", false)}
+                </div>
+
+                <div class="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-3 border border-white/30">
+                    <p class="text-xl font-bold text-white border-b border-white/30 pb-3">
+                        About This Platform
+                    </p>
+                    <p class="text-base text-gray-300">
+                        This network uses public, real-time data to help the community. All reports are anonymous and shared globally. Data persistence is managed via secure cloud services (Firebase).
+                    </p>
+                    <p class="text-xs text-gray-400 pt-3 border-t border-white/30">
+                        Warning: Always contact official emergency services first in life-threatening situations.
+                    </p>
+                </div>
+            `;
+            return container;
+        };
+
+        const renderContactLink = (title, detail, color, icon, isCritical) => {
+            return `
+                <div class="flex items-center space-x-3 p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors cursor-pointer border border-white/20 ${isCritical ? 'ring-2 ring-red-500/50' : ''}">
+                    <div class="p-2 rounded-full ${isCritical ? 'bg-red-500/70' : 'bg-white/90'}">
+                        <span class="w-6 h-6 text-2xl ${color} flex-shrink-0">${icon}</span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-300 font-semibold">${title}</p>
+                        <p class="text-xl font-extrabold text-white">${detail}</p>
+                    </div>
+                </div>
+            `;
+        };
+
+        // --- Core Application Logic ---
+
+        const renderApp = () => {
+            const root = document.getElementById('root');
+            root.innerHTML = ''; // Clear existing content
+
+            // 1. Render Fixed Components
+            root.append(renderDynamicIsland());
+            root.append(renderNavBar());
+
+            // 2. Render Main Content Area
+            const mainContainer = createElement('main', 'flex-grow max-w-xl mx-auto w-full');
+            mainContainer.id = 'app-container';
+            root.append(mainContainer);
+
+            // 3. Render Current Page
+            let pageContent;
+            if (!isAuthReady) {
+                pageContent = renderLoading();
+            } else {
+                switch (currentPage) {
+                    case 'report':
+                        pageContent = db ? renderReportForm() : createElement('p', 'p-4 text-red-400 font-bold', 'Error: Database connection failed.');
+                        break;
+                    case 'contact':
+                        pageContent = renderContactPage();
+                        break;
+                    case 'browse':
+                    default:
+                        pageContent = renderBrowseFeed(currentReports);
+                        break;
+                }
+            }
+            mainContainer.append(pageContent);
+            
+            // 4. Render Modal (if necessary)
+            const modal = renderReportDetailModal();
+            if (modal) {
+                root.append(modal);
+            }
+        };
+
+        window.setCurrentPage = (page) => {
+            if (currentPage !== page) {
+                currentPage = page;
+                renderApp();
+            }
+        };
+        
+        window.handleReportClick = (report) => {
+            selectedReport = report;
+            renderApp(); // Rerender to show modal
+        };
+
+        window.handleCloseModal = () => {
+            selectedReport = null;
+            renderApp(); // Rerender to hide modal
+        };
+
+        const displayMessage = (type, text) => {
+            const messageArea = document.getElementById('message-area');
+            if (!messageArea) return;
+            
+            const classes = type === 'success' 
+                ? 'bg-green-500/20 text-white border-green-400' 
+                : 'bg-red-500/20 text-white border-red-400';
+            const icon = type === 'success' ? '✅' : '🚨';
+
+            messageArea.innerHTML = `
+                <div class="p-4 rounded-xl text-base font-semibold border-l-4 backdrop-blur-xl shadow-glass-md flex items-center ${classes}">
+                    <span class="w-5 h-5 mr-3">${icon}</span>
+                    ${text}
+                </div>
+            `;
+            // Clear message after 5 seconds
+            setTimeout(() => { messageArea.innerHTML = ''; }, 5000);
+        };
+
+        const handleReportSubmit = async (event) => {
+            event.preventDefault();
+
+            const submitButton = document.getElementById('submit-button');
+            const type = document.getElementById('report-type').value;
+            const location = document.getElementById('location').value.trim();
+            const description = document.getElementById('description').value.trim();
+
+            if (!location || !description) {
+                displayMessage('error', 'Location and Description are mandatory fields.');
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.innerHTML = `<svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Sending Data...`;
+
+            const newReport = {
+                type: type,
+                location: location,
+                description: description,
+                timestamp: Timestamp.now(),
+            };
+
+            try {
+                await addDoc(collection(db, PUBLIC_REPORTS_COLLECTION_PATH), newReport);
+                displayMessage('success', 'Report successfully submitted. Thank you.');
+                document.getElementById('location').value = '';
+                document.getElementById('description').value = '';
+            } catch (error) {
+                console.error("Error submitting report: ", error);
+                displayMessage('error', 'Submission failed. Check your connection.');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = 'Submit Report Anonymously';
+            }
+        };
+
+        // --- Initialization ---
+
+        const initializeFirebase = async () => {
+            if (!firebaseConfig) {
+                console.error("Firebase config is missing.");
+                isAuthReady = true;
+                renderApp();
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                setLogLevel('debug');
+                
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Authentication Setup
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Firebase Auth Error:", error);
+                    await signInAnonymously(auth); 
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    isAuthReady = true;
+                    // Start data listener once authenticated
+                    if (user) {
+                        setupDataListener();
+                    } else {
+                        renderApp();
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                isAuthReady = true;
+                renderApp();
+            }
+        };
+
+        const setupDataListener = () => {
+            const q = query(
+                collection(db, PUBLIC_REPORTS_COLLECTION_PATH),
+                orderBy('timestamp', 'desc')
+            );
+
+            onSnapshot(q, (snapshot) => {
+                currentReports = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                // Only rerender the feed if we are on the browse page
+                if (currentPage === 'browse') {
+                    renderApp();
+                }
+            }, (error) => {
+                console.error("Error listening to reports:", error);
+            });
+            renderApp(); // Initial render once data listener is set up
+        };
+        
+        // Initial setup on window load
+        window.onload = () => {
+            initializeFirebase();
+            // Update the dynamic island date/time every minute
+            setInterval(renderApp, 60000); 
+        };
+
+        // Initial loading render before Firebase is ready
+        renderApp();
+    </script>
+</body>
+</html>
 
