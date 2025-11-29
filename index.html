@@ -1,0 +1,683 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+    getAuth, signInAnonymously, signInWithCustomToken, 
+    onAuthStateChanged, User 
+} from 'firebase/auth';
+import { 
+    getFirestore, collection, onSnapshot, query, addDoc, 
+    Timestamp, orderBy, setLogLevel 
+} from 'firebase/firestore';
+import { 
+    List, Send, Phone, MapPin, Search, Loader2, X, Frown, 
+    Zap, Droplets, Heart, Shield, Clock, MessageSquare, AlertOctagon, AlertTriangle, CloudSun, Calendar, Sun
+} from 'lucide-react';
+
+// --- Global Firebase Configuration Variables ---
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+// The collection path for public data
+const PUBLIC_REPORTS_COLLECTION_PATH = `/artifacts/${appId}/public/data/liquid-reports-v2`; 
+
+/**
+ * @typedef {'browse' | 'report' | 'contact'} Page
+ * @typedef {'Water' | 'Energy' | 'Health' | 'Safety'} ReportType
+ * @typedef {Object} Report
+ * @property {string} id
+ * @property {ReportType} type
+ * @property {string} location
+ * @property {string} description
+ * @property {Timestamp} timestamp
+ */
+
+/**
+ * Utility function to convert Firebase Timestamp to a readable string.
+ * @param {Timestamp} timestamp 
+ * @returns {string}
+ */
+const formatTimestamp = (timestamp) => {
+    if (!timestamp || !timestamp.toDate) return 'Unknown Time';
+    const date = timestamp.toDate();
+    return date.toLocaleString('en-US', { 
+        hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' 
+    });
+};
+
+/**
+ * Custom hook for Firebase initialization and state management.
+ */
+const useFirebase = () => {
+    const [db, setDb] = useState(null);
+    const [isAuthReady, setIsAuthReady] = useState(false);
+
+    useEffect(() => {
+        if (!firebaseConfig) {
+            console.error("Firebase config is missing.");
+            setIsAuthReady(true);
+            return;
+        }
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            setLogLevel('debug');
+
+            const newAuth = getAuth(app);
+            const newDb = getFirestore(app);
+            setDb(newDb);
+
+            const setupAuth = async () => {
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(newAuth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(newAuth);
+                    }
+                } catch (error) {
+                    console.error("Firebase Auth Error:", error);
+                    await signInAnonymously(newAuth); 
+                }
+            };
+
+            setupAuth();
+
+            const unsubscribe = onAuthStateChanged(newAuth, () => {
+                setIsAuthReady(true);
+            });
+
+            return () => unsubscribe();
+
+        } catch (error) {
+            console.error("Error initializing Firebase:", error);
+            setIsAuthReady(true);
+        }
+    }, []);
+
+    return { db, isAuthReady };
+};
+
+// --- New Dynamic Island Header Component ---
+
+const DynamicIslandHeader = () => {
+    const [currentDateTime, setCurrentDateTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentDateTime(new Date());
+        }, 60000); // Update every minute
+
+        return () => clearInterval(timer);
+    }, []);
+
+    // Format for Dynamic Island look: Time, then Date/Weather compact info
+    const timeString = currentDateTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const dateString = currentDateTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    
+    // Mock Weather/Status Info
+    const weather = {
+        icon: Sun,
+        temp: '28°C',
+        status: 'Clear',
+        color: 'text-amber-400'
+    };
+
+    return (
+        <div className="p-4 pt-8 pb-4 w-full">
+            <div className="max-w-xs mx-auto flex items-center justify-between h-12 bg-white/20 backdrop-blur-xl rounded-full border border-white/40 shadow-glass-md px-5 space-x-4">
+                
+                {/* Time & Date */}
+                <div className="flex items-center space-x-2">
+                    <Calendar className="w-5 h-5 text-white/80" />
+                    <span className="text-sm font-semibold text-white tracking-wide">
+                        {dateString}
+                    </span>
+                </div>
+                
+                {/* Weather Info */}
+                <div className="flex items-center space-x-1">
+                    <weather.icon className={`w-5 h-5 ${weather.color}`} />
+                    <span className="text-sm font-semibold text-white">
+                        {weather.temp}
+                    </span>
+                </div>
+
+            </div>
+        </div>
+    );
+};
+
+// --- Modal Component (Re-used Liquid Glass Style) ---
+
+/**
+ * Modal to display full report details (Liquid Glass Style).
+ * @param {{ report: Report | null, onClose: () => void }} props
+ */
+const ReportDetailModal = ({ report, onClose }) => {
+    if (!report) return null;
+
+    const getTypeDetails = (type) => {
+        switch (type) {
+            case 'Water': return { icon: Droplets, color: 'text-blue-400', ring: 'ring-blue-500/50' };
+            case 'Energy': return { icon: Zap, color: 'text-amber-400', ring: 'ring-amber-500/50' };
+            case 'Health': return { icon: Heart, color: 'text-pink-400', ring: 'ring-pink-500/50' };
+            default: return { icon: Shield, color: 'text-green-400', ring: 'ring-green-500/50' };
+        }
+    };
+
+    const { icon: Icon, color, ring } = getTypeDetails(report.type);
+
+    return (
+        <div 
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300"
+            onClick={onClose}
+        >
+            {/* Modal Content (Glass Card) */}
+            <div 
+                className="w-full max-w-lg bg-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-glass-lg border border-white/30 text-white transition-transform duration-300 scale-100"
+                onClick={(e) => e.stopPropagation()} 
+            >
+                <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center space-x-3">
+                        <div className={`p-3 rounded-full bg-white/90 ring-4 ${ring}`}>
+                            <Icon className={`w-7 h-7 ${color}`} />
+                        </div>
+                        <h2 className="text-2xl font-bold leading-snug">{report.type} Incident</h2>
+                    </div>
+                    <button 
+                        onClick={onClose}
+                        className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors text-white/80 border border-white/40"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    {/* Location */}
+                    <div className="border-b border-white/20 pb-2">
+                        <p className="text-sm font-medium text-gray-300 flex items-center mb-1">
+                            <MapPin className="w-4 h-4 mr-2 text-pink-400"/>
+                            Location
+                        </p>
+                        <p className="text-lg font-bold">{report.location}</p>
+                    </div>
+
+                    {/* Timestamp */}
+                    <div className="border-b border-white/20 pb-2">
+                        <p className="text-sm font-medium text-gray-300 flex items-center mb-1">
+                            <Clock className="w-4 h-4 mr-2 text-pink-400"/>
+                            Reported Time
+                        </p>
+                        <p className="text-lg font-bold">{formatTimestamp(report.timestamp)}</p>
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                        <p className="text-sm font-medium text-gray-300 flex items-center mb-1">
+                            <MessageSquare className="w-4 h-4 mr-2 text-pink-400"/>
+                            Detailed Description
+                        </p>
+                        <p className="text-base text-white/90 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/10 shadow-inner">
+                            {report.description}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Page Components (Browse, Report, Contact) ---
+
+/**
+ * @param {{ reports: Report[], onReportClick: (report: Report) => void }} props
+ */
+const BrowseFeed = React.memo(({ reports, onReportClick }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterType, setFilterType] = useState('All');
+
+    const filteredReports = useMemo(() => {
+        return reports
+            .filter(report => 
+                (filterType === 'All' || report.type === filterType) &&
+                (report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                 report.location.toLowerCase().includes(searchTerm.toLowerCase()))
+            );
+    }, [reports, searchTerm, filterType]);
+
+    const getTypeDetails = (type) => {
+        switch (type) {
+            case 'Water': return { icon: Droplets, color: 'text-blue-400', ring: 'ring-blue-500/50' };
+            case 'Energy': return { icon: Zap, color: 'text-amber-400', ring: 'ring-amber-500/50' };
+            case 'Health': return { icon: Heart, color: 'text-pink-400', ring: 'ring-pink-500/50' };
+            default: return { icon: Shield, color: 'text-green-400', ring: 'ring-green-500/50' };
+        }
+    };
+
+    const types = ['All', 'Water', 'Energy', 'Health', 'Safety'];
+
+    return (
+        <div className="p-4 space-y-6">
+            <h1 className="text-4xl font-extrabold text-white tracking-tight pt-2">Browse Reports</h1>
+            <p className="text-gray-300 text-sm opacity-80">Tap on any report to view full details.</p>
+            
+            {/* Search Input (Liquid Capsule) */}
+            <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/70" />
+                <input
+                    type="text"
+                    placeholder="Search location or type..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full py-3 pl-12 pr-4 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 transition duration-300 shadow-glass-sm"
+                />
+            </div>
+
+            {/* Filter Buttons (Fluid Pills) */}
+            <div className="flex flex-wrap gap-2 justify-start">
+                {types.map(type => {
+                    const isActive = filterType === type;
+                    return (
+                        <button
+                            key={type}
+                            onClick={() => setFilterType(type)}
+                            className={`px-4 py-1.5 text-sm font-semibold rounded-full border border-white/40 transition-all duration-300 shadow-glass-sm
+                                ${isActive 
+                                    ? 'bg-white/70 text-gray-900 shadow-glass-lg' 
+                                    : 'bg-white/10 text-white hover:bg-white/20'
+                                }`}
+                        >
+                            {type}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Report Cards (Glass Widgets) */}
+            <div className="space-y-4">
+                {filteredReports.length === 0 ? (
+                    <div className="text-center py-12 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-glass-md">
+                        <Frown className="w-10 h-10 mx-auto mb-3 text-white/70" />
+                        <p className="font-semibold text-xl text-white">No Active Reports</p>
+                        <p className="text-sm text-gray-300">Share your observations using the Report tab.</p>
+                    </div>
+                ) : (
+                    filteredReports.map((report) => {
+                        const { icon: Icon, color, ring } = getTypeDetails(report.type);
+                        return (
+                            <div 
+                                key={report.id} 
+                                className="bg-white/20 p-5 rounded-2xl backdrop-blur-lg border border-white/30 shadow-glass-md transition-all active:scale-[0.99] cursor-pointer hover:bg-white/30"
+                                onClick={() => onReportClick(report)}
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center space-x-3">
+                                        <div className={`p-2 rounded-full bg-white/90 ring-4 ${ring}`}>
+                                            <Icon className={`w-5 h-5 ${color}`} />
+                                        </div>
+                                        <p className="text-lg font-bold text-white leading-snug">{report.type} Incident</p>
+                                    </div>
+                                    <p className="text-xs text-gray-300 opacity-70">{formatTimestamp(report.timestamp)}</p>
+                                </div>
+                                
+                                {/* Location */}
+                                <p className="text-sm font-semibold text-gray-200 mt-3 flex items-center">
+                                    <MapPin className="inline w-4 h-4 mr-2 text-pink-400 flex-shrink-0"/>
+                                    {report.location}
+                                </p>
+                                {/* Description Preview */}
+                                <p className="text-sm text-gray-300 mt-2 line-clamp-2">{report.description}</p>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+        </div>
+    );
+});
+
+/**
+ * @param {{ db: import('firebase/firestore').Firestore }} props
+ */
+const ReportSubmitForm = ({ db }) => {
+    const [type, setType] = useState('Water');
+    const [location, setLocation] = useState('');
+    const [description, setDescription] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [message, setMessage] = useState(null);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!location.trim() || !description.trim()) {
+            setMessage({ type: 'error', text: 'Location and Description are mandatory fields.' });
+            return;
+        }
+
+        setIsSubmitting(true);
+        setMessage(null);
+
+        const newReport = {
+            type: type,
+            location: location.trim(),
+            description: description.trim(),
+            timestamp: Timestamp.now(),
+        };
+
+        try {
+            await addDoc(collection(db, PUBLIC_REPORTS_COLLECTION_PATH), newReport);
+            setMessage({ type: 'success', text: 'Report successfully submitted. Thank you.' });
+            setLocation('');
+            setDescription('');
+        } catch (error) {
+            console.error("Error submitting report: ", error);
+            setMessage({ type: 'error', text: 'Submission failed. Check your connection.' });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const inputClasses = "w-full p-3 bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 rounded-xl transition duration-300 shadow-glass-sm";
+
+    return (
+        <form onSubmit={handleSubmit} className="p-4 space-y-6">
+            <h1 className="text-4xl font-extrabold text-white tracking-tight pt-2">Report Hazard</h1>
+            <p className="text-gray-300 text-sm opacity-80">Submit your report to the network.</p>
+
+            {/* Message Card (Glass Notification) */}
+            {message && (
+                <div className={`p-4 rounded-xl text-base font-semibold border-l-4 backdrop-blur-xl shadow-glass-md flex items-center ${
+                    message.type === 'success' 
+                        ? 'bg-green-500/20 text-white border-green-400' 
+                        : 'bg-red-500/20 text-white border-red-400'
+                }`}>
+                    <AlertOctagon className="w-5 h-5 mr-3"/>
+                    {message.text}
+                </div>
+            )}
+
+            {/* Input Groups (Glass Panels) */}
+            <div className="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-4 border border-white/30">
+                {/* Report Type Selector */}
+                <div className="space-y-1">
+                    <label htmlFor="report-type" className="text-sm text-gray-300 font-semibold block">Incident Type</label>
+                    <select
+                        id="report-type"
+                        value={type}
+                        onChange={(e) => setType(e.target.value)}
+                        className={inputClasses}
+                        style={{ appearance: 'none' }} // Remove default select arrow for liquid look
+                    >
+                        <option value="Water" className="bg-gray-800 text-white">Water Hazard (Flood/Spill)</option>
+                        <option value="Energy" className="bg-gray-800 text-white">Energy Failure (Fire/Power)</option>
+                        <option value="Health" className="bg-gray-800 text-white">Health Emergency</option>
+                        <option value="Safety" className="bg-gray-800 text-white">General Safety Threat</option>
+                    </select>
+                </div>
+
+                {/* Location Input */}
+                <div className="space-y-1">
+                    <label htmlFor="location" className="text-sm text-gray-300 font-semibold block">Location</label>
+                    <input
+                        id="location"
+                        type="text"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="Address or nearest landmark"
+                        className={inputClasses}
+                        disabled={isSubmitting}
+                    />
+                </div>
+            </div>
+
+            {/* Description Textarea */}
+            <div className="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-2 border border-white/30">
+                <label htmlFor="description" className="text-sm text-gray-300 font-semibold block">Description</label>
+                <textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows="4"
+                    placeholder="Describe the situation clearly..."
+                    className={inputClasses + " resize-none"}
+                    disabled={isSubmitting}
+                ></textarea>
+            </div>
+
+            {/* Submit Button (Fluid Button) */}
+            <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full py-4 px-4 rounded-full font-bold text-lg transition duration-300 transform shadow-glass-lg active:scale-[0.98]
+                    ${isSubmitting 
+                        ? 'bg-gray-400 text-gray-700 cursor-not-allowed' 
+                        : 'bg-white text-gray-900 hover:bg-gray-100'
+                    }`}
+            >
+                {isSubmitting ? (
+                    <span className="flex items-center justify-center">
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Sending Data...
+                    </span>
+                ) : (
+                    'Submit Report Anonymously'
+                )}
+            </button>
+        </form>
+    );
+};
+
+const ContactPage = () => (
+    <div className="p-4 space-y-6">
+        <h1 className="text-4xl font-extrabold text-white tracking-tight pt-2">Contact Info</h1>
+        <p className="text-gray-300 text-sm opacity-80">Essential contacts and platform information.</p>
+        
+        {/* Contact Module (Glass Panel) */}
+        <div className="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-4 border border-white/30">
+            <p className="text-xl font-bold text-white border-b border-white/30 pb-3 flex items-center">
+                <Phone className="w-6 h-6 mr-3 text-white/80"/>
+                Emergency Contacts
+            </p>
+            <ContactLink 
+                title="IMMEDIATE EMERGENCY (Police / Fire / Medical)" 
+                detail="911" 
+                color="text-red-400"
+                icon={AlertTriangle}
+                isCritical={true}
+            />
+            <ContactLink 
+                title="LOCAL COORDINATION CENTER" 
+                detail="(555) 123-4567" 
+                color="text-blue-400"
+                icon={Shield}
+            />
+        </div>
+
+        {/* Info Module */}
+        <div className="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-3 border border-white/30">
+            <p className="text-xl font-bold text-white border-b border-white/30 pb-3">
+                About This Platform
+            </p>
+            <p className="text-base text-gray-300">
+                This network uses public, real-time data to help the community. All reports are anonymous and shared globally. Data persistence is managed via secure cloud services (Firebase).
+            </p>
+            <p className="text-xs text-gray-400 pt-3 border-t border-white/30">
+                Warning: Always contact official emergency services first in life-threatening situations.
+            </p>
+        </div>
+    </div>
+);
+
+/**
+ * Liquid Glass Contact Item
+ */
+const ContactLink = ({ title, detail, color, icon: Icon, isCritical = false }) => (
+    <div className={`flex items-center space-x-3 p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors cursor-pointer border border-white/20 ${isCritical ? 'ring-2 ring-red-500/50' : ''}`}>
+        <div className={`p-2 rounded-full ${isCritical ? 'bg-red-500/70' : 'bg-white/90'}`}>
+            <Icon className={`w-6 h-6 ${color} flex-shrink-0`} />
+        </div>
+        <div className="flex-1">
+            <p className="text-sm text-gray-300 font-semibold">{title}</p>
+            <p className={`text-xl font-extrabold text-white`}>{detail}</p>
+        </div>
+    </div>
+);
+
+// --- Main Application Component ---
+const App = () => {
+    const { db, isAuthReady } = useFirebase();
+    const [currentPage, setCurrentPage] = useState('browse');
+    const [reports, setReports] = useState([]);
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [selectedReport, setSelectedReport] = useState(null); // State for modal
+    
+    /**
+     * Effect to set up the real-time reports listener
+     */
+    useEffect(() => {
+        if (!isAuthReady || !db) return;
+
+        const q = query(
+            collection(db, PUBLIC_REPORTS_COLLECTION_PATH),
+            orderBy('timestamp', 'desc')
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedReports = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setReports(fetchedReports);
+            setIsLoadingData(false);
+        }, (error) => {
+            console.error("Error listening to reports:", error);
+            setIsLoadingData(false);
+        });
+
+        return () => unsubscribe();
+    }, [db, isAuthReady]);
+
+    const handleReportClick = useCallback((report) => {
+        setSelectedReport(report);
+    }, []);
+
+    const handleCloseModal = useCallback(() => {
+        setSelectedReport(null);
+    }, []);
+
+    const renderPage = useCallback(() => {
+        if (!isAuthReady || isLoadingData) {
+            return (
+                <div className="flex flex-col items-center justify-center h-full min-h-[300px] p-8 text-white">
+                    <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                    <p className="font-semibold text-lg">Connecting to Real-time Data...</p>
+                </div>
+            );
+        }
+
+        switch (currentPage) {
+            case 'report':
+                return db ? <ReportSubmitForm db={db} /> : <p className="p-4 text-red-400 font-bold">Error: Database connection failed.</p>;
+            case 'contact':
+                return <ContactPage />;
+            case 'browse':
+            default:
+                return <BrowseFeed reports={reports} onReportClick={handleReportClick} />;
+        }
+    }, [currentPage, isAuthReady, db, reports, isLoadingData, handleReportClick]);
+
+    return (
+        // Liquid Glass Theme: Vibrant gradient background, subtle blur effects
+        <div className="min-h-screen flex flex-col font-sans antialiased" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #4f46e5 50%, #db2777 100%)' }}>
+            
+            {/* Custom Shadow Classes for Liquid Depth */}
+            <style jsx="true">{`
+                .shadow-glass-sm {
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1);
+                }
+                .shadow-glass-md {
+                    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.15);
+                }
+                .shadow-glass-lg {
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2);
+                }
+                /* Adjust main padding to account for fixed header layout on mobile */
+                .main-content {
+                    padding-top: 100px; /* Give space for the island */
+                }
+                @media (min-width: 640px) {
+                    .main-content {
+                        padding-top: 24px;
+                    }
+                }
+            `}</style>
+            
+            {/* Dynamic Island Header (Fixed for the "Always On" look) */}
+            <div className="fixed top-0 left-0 right-0 z-20 pointer-events-none">
+                 <DynamicIslandHeader />
+            </div>
+
+            {/* Main Content Area - Padding for bottom bar and header */}
+            <main className="flex-grow pb-24 max-w-xl mx-auto w-full main-content">
+                {renderPage()}
+            </main>
+
+            {/* Navigation Bar (Floating Glass Bar) */}
+            <nav className="fixed bottom-0 left-0 right-0 z-10">
+                <div className="max-w-xl mx-auto p-3">
+                    <div className="flex justify-around items-center h-16 bg-white/20 backdrop-blur-xl rounded-full border border-white/40 shadow-glass-md">
+                        <NavItem 
+                            icon={List} 
+                            label="Browse" 
+                            page="browse" 
+                            current={currentPage} 
+                            onClick={setCurrentPage}
+                        />
+                        <NavItem 
+                            icon={Send} 
+                            label="Report" 
+                            page="report" 
+                            current={currentPage} 
+                            onClick={setCurrentPage}
+                        />
+                        <NavItem 
+                            icon={Phone} 
+                            label="Contact" 
+                            page="contact" 
+                            current={currentPage} 
+                            onClick={setCurrentPage}
+                        />
+                    </div>
+                </div>
+            </nav>
+
+            {/* Report Detail Modal */}
+            <ReportDetailModal 
+                report={selectedReport} 
+                onClose={handleCloseModal} 
+            />
+        </div>
+    );
+};
+
+/**
+ * Liquid Glass Navigation Item Component
+ */
+const NavItem = ({ icon: Icon, label, page, current, onClick }) => {
+    const isActive = current === page;
+    return (
+        <button
+            onClick={() => onClick(page)}
+            className={`flex flex-col items-center text-xs font-semibold p-2 rounded-full transition-all duration-300 w-1/4
+                ${isActive 
+                    ? 'bg-white/80 text-gray-900 shadow-glass-sm' 
+                    : 'text-white hover:text-gray-200'
+                }`}
+            aria-current={isActive ? 'page' : undefined}
+        >
+            <Icon className="w-6 h-6" strokeWidth={isActive ? 3 : 2}/>
+            <span className="mt-0.5">{label}</span>
+        </button>
+    );
+};
+
+export default App;
+
