@@ -235,6 +235,34 @@ h3 {
     padding: 1rem 0; /* Adjust padding for widget grid */
 }
 
+#news-section ul {
+    list-style: none; /* Remove default bullet points */
+    padding: 0;
+    margin: 0;
+}
+
+#news-section li {
+    padding: 0.75rem 0; /* Adjust padding for news list items */
+    border-bottom: 1px solid var(--ios-separator-color);
+}
+
+#news-section li:last-child {
+    border-bottom: none;
+}
+
+#news-section li a {
+    color: var(--ios-primary-text); /* Ensure link text is readable */
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 400;
+    display: block; /* Make the whole area clickable */
+    transition: color 0.2s;
+}
+
+#news-section li a:hover {
+    color: var(--ios-accent-blue); /* Highlight on hover */
+}
+
 .glass-widget {
     background: var(--ios-tertiary-background); /* Use tertiary for widgets */
     backdrop-filter: blur(20px);
