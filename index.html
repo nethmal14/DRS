@@ -2,641 +2,339 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Liquid Glass Field Reporter</title>
-    <!-- Load Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Custom Font */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            /* Liquid Glass Gradient Background */
-            background: linear-gradient(135deg, #1e3a8a 0%, #4f46e5 50%, #db2777 100%);
-            min-height: 100vh;
-        }
-
-        /* Custom Shadow Classes for Liquid Depth */
-        .shadow-glass-sm {
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1);
-        }
-        .shadow-glass-md {
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.15);
-        }
-        .shadow-glass-lg {
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2);
-        }
-
-        /* Adjust main content padding to accommodate the fixed header and navbar */
-        #app-container {
-            padding-top: 100px; /* Space for Dynamic Island Header */
-            padding-bottom: 96px; /* Space for fixed Nav Bar */
-        }
-        @media (min-width: 640px) {
-            #app-container {
-                padding-top: 24px;
-            }
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Trip Planner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body class="antialiased">
-    <div id="root" class="min-h-screen flex flex-col">
-        <!-- Application will be rendered here -->
+<body>
+    <div class="status-bar">
+        <div id="time"></div>
+        <div id="date"></div>
+        <div id="weather"></div>
     </div>
 
-    <!-- Firebase SDK Imports (Module style required for modern use) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query, addDoc, Timestamp, orderBy, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // --- Global Configuration ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const PUBLIC_REPORTS_COLLECTION_PATH = `/artifacts/${appId}/public/data/liquid-reports-v2`; 
-
-        let db = null;
-        let auth = null;
-        let isAuthReady = false;
-        let currentReports = [];
-        let currentPage = 'browse';
-        let selectedReport = null; // for modal state
-
-        // --- Utility Functions ---
-
-        /**
-         * @param {string} type 
-         * @returns {{ icon: string, color: string, ring: string }}
-         */
-        const getTypeDetails = (type) => {
-            switch (type) {
-                case 'Water': return { icon: '💧', color: 'text-blue-400', ring: 'ring-blue-500/50' };
-                case 'Energy': return { icon: '⚡', color: 'text-amber-400', ring: 'ring-amber-500/50' };
-                case 'Health': return { icon: '❤️', color: 'text-pink-400', ring: 'ring-pink-500/50' };
-                default: return { icon: '🛡️', color: 'text-green-400', ring: 'ring-green-500/50' };
-            }
-        };
-
-        const formatTimestamp = (timestamp) => {
-            if (!timestamp || !timestamp.toDate) return 'Unknown Time';
-            const date = timestamp.toDate();
-            return date.toLocaleString('en-US', { 
-                hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' 
-            });
-        };
-
-        const createElement = (tag, classes = '', content = '', attributes = {}) => {
-            const el = document.createElement(tag);
-            if (classes) el.className = classes;
-            if (content) el.innerHTML = content;
-            Object.keys(attributes).forEach(key => el.setAttribute(key, attributes[key]));
-            return el;
-        };
-
-        const generateUUID = () => crypto.randomUUID();
-
-        // --- Component Rendering Functions ---
-
-        const renderDynamicIsland = () => {
-            const now = new Date();
-            const dateString = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-            
-            // Mock Weather/Status Info
-            const weather = {
-                icon: '☀️',
-                temp: '28°C',
-                color: 'text-amber-400'
-            };
-
-            const island = createElement('div', 'max-w-xs mx-auto flex items-center justify-between h-12 bg-white/20 backdrop-blur-xl rounded-full border border-white/40 shadow-glass-md px-5 space-x-4');
-            
-            const dateSection = createElement('div', 'flex items-center space-x-2');
-            dateSection.append(
-                createElement('span', 'text-xl', '🗓️'),
-                createElement('span', 'text-sm font-semibold text-white tracking-wide', dateString)
-            );
-
-            const weatherSection = createElement('div', 'flex items-center space-x-1');
-            weatherSection.append(
-                createElement('span', 'text-xl', weather.icon),
-                createElement('span', 'text-sm font-semibold text-white', weather.temp)
-            );
-
-            island.append(dateSection, weatherSection);
-
-            const container = createElement('div', 'fixed top-0 left-0 right-0 z-20 pointer-events-none p-4 pt-8 pb-4 w-full');
-            container.append(island);
-            
-            // Remove the pointer-events-none on the direct children to make links/buttons accessible
-            island.classList.remove('pointer-events-none'); 
-
-            return container;
-        };
-
-        const renderNavBar = () => {
-            const nav = createElement('nav', 'fixed bottom-0 left-0 right-0 z-10');
-            const inner = createElement('div', 'max-w-xl mx-auto p-3');
-            const bar = createElement('div', 'flex justify-around items-center h-16 bg-white/20 backdrop-blur-xl rounded-full border border-white/40 shadow-glass-md');
-
-            const createNavItem = (label, page) => {
-                const isActive = currentPage === page;
-                const iconMap = {
-                    'Browse': '👀',
-                    'Report': '📝',
-                    'Contact': '📞'
-                };
-
-                const button = createElement('button', `flex flex-col items-center text-xs font-semibold p-2 rounded-full transition-all duration-300 w-1/4`, '', {
-                    'data-page': page,
-                    'aria-current': isActive ? 'page' : undefined,
-                    'onclick': `window.setCurrentPage('${page}')`
-                });
-
-                if (isActive) {
-                    button.classList.add('bg-white/80', 'text-gray-900', 'shadow-glass-sm');
-                } else {
-                    button.classList.add('text-white', 'hover:text-gray-200');
-                }
-
-                button.append(
-                    createElement('span', 'w-6 h-6 text-xl', iconMap[label]),
-                    createElement('span', 'mt-0.5', label)
-                );
-                return button;
-            };
-
-            bar.append(
-                createNavItem('Browse', 'browse'),
-                createNavItem('Report', 'report'),
-                createNavItem('Contact', 'contact')
-            );
-            inner.append(bar);
-            nav.append(inner);
-            return nav;
-        };
-
-        const renderLoading = () => {
-            return createElement('div', 'flex flex-col items-center justify-center h-full min-h-[300px] p-8 text-white', `
-                <svg class="animate-spin h-8 w-8 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="font-semibold text-lg">Connecting to Real-time Data...</p>
-            `);
-        };
-
-        const renderBrowseFeed = (reports) => {
-            const container = createElement('div', 'p-4 space-y-6');
-            container.innerHTML = `
-                <h1 class="text-4xl font-extrabold text-white tracking-tight pt-2">Browse Reports</h1>
-                <p class="text-gray-300 text-sm opacity-80">Tap on any report to view full details.</p>
-                <!-- Search Input -->
-                <div class="relative">
-                    <span class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/70">🔍</span>
-                    <input type="text" id="search-input" placeholder="Search location or type..." 
-                        class="w-full py-3 pl-12 pr-4 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 transition duration-300 shadow-glass-sm"
-                    />
+    <main>
+        <div id="home" class="page-content">
+            <div class="widget-grid">
+                <div class="glass-widget" id="destinations-widget">
+                    <h3>Destinations</h3>
+                    <p class="widget-value"></p>
+                    <button class="widget-action" data-page="destinations">View All <i class="fa-solid fa-arrow-right"></i></button>
                 </div>
-                <!-- Filter Buttons -->
-                <div class="flex flex-wrap gap-2 justify-start" id="filter-buttons"></div>
-                <!-- Report Cards -->
-                <div class="space-y-4" id="reports-list"></div>
-            `;
-            
-            const filterContainer = container.querySelector('#filter-buttons');
-            const types = ['All', 'Water', 'Energy', 'Health', 'Safety'];
-            let currentFilter = 'All';
-            let currentSearchTerm = '';
+                <div class="glass-widget" id="budget-widget">
+                    <h3>Budget</h3>
+                    <p class="widget-value"></p>
+                    <button class="widget-action" data-page="budget">View Details <i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+                <div class="glass-widget" id="progress-widget">
+                    <h3>Latest Update</h3>
+                    <p class="widget-value"></p>
+                    <button class="widget-action" data-page="progress">View Progress <i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+                <div class="glass-widget quick-actions">
+                    <h3>Quick Actions</h3>
+                    <button class="widget-action" data-page="destinations">Add Destination <i class="fa-solid fa-plus"></i></button>
+                    <button class="widget-action" data-page="budget">Add Expense <i class="fa-solid fa-plus"></i></button>
+                </div>
+            </div>
+        </div>
 
-            const updateReportList = () => {
-                const listContainer = container.querySelector('#reports-list');
-                listContainer.innerHTML = '';
-                
-                const filteredReports = reports.filter(report => 
-                    (currentFilter === 'All' || report.type === currentFilter) &&
-                    (report.description.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-                     report.location.toLowerCase().includes(currentSearchTerm.toLowerCase()))
-                );
+        <div id="destinations" class="page-content">
+            <h2>Destinations</h2>
+            <div class="form-group">
+                <form id="destination-form">
+                    <input type="text" id="destination-name" placeholder="Destination Name" required>
+                    <input type="text" id="destination-country" placeholder="Country" required>
+                    <input type="date" id="destination-date" required>
+                    <button type="submit">Add Destination</button>
+                </form>
+            </div>
+            <div class="list-group">
+                <ul id="destination-list"></ul>
+            </div>
+        </div>
 
-                if (filteredReports.length === 0) {
-                     listContainer.innerHTML = `
-                        <div class="text-center py-12 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-glass-md">
-                            <span class="text-4xl block mb-3 text-white/70">😞</span>
-                            <p class="font-semibold text-xl text-white">No Active Reports</p>
-                            <p class="text-sm text-gray-300">Share your observations using the Report tab.</p>
-                        </div>
-                    `;
-                    return;
-                }
+        <div id="budget" class="page-content">
+            <h2>Budget</h2>
+            <div class="form-group">
+                <form id="expense-form">
+                    <input type="text" id="expense-desc" placeholder="Expense Description" required>
+                    <input type="text" id="expense-category" placeholder="Category" required>
+                    <input type="number" id="expense-amount" placeholder="Amount" required>
+                    <button type="submit">Add Expense</button>
+                </form>
+            </div>
+            <div class="list-group">
+                <ul id="expense-list"></ul>
+                <h3>Total: $<span id="total-expenses">0.00</span></h3>
+            </div>
+        </div>
 
-                filteredReports.forEach(report => {
-                    const { icon, color, ring } = getTypeDetails(report.type);
-                    const card = createElement('div', 'bg-white/20 p-5 rounded-2xl backdrop-blur-lg border border-white/30 shadow-glass-md transition-all active:scale-[0.99] cursor-pointer hover:bg-white/30', '', {
-                        'data-report-id': report.id
-                    });
+        <div id="progress" class="page-content">
+            <h2>Progress</h2>
+            <div class="form-group">
+                <form id="progress-form">
+                    <input type="text" id="progress-update" placeholder="e.g., Booked flights" required>
+                    <button type="submit">Add Update</button>
+                </form>
+            </div>
+            <div class="list-group">
+                <ul id="progress-list"></ul>
+            </div>
+        </div>
+    </main>
 
-                    card.innerHTML = `
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="flex items-center space-x-3">
-                                <div class="p-2 rounded-full bg-white/90 ring-4 ${ring}">
-                                    <span class="w-5 h-5 text-xl ${color}">${icon}</span>
-                                </div>
-                                <p class="text-lg font-bold text-white leading-snug">${report.type} Incident</p>
-                            </div>
-                            <p class="text-xs text-gray-300 opacity-70">${formatTimestamp(report.timestamp)}</p>
-                        </div>
+    <nav class="bottom-nav">
+        <ul>
+            <li><a href="#" class="nav-link" data-page="home">
+                <i class="fa-solid fa-house nav-icon"></i>
+                <span>Home</span>
+            </a></li>
+            <li><a href="#" class="nav-link" data-page="destinations">
+                <i class="fa-solid fa-map-location-dot nav-icon"></i>
+                <span>Destinations</span>
+            </a></li>
+            <li><a href="#" class="nav-link" data-page="budget">
+                <i class="fa-solid fa-wallet nav-icon"></i>
+                <span>Budget</span>
+            </a></li>
+            <li><a href="#" class="nav-link" data-page="progress">
+                <i class="fa-solid fa-list-check nav-icon"></i>
+                <span>Progress</span>
+            </a></li>
+        </ul>
+    </nav>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Page navigation
+            const navLinks = document.querySelectorAll('.nav-link');
+            const pages = document.querySelectorAll('.page-content');
+
+            function showPage(pageId) {
+                pages.forEach(page => page.classList.remove('active'));
+                navLinks.forEach(link => link.classList.remove('active'));
+
+                document.getElementById(pageId).classList.add('active');
+                document.querySelector(`.nav-link[data-page="${pageId}"]`).classList.add('active');
+
+                // Call specific render functions when navigating to a page
+                if (pageId === 'home') renderHomeWidgets();
+                if (pageId === 'destinations') renderDestinations();
+                if (pageId === 'budget') renderExpenses();
+                if (pageId === 'progress') renderProgress();
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const pageId = e.target.closest('.nav-link').getAttribute('data-page');
+                    showPage(pageId);
+                });
+            });
+
+            // --- Status Bar ---
+            const timeEl = document.getElementById('time');
+            const dateEl = document.getElementById('date');
+            const weatherEl = document.getElementById('weather');
+
+            function updateTime() {
+                const now = new Date();
+                timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                dateEl.textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+            }
+
+            function getWeather(lat, lon) {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        const temp = Math.round(data.current_weather.temperature);
+                        const weatherCode = data.current_weather.weathercode;
+                        let emoji = ' ';
+
+                        if (weatherCode <= 1) { emoji = '☀️';
+                        } else if (weatherCode <= 3) { emoji = '☁️';
+                        } else if (weatherCode >= 45 && weatherCode <= 48) { emoji = '🌫️';
+                        } else if (weatherCode >= 51 && weatherCode <= 57) { emoji = '🌧️';
+                        } else if (weatherCode >= 61 && weatherCode <= 67) { emoji = '☔';
+                        } else if (weatherCode >= 71 && weatherCode <= 77) { emoji = '❄️';
+                        } else if (weatherCode >= 80 && weatherCode <= 82) { emoji = '⛈️';
+                        } else if (weatherCode >= 85 && weatherCode <= 86) { emoji = '🌨️';
+                        } else if (weatherCode >= 95 && weatherCode <= 99) { emoji = '🌩️';
+                        }
                         
-                        <p class="text-sm font-semibold text-gray-200 mt-3 flex items-center">
-                            <span class="inline w-4 h-4 mr-2 text-pink-400 flex-shrink-0">📍</span>
-                            ${report.location}
-                        </p>
-                        <p class="text-sm text-gray-300 mt-2 line-clamp-2">${report.description}</p>
-                    `;
+                        weatherEl.innerHTML = `${emoji} ${temp}&deg;C`;
+                    })
+                    .catch(() => { weatherEl.textContent = 'Weather N/A'; });
+            }
 
-                    card.addEventListener('click', () => window.handleReportClick(report));
-                    listContainer.append(card);
-                });
-            };
+            function getLocation() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => getWeather(position.coords.latitude, position.coords.longitude),
+                        () => { weatherEl.textContent = 'Enable location'; }
+                    );
+                } else {
+                    weatherEl.textContent = 'No Geolocation';
+                }
+            }
 
-            const renderFilters = () => {
-                filterContainer.innerHTML = '';
-                types.forEach(type => {
-                    const isActive = currentFilter === type;
-                    const button = createElement('button', `px-4 py-1.5 text-sm font-semibold rounded-full border border-white/40 transition-all duration-300 shadow-glass-sm`, type, {
-                        'onclick': `window.setFilterType('${type}')`
-                    });
+            // --- Placeholder Rendering Functions (to be filled later) ---
+            let destinations = JSON.parse(localStorage.getItem('destinations')) || [];
+            let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+            let progress = JSON.parse(localStorage.getItem('progress')) || [];
 
-                    if (isActive) {
-                        button.classList.add('bg-white/70', 'text-gray-900', 'shadow-glass-lg');
-                    } else {
-                        button.classList.add('bg-white/10', 'text-white', 'hover:bg-white/20');
-                    }
-                    filterContainer.append(button);
-                });
-            };
-
-            // Global functions for interaction
-            window.setFilterType = (type) => {
-                currentFilter = type;
-                renderFilters();
-                updateReportList();
-            };
-
-            window.handleSearchInput = (event) => {
-                currentSearchTerm = event.target.value;
-                updateReportList();
-            };
-
-            container.querySelector('#search-input').addEventListener('input', window.handleSearchInput);
-
-            // Initial render
-            renderFilters();
-            updateReportList();
+            // --- Destinations Functions ---
+            const destinationForm = document.getElementById('destination-form');
+            const destinationList = document.getElementById('destination-list');
+            // destinations is already declared globally
             
-            return container;
-        };
-        
-        const renderReportDetailModal = () => {
-            if (!selectedReport) return null;
+            function renderDestinations() {
+                destinationList.innerHTML = '';
+                destinations.forEach((dest, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>${dest.name}, ${dest.country} - ${dest.date}</span> <button data-index="${index}" class="remove-btn"><i class="fa-solid fa-xmark"></i></button>`;
+                    destinationList.appendChild(li);
+                });
+                if (typeof renderHomeWidgets === 'function') { // Check if home widgets are implemented yet
+                    renderHomeWidgets();
+                }
+            }
 
-            const report = selectedReport;
-            const { icon, color, ring } = getTypeDetails(report.type);
-            
-            const modal = createElement('div', 'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300');
-            modal.addEventListener('click', window.handleCloseModal);
-
-            const content = createElement('div', 'w-full max-w-lg bg-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-glass-lg border border-white/30 text-white transition-transform duration-300 scale-100', '', {
-                'onclick': 'event.stopPropagation()'
+            destinationForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                destinations.push({
+                    name: document.getElementById('destination-name').value,
+                    country: document.getElementById('destination-country').value,
+                    date: document.getElementById('destination-date').value
+                });
+                localStorage.setItem('destinations', JSON.stringify(destinations));
+                renderDestinations();
+                destinationForm.reset();
             });
 
-            content.innerHTML = `
-                <div class="flex justify-between items-start mb-6">
-                    <div class="flex items-center space-x-3">
-                        <div class="p-3 rounded-full bg-white/90 ring-4 ${ring}">
-                            <span class="w-7 h-7 text-3xl ${color}">${icon}</span>
-                        </div>
-                        <h2 class="text-2xl font-bold leading-snug">${report.type} Incident</h2>
-                    </div>
-                    <button 
-                        onclick="window.handleCloseModal()"
-                        class="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors text-white/80 border border-white/40"
-                    >
-                        &times;
-                    </button>
-                </div>
-
-                <div class="space-y-4">
-                    <div class="border-b border-white/20 pb-2">
-                        <p class="text-sm font-medium text-gray-300 flex items-center mb-1">
-                            <span class="w-4 h-4 mr-2 text-pink-400">📍</span>
-                            Location
-                        </p>
-                        <p class="text-lg font-bold">${report.location}</p>
-                    </div>
-
-                    <div class="border-b border-white/20 pb-2">
-                        <p class="text-sm font-medium text-gray-300 flex items-center mb-1">
-                            <span class="w-4 h-4 mr-2 text-pink-400">🕒</span>
-                            Reported Time
-                        </p>
-                        <p class="text-lg font-bold">${formatTimestamp(report.timestamp)}</p>
-                    </div>
-
-                    <div>
-                        <p class="text-sm font-medium text-gray-300 flex items-center mb-1">
-                            <span class="w-4 h-4 mr-2 text-pink-400">💬</span>
-                            Detailed Description
-                        </p>
-                        <p class="text-base text-white/90 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/10 shadow-inner">
-                            ${report.description}
-                        </p>
-                    </div>
-                </div>
-            `;
-            modal.append(content);
-            return modal;
-        };
-
-        const renderReportForm = () => {
-            const container = createElement('form', 'p-4 space-y-6', '', { 'id': 'report-form' });
-            container.innerHTML = `
-                <h1 class="text-4xl font-extrabold text-white tracking-tight pt-2">Report Hazard</h1>
-                <p class="text-gray-300 text-sm opacity-80">Submit your report to the network.</p>
-
-                <div id="message-area"></div>
-
-                <div class="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-4 border border-white/30">
-                    <div class="space-y-1">
-                        <label for="report-type" class="text-sm text-gray-300 font-semibold block">Incident Type</label>
-                        <select id="report-type" class="w-full p-3 bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 rounded-xl transition duration-300 shadow-glass-sm" style="appearance: none;">
-                            <option value="Water" class="bg-gray-800 text-white">Water Hazard (Flood/Spill)</option>
-                            <option value="Energy" class="bg-gray-800 text-white">Energy Failure (Fire/Power)</option>
-                            <option value="Health" class="bg-gray-800 text-white">Health Emergency</option>
-                            <option value="Safety" class="bg-gray-800 text-white">General Safety Threat</option>
-                        </select>
-                    </div>
-
-                    <div class="space-y-1">
-                        <label for="location" class="text-sm text-gray-300 font-semibold block">Location</label>
-                        <input id="location" type="text" placeholder="Address or nearest landmark" 
-                            class="w-full p-3 bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 rounded-xl transition duration-300 shadow-glass-sm"
-                        />
-                    </div>
-                </div>
-
-                <div class="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-2 border border-white/30">
-                    <label for="description" class="text-sm text-gray-300 font-semibold block">Description</label>
-                    <textarea id="description" rows="4" placeholder="Describe the situation clearly..." 
-                        class="w-full p-3 bg-white/20 backdrop-blur-md border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/80 rounded-xl transition duration-300 shadow-glass-sm resize-none"
-                    ></textarea>
-                </div>
-
-                <button type="submit" id="submit-button" class="w-full py-4 px-4 rounded-full font-bold text-lg transition duration-300 transform shadow-glass-lg active:scale-[0.98] bg-white text-gray-900 hover:bg-gray-100">
-                    Submit Report Anonymously
-                </button>
-            `;
-
-            container.addEventListener('submit', handleReportSubmit);
-            return container;
-        };
-        
-        const renderContactPage = () => {
-            const container = createElement('div', 'p-4 space-y-6');
-            container.innerHTML = `
-                <h1 class="text-4xl font-extrabold text-white tracking-tight pt-2">Contact Info</h1>
-                <p class="text-gray-300 text-sm opacity-80">Essential contacts and platform information.</p>
-                
-                <div class="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-4 border border-white/30">
-                    <p class="text-xl font-bold text-white border-b border-white/30 pb-3 flex items-center">
-                        <span class="w-6 h-6 mr-3 text-white/80">📞</span>
-                        Emergency Contacts
-                    </p>
-                    ${renderContactLink("IMMEDIATE EMERGENCY (Police / Fire / Medical)", "911", "text-red-400", "🚨", true)}
-                    ${renderContactLink("LOCAL COORDINATION CENTER", "(555) 123-4567", "text-blue-400", "🛡️", false)}
-                </div>
-
-                <div class="bg-white/10 rounded-2xl backdrop-blur-xl shadow-glass-md p-5 space-y-3 border border-white/30">
-                    <p class="text-xl font-bold text-white border-b border-white/30 pb-3">
-                        About This Platform
-                    </p>
-                    <p class="text-base text-gray-300">
-                        This network uses public, real-time data to help the community. All reports are anonymous and shared globally. Data persistence is managed via secure cloud services (Firebase).
-                    </p>
-                    <p class="text-xs text-gray-400 pt-3 border-t border-white/30">
-                        Warning: Always contact official emergency services first in life-threatening situations.
-                    </p>
-                </div>
-            `;
-            return container;
-        };
-
-        const renderContactLink = (title, detail, color, icon, isCritical) => {
-            return `
-                <div class="flex items-center space-x-3 p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors cursor-pointer border border-white/20 ${isCritical ? 'ring-2 ring-red-500/50' : ''}">
-                    <div class="p-2 rounded-full ${isCritical ? 'bg-red-500/70' : 'bg-white/90'}">
-                        <span class="w-6 h-6 text-2xl ${color} flex-shrink-0">${icon}</span>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-sm text-gray-300 font-semibold">${title}</p>
-                        <p class="text-xl font-extrabold text-white">${detail}</p>
-                    </div>
-                </div>
-            `;
-        };
-
-        // --- Core Application Logic ---
-
-        const renderApp = () => {
-            const root = document.getElementById('root');
-            root.innerHTML = ''; // Clear existing content
-
-            // 1. Render Fixed Components
-            root.append(renderDynamicIsland());
-            root.append(renderNavBar());
-
-            // 2. Render Main Content Area
-            const mainContainer = createElement('main', 'flex-grow max-w-xl mx-auto w-full');
-            mainContainer.id = 'app-container';
-            root.append(mainContainer);
-
-            // 3. Render Current Page
-            let pageContent;
-            if (!isAuthReady) {
-                pageContent = renderLoading();
-            } else {
-                switch (currentPage) {
-                    case 'report':
-                        pageContent = db ? renderReportForm() : createElement('p', 'p-4 text-red-400 font-bold', 'Error: Database connection failed.');
-                        break;
-                    case 'contact':
-                        pageContent = renderContactPage();
-                        break;
-                    case 'browse':
-                    default:
-                        pageContent = renderBrowseFeed(currentReports);
-                        break;
+            destinationList.addEventListener('click', (e) => {
+                if (e.target.closest('.remove-btn')) {
+                    const index = e.target.closest('.remove-btn').getAttribute('data-index');
+                    destinations.splice(index, 1);
+                    localStorage.setItem('destinations', JSON.stringify(destinations));
+                    renderDestinations();
                 }
-            }
-            mainContainer.append(pageContent);
-            
-            // 4. Render Modal (if necessary)
-            const modal = renderReportDetailModal();
-            if (modal) {
-                root.append(modal);
-            }
-        };
-
-        window.setCurrentPage = (page) => {
-            if (currentPage !== page) {
-                currentPage = page;
-                renderApp();
-            }
-        };
-        
-        window.handleReportClick = (report) => {
-            selectedReport = report;
-            renderApp(); // Rerender to show modal
-        };
-
-        window.handleCloseModal = () => {
-            selectedReport = null;
-            renderApp(); // Rerender to hide modal
-        };
-
-        const displayMessage = (type, text) => {
-            const messageArea = document.getElementById('message-area');
-            if (!messageArea) return;
-            
-            const classes = type === 'success' 
-                ? 'bg-green-500/20 text-white border-green-400' 
-                : 'bg-red-500/20 text-white border-red-400';
-            const icon = type === 'success' ? '✅' : '🚨';
-
-            messageArea.innerHTML = `
-                <div class="p-4 rounded-xl text-base font-semibold border-l-4 backdrop-blur-xl shadow-glass-md flex items-center ${classes}">
-                    <span class="w-5 h-5 mr-3">${icon}</span>
-                    ${text}
-                </div>
-            `;
-            // Clear message after 5 seconds
-            setTimeout(() => { messageArea.innerHTML = ''; }, 5000);
-        };
-
-        const handleReportSubmit = async (event) => {
-            event.preventDefault();
-
-            const submitButton = document.getElementById('submit-button');
-            const type = document.getElementById('report-type').value;
-            const location = document.getElementById('location').value.trim();
-            const description = document.getElementById('description').value.trim();
-
-            if (!location || !description) {
-                displayMessage('error', 'Location and Description are mandatory fields.');
-                return;
-            }
-
-            submitButton.disabled = true;
-            submitButton.innerHTML = `<svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Sending Data...`;
-
-            const newReport = {
-                type: type,
-                location: location,
-                description: description,
-                timestamp: Timestamp.now(),
-            };
-
-            try {
-                await addDoc(collection(db, PUBLIC_REPORTS_COLLECTION_PATH), newReport);
-                displayMessage('success', 'Report successfully submitted. Thank you.');
-                document.getElementById('location').value = '';
-                document.getElementById('description').value = '';
-            } catch (error) {
-                console.error("Error submitting report: ", error);
-                displayMessage('error', 'Submission failed. Check your connection.');
-            } finally {
-                submitButton.disabled = false;
-                submitButton.innerHTML = 'Submit Report Anonymously';
-            }
-        };
-
-        // --- Initialization ---
-
-        const initializeFirebase = async () => {
-            if (!firebaseConfig) {
-                console.error("Firebase config is missing.");
-                isAuthReady = true;
-                renderApp();
-                return;
-            }
-
-            try {
-                const app = initializeApp(firebaseConfig);
-                setLogLevel('debug');
-                
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                // Authentication Setup
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error("Firebase Auth Error:", error);
-                    await signInAnonymously(auth); 
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    isAuthReady = true;
-                    // Start data listener once authenticated
-                    if (user) {
-                        setupDataListener();
-                    } else {
-                        renderApp();
-                    }
-                });
-
-            } catch (error) {
-                console.error("Error initializing Firebase:", error);
-                isAuthReady = true;
-                renderApp();
-            }
-        };
-
-        const setupDataListener = () => {
-            const q = query(
-                collection(db, PUBLIC_REPORTS_COLLECTION_PATH),
-                orderBy('timestamp', 'desc')
-            );
-
-            onSnapshot(q, (snapshot) => {
-                currentReports = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                // Only rerender the feed if we are on the browse page
-                if (currentPage === 'browse') {
-                    renderApp();
-                }
-            }, (error) => {
-                console.error("Error listening to reports:", error);
             });
-            renderApp(); // Initial render once data listener is set up
-        };
-        
-        // Initial setup on window load
-        window.onload = () => {
-            initializeFirebase();
-            // Update the dynamic island date/time every minute
-            setInterval(renderApp, 60000); 
-        };
+            // --- Budget Functions ---
+            const expenseForm = document.getElementById('expense-form');
+            const expenseList = document.getElementById('expense-list');
+            const totalEl = document.getElementById('total-expenses');
+            // expenses is already declared globally
 
-        // Initial loading render before Firebase is ready
-        renderApp();
+            function renderExpenses() {
+                expenseList.innerHTML = '';
+                let total = 0;
+                expenses.forEach((exp, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>${exp.desc} (${exp.category}): $${parseFloat(exp.amount).toFixed(2)}</span> <button data-index="${index}" class="remove-btn"><i class="fa-solid fa-xmark"></i></button>`;
+                    expenseList.appendChild(li);
+                    total += parseFloat(exp.amount);
+                });
+                totalEl.textContent = total.toFixed(2);
+                if (typeof renderHomeWidgets === 'function') { // Check if home widgets are implemented yet
+                    renderHomeWidgets();
+                }
+            }
+
+            expenseForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                expenses.push({
+                    desc: document.getElementById('expense-desc').value,
+                    category: document.getElementById('expense-category').value,
+                    amount: document.getElementById('expense-amount').value
+                });
+                localStorage.setItem('expenses', JSON.stringify(expenses));
+                renderExpenses();
+                expenseForm.reset();
+            });
+
+            expenseList.addEventListener('click', (e) => {
+                if (e.target.closest('.remove-btn')) {
+                    const index = e.target.closest('.remove-btn').getAttribute('data-index');
+                    expenses.splice(index, 1);
+                    localStorage.setItem('expenses', JSON.stringify(expenses));
+                    renderExpenses();
+                }
+            });
+            // --- Progress Functions ---
+            const progressForm = document.getElementById('progress-form');
+            const progressList = document.getElementById('progress-list');
+            // progress is already declared globally
+
+            function renderProgress() {
+                progressList.innerHTML = '';
+                progress.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>${item}</span> <button data-index="${index}" class="remove-btn"><i class="fa-solid fa-xmark"></i></button>`;
+                    progressList.appendChild(li);
+                });
+                if (typeof renderHomeWidgets === 'function') { // Check if home widgets are implemented yet
+                    renderHomeWidgets();
+                }
+            }
+
+            progressForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                progress.push(document.getElementById('progress-update').value);
+                localStorage.setItem('progress', JSON.stringify(progress));
+                renderProgress();
+                progressForm.reset();
+            });
+
+            progressList.addEventListener('click', (e) => {
+                if (e.target.closest('.remove-btn')) {
+                    const index = e.target.closest('.remove-btn').getAttribute('data-index');
+                    progress.splice(index, 1);
+                    localStorage.setItem('progress', JSON.stringify(progress));
+                    renderProgress();
+                }
+            });
+            // --- Home Page Widgets ---
+            // Widget action buttons on home page
+            document.addEventListener('click', (e) => { // Delegate event listener
+                if (e.target.closest('.widget-action')) {
+                    e.preventDefault();
+                    const pageId = e.target.closest('.widget-action').getAttribute('data-page');
+                    showPage(pageId);
+                }
+            });
+
+            function renderHomeWidgets() {
+                const destinationsCount = destinations.length;
+                const totalExpenses = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+                const latestProgress = progress.length > 0 ? progress[progress.length - 1] : 'No updates yet.';
+
+                const destinationsWidgetValue = document.querySelector('#destinations-widget .widget-value');
+                if (destinationsWidgetValue) {
+                    destinationsWidgetValue.textContent = `${destinationsCount} Destinations`;
+                }
+                
+                const budgetWidgetValue = document.querySelector('#budget-widget .widget-value');
+                if (budgetWidgetValue) {
+                    budgetWidgetValue.textContent = `$${totalExpenses.toFixed(2)}`;
+                }
+
+                const progressWidgetValue = document.querySelector('#progress-widget .widget-value');
+                if (progressWidgetValue) {
+                    progressWidgetValue.textContent = latestProgress;
+                }
+            }
+
+
+            // Initial calls
+            updateTime();
+            setInterval(updateTime, 1000);
+            getLocation();
+            showPage('home'); // Display home page initially
+        });
     </script>
 </body>
 </html>
-
