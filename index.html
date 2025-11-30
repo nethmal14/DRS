@@ -5,7 +5,410 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Trip Planner</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/styles.css">
+    <style>
+/* Global Resets and Base Styles */
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --ios-accent-blue: #0A84FF;
+    --ios-primary-background: #FFFFFF; /* Light background */
+    --ios-secondary-background: #F2F2F7; /* Slightly darker for panels */
+    --ios-tertiary-background: #E5E5EA; /* Even darker for grouped content */
+    --ios-primary-text: #000000;
+    --ios-secondary-text: #3C3C4399; /* Dark grey with transparency */
+    --ios-separator-color: #C6C6C8; /* Light grey separator */
+    --ios-red: #FF453A;
+    --ios-green: #30D158;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 48px 0 88px 0; /* Space for status bar and bottom nav */
+    background: linear-gradient(135deg, #FF416C 0%, #FFCC70 100%); /* Vibrant red and yellow */
+    color: var(--ios-primary-text);
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+}
+
+/* Status Bar */
+.status-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.5); /* Slightly less opaque */
+    backdrop-filter: blur(15px); /* More blur */
+    -webkit-backdrop-filter: blur(15px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--ios-primary-text);
+    z-index: 1000; /* Ensure it's always on top */
+}
+
+.status-bar > div { flex-basis: 33.33%; }
+#date { text-align: center; }
+#weather { text-align: right; }
+
+/* Main Content Area */
+main {
+    max-width: 100%; /* Occupy full width on mobile */
+    padding: 0.5rem; /* Padding for the main content wrapper */
+    margin: 0 auto; /* Center main content */
+}
+
+.page-content {
+    display: none; /* Hidden by default */
+    animation: fadeIn 0.3s ease-out;
+}
+.page-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--ios-primary-text); /* Use primary text color for headings */
+    margin: 1.5rem 1rem 0.5rem 1rem; /* Spacing for titles above grouped content */
+}
+
+/* Grouped Inset Style for Forms and Lists */
+.form-group, .list-group, .glass-widget {
+    background: rgba(255, 255, 255, 0.7); /* Lighter and slightly less opaque */
+    backdrop-filter: blur(25px); /* More blur */
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(0, 0, 0, 0.1); /* Darker border for contrast on light */
+    border-radius: 12px;
+    margin: 0.5rem 1rem; /* Consistent inset margin */
+    overflow: hidden;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+input[type="text"], input[type="number"], input[type="date"] {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border: none;
+    border-bottom: 1px solid var(--ios-separator-color);
+    background: transparent;
+    font-size: 1.05rem;
+    color: var(--ios-primary-text); /* Ensure text is dark on light background */
+    box-sizing: border-box;
+}
+input:last-of-type { border-bottom: none; }
+input::placeholder { color: var(--ios-secondary-text); }
+input:focus { outline: none; } /* Remove default focus outline */
+input[type="text"], input[type="number"], input[type="date"] {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border: none;
+    border-bottom: 1px solid var(--ios-separator-color);
+    background: transparent;
+    font-size: 1.05rem;
+    color: var(--ios-primary-text); /* Ensure text is dark on light background */
+    box-sizing: border-box;
+}
+
+button[type="submit"] {
+    padding: 0.9rem 1rem;
+    margin: 1rem; /* Separate from inputs within form-group */
+    border: none;
+    background: var(--ios-accent-blue);
+    color: white;
+    font-size: 1.05rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+button[type="submit"]:active {
+    background: #0060df; /* Darken on press */
+}
+
+ul { list-style: none; padding: 0; margin: 0; }
+li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--ios-separator-color);
+    font-size: 1.05rem;
+}
+li:last-child { border-bottom: none; }
+li span { flex-grow: 1; }
+
+.remove-btn {
+    background: var(--ios-red);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 0.8rem;
+    line-height: 28px;
+    text-align: center;
+    padding: 0;
+    flex-shrink: 0; /* Prevent shrinking on small screens */
+    margin-left: 0.5rem;
+}
+.remove-btn:active {
+    background: #c0362f;
+}
+
+h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--ios-primary-text); /* Ensure readable on light panels */
+    padding: 0.5rem 1rem; /* Adjusted for list/widget titles */
+    margin: 0;
+    text-align: left;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 88px; /* Taller for home indicator */
+    background: rgba(255, 255, 255, 0.5); /* Slightly less opaque */
+    backdrop-filter: blur(15px); /* More blur */
+    -webkit-backdrop-filter: blur(15px);
+    border-top: 1px solid rgba(0, 0, 0, 0.1); /* Darker border for contrast on light */
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom); /* Respect iPhone X bottom bar */
+}
+
+.bottom-nav ul {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-start; /* Align items to top of nav area */
+    height: 100%;
+    padding: 0.5rem 0; /* Padding inside nav */
+}
+
+.bottom-nav a {
+    color: var(--ios-secondary-text);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.7rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0.5rem;
+    flex: 1; /* Distribute space evenly */
+}
+
+.bottom-nav .nav-icon {
+    font-size: 1.6rem;
+}
+
+.bottom-nav a.active {
+    color: var(--ios-accent-blue);
+}
+.bottom-nav a:active {
+    filter: brightness(0.8); /* Darken slightly on press */
+}
+
+/* Specific styling for Home Widgets */
+.widget-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    padding: 1rem 0; /* Adjust padding for widget grid */
+}
+
+#news-section ul {
+    list-style: none; /* Remove default bullet points */
+    padding: 0;
+    margin: 0;
+}
+
+#news-section li {
+    padding: 0.75rem 0; /* Adjust padding for news list items */
+    border-bottom: 1px solid var(--ios-separator-color);
+}
+
+#news-section li:last-child {
+    border-bottom: none;
+}
+
+#news-section li a {
+    color: var(--ios-primary-text); /* Ensure link text is readable */
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 400;
+    display: block; /* Make the whole area clickable */
+    transition: color 0.2s;
+}
+
+#news-section li a:hover {
+    color: var(--ios-accent-blue); /* Highlight on hover */
+}
+
+.glass-widget {
+    background: var(--ios-tertiary-background); /* Use tertiary for widgets */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: left;
+    color: var(--ios-primary-text);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+}
+
+.glass-widget h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ios-secondary-text); /* Use secondary text color for widget titles */
+    padding: 0;
+    margin: 0;
+}
+
+.glass-widget .widget-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+    color: var(--ios-primary-text);
+}
+
+.glass-widget .widget-action {
+    background: var(--ios-accent-blue); /* Solid blue for primary actions */
+    color: white;
+    border: none;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center text and icon */
+    width: 100%;
+}
+
+.glass-widget .widget-action i {
+    margin-left: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.glass-widget .widget-action:active {
+    background: #0060df;
+}
+
+.quick-actions button.widget-action {
+    background: var(--ios-green); /* Green for quick add */
+    margin-top: 0.5rem;
+}
+.quick-actions button.widget-action:first-child {
+    margin-top: 0;
+}
+.quick-actions button.widget-action:active {
+    background: #24a849;
+}
+
+/* News Slider Specific Styling */
+.news-slider-container {
+    position: relative;
+    height: 3.5em; /* Fixed height for one news item */
+    display: flex; /* Use flex to align items vertically */
+    align-items: center;
+    justify-content: center;
+    overflow: hidden; /* Hide overflowing news items */
+}
+
+#news-list {
+    flex-grow: 1;
+    margin: 0;
+    padding: 0 2.5rem; /* Space for nav buttons */
+    list-style: none;
+    text-align: center;
+    position: relative; /* For absolute positioning of list items if needed */
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#news-list li {
+    padding: 0;
+    border-bottom: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+#news-list li a {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 100%;
+}
+
+
+.news-slider-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 0.5rem;
+    pointer-events: none; /* Allow clicks to pass through to items if any */
+}
+
+.news-nav-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: var(--ios-primary-text);
+    border-radius: 50%;
+    width: 2em;
+    height: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    pointer-events: all; /* Make buttons clickable */
+}
+
+.news-nav-btn:active {
+    background: rgba(255, 255, 255, 0.4);
+}
+    </style>
 </head>
 <body>
     <div class="status-bar">
@@ -18,9 +421,15 @@
         <div id="home" class="page-content">
             <div class="glass-widget" id="news-section">
                 <h3>Latest News</h3>
-                <ul id="news-list">
-                    <li>Loading news...</li>
-                </ul>
+                <div class="news-slider-container">
+                    <ul id="news-list">
+                        <li>Loading news...</li>
+                    </ul>
+                    <div class="news-slider-nav">
+                        <button id="news-prev" class="news-nav-btn"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button id="news-next" class="news-nav-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
             </div>
             <div class="widget-grid">
                 <div class="glass-widget" id="destinations-widget">
@@ -192,8 +601,37 @@
 
             // --- News Feed ---
             const newsList = document.getElementById('news-list');
+            const newsPrevBtn = document.getElementById('news-prev');
+            const newsNextBtn = document.getElementById('news-next');
+            let newsItems = [];
+            let currentNewsIndex = 0;
+            let autoSlideInterval;
+
             const RSS_FEED_URL = 'https://www.ft.com/?format=rss'; // Example generic feed, user can replace with Sri Lankan feed
             const CORS_PROXY = 'https://api.rss2json.com/v1/api.json?rss_url='; // Public CORS proxy
+
+            function showNewsItem(index) {
+                if (newsItems.length === 0) return;
+                newsList.innerHTML = '';
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="${newsItems[index].link}" target="_blank" rel="noopener noreferrer">${newsItems[index].title}</a>`;
+                newsList.appendChild(li);
+            }
+
+            function nextNews() {
+                currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
+                showNewsItem(currentNewsIndex);
+            }
+
+            function prevNews() {
+                currentNewsIndex = (currentNewsIndex - 1 + newsItems.length) % newsItems.length;
+                showNewsItem(currentNewsIndex);
+            }
+
+            function startAutoSlide() {
+                clearInterval(autoSlideInterval); // Clear any existing interval
+                autoSlideInterval = setInterval(nextNews, 5000); // Change news every 5 seconds
+            }
 
             function renderNews() {
                 newsList.innerHTML = '<li>Loading news...</li>';
@@ -205,22 +643,36 @@
                         return response.json();
                     })
                     .then(data => {
-                        newsList.innerHTML = ''; // Clear loading message
                         if (data.items && data.items.length > 0) {
-                            data.items.slice(0, 5).forEach(item => { // Show top 5 news items
-                                const li = document.createElement('li');
-                                li.innerHTML = `<a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.title}</a>`;
-                                newsList.appendChild(li);
-                            });
+                            newsItems = data.items.slice(0, 5); // Store top 5 news items
+                            currentNewsIndex = 0;
+                            showNewsItem(currentNewsIndex);
+                            startAutoSlide();
+                            newsPrevBtn.style.display = 'block';
+                            newsNextBtn.style.display = 'block';
                         } else {
                             newsList.innerHTML = '<li>No news items found.</li>';
+                            newsPrevBtn.style.display = 'none';
+                            newsNextBtn.style.display = 'none';
                         }
                     })
                     .catch(error => {
                         console.error('Error fetching RSS feed:', error);
                         newsList.innerHTML = `<li>Error loading news. CORS may be an issue.</li>`;
+                        newsPrevBtn.style.display = 'none';
+                        newsNextBtn.style.display = 'none';
                     });
             }
+
+            newsPrevBtn.addEventListener('click', () => {
+                prevNews();
+                startAutoSlide(); // Reset auto-slide timer
+            });
+
+            newsNextBtn.addEventListener('click', () => {
+                nextNews();
+                startAutoSlide(); // Reset auto-slide timer
+            });
 
             // --- Placeholder Rendering Functions (to be filled later) ---
             let destinations = JSON.parse(localStorage.getItem('destinations')) || [];
