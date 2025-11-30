@@ -340,43 +340,73 @@ h3 {
 /* News Slider Specific Styling */
 .news-slider-container {
     position: relative;
-    height: 3.5em; /* Fixed height for one news item */
-    display: flex; /* Use flex to align items vertically */
+    height: 5em; /* Increased height to accommodate title and description */
+    display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden; /* Hide overflowing news items */
+    overflow: hidden;
 }
 
 #news-list {
     flex-grow: 1;
     margin: 0;
-    padding: 0 2.5rem; /* Space for nav buttons */
+    padding: 0 2.5rem;
     list-style: none;
     text-align: center;
-    position: relative; /* For absolute positioning of list items if needed */
+    position: relative;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; /* Smooth transition for slides */
 }
 
 #news-list li {
     padding: 0;
     border-bottom: none;
     display: flex;
+    flex-direction: column; /* Stack title and description */
     align-items: center;
     justify-content: center;
     height: 100%;
+    position: absolute; /* Allow transition */
+    width: calc(100% - 5rem); /* Account for padding */
+    top: 0;
+    left: 2.5rem;
 }
 
 #news-list li a {
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--ios-primary-text);
+}
+
+.news-title {
+    font-size: 1rem;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: block;
-    max-width: 100%;
+    width: 100%;
+    text-align: center;
 }
 
+.news-description {
+    font-size: 0.8rem;
+    color: var(--ios-secondary-text);
+    margin-top: 0.2rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Limit to 2 lines */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-align: center;
+}
 
 .news-slider-nav {
     position: absolute;
@@ -386,7 +416,8 @@ h3 {
     display: flex;
     justify-content: space-between;
     padding: 0 0.5rem;
-    pointer-events: none; /* Allow clicks to pass through to items if any */
+    pointer-events: none;
+    z-index: 10; /* Ensure buttons are above slides */
 }
 
 .news-nav-btn {
@@ -612,9 +643,15 @@ h3 {
 
             function showNewsItem(index) {
                 if (newsItems.length === 0) return;
-                newsList.innerHTML = '';
+                newsList.innerHTML = ''; // Clear previous item
                 const li = document.createElement('li');
-                li.innerHTML = `<a href="${newsItems[index].link}" target="_blank" rel="noopener noreferrer">${newsItems[index].title}</a>`;
+                li.classList.add('news-slide'); // Add class for styling transitions
+                li.innerHTML = `
+                    <a href="${newsItems[index].link}" target="_blank" rel="noopener noreferrer">
+                        <div class="news-title">${newsItems[index].title}</div>
+                        <div class="news-description">${newsItems[index].description || newsItems[index].content}</div>
+                    </a>
+                `;
                 newsList.appendChild(li);
             }
 
