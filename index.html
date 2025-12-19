@@ -2,875 +2,172 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Trip Planner</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-/* Global Resets and Base Styles */
-* {
-    box-sizing: border-box;
-}
-
-html, body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-}
-
-:root {
-    --ios-accent-blue: #0A84FF;
-    --ios-primary-background: #FFFFFF; /* Light background */
-    --ios-secondary-background: #F2F2F7; /* Slightly darker for panels */
-    --ios-tertiary-background: #E5E5EA; /* Even darker for grouped content */
-    --ios-primary-text: #000000;
-    --ios-secondary-text: #3C3C4399; /* Dark grey with transparency */
-    --ios-separator-color: #C6C6C8; /* Light grey separator */
-    --ios-red: #FF453A;
-    --ios-green: #30D158;
-}
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    margin: 0;
-    padding: 48px 0 88px 0; /* Space for status bar and bottom nav */
-    background: linear-gradient(135deg, #FF416C 0%, #FFCC70 100%); /* Vibrant red and yellow */
-    color: var(--ios-primary-text);
-    overflow-y: scroll;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-}
-
-/* Status Bar */
-.status-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 48px;
-    background: rgba(255, 255, 255, 0.5); /* Slightly less opaque */
-    backdrop-filter: blur(15px); /* More blur */
-    -webkit-backdrop-filter: blur(15px);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 1rem;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--ios-primary-text);
-    z-index: 1000; /* Ensure it's always on top */
-}
-
-.status-bar > div { flex-basis: 33.33%; }
-#date { text-align: center; }
-#weather { text-align: right; }
-
-/* Main Content Area */
-main {
-    max-width: 100%; /* Occupy full width on mobile */
-    padding: 0.5rem; /* Padding for the main content wrapper */
-    margin: 0 auto; /* Center main content */
-}
-
-.page-content {
-    display: none; /* Hidden by default */
-    animation: fadeIn 0.3s ease-out;
-}
-.page-content.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-h2 {
-    border-radius: 25px;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #ffffff;
-    margin: 1.5rem 1rem 0.5rem 1rem;
-    padding: 10px;
-    background-color: #ffffff38;
-    backdrop-filter: blur(25px);
-    border: solid 2px #ffffff66;
-}
-
-/* Grouped Inset Style for Forms and Lists */
-.form-group, .list-group, .glass-widget {
-    background: #e5e5ea6e; /* Lighter and slightly less opaque */
-    backdrop-filter: blur(25px); /* More blur */
-    border: 1px solid rgba(0, 0, 0, 0.1); /* Darker border for contrast on light */
-    border-radius: 25px;
-    margin: 0.5rem 1rem; /* Consistent inset margin */
-    overflow: hidden;
-}
-
-form {
-    display: flex;
-    flex-direction: column;
-}
-
-input[type="text"], input[type="number"], input[type="date"] {
-    width: 100%;
-    padding: 0.9rem 1rem;
-    border: none;
-    border-bottom: 1px solid var(--ios-separator-color);
-    background: transparent;
-    font-size: 1.05rem;
-    color: var(--ios-primary-text); /* Ensure text is dark on light background */
-    box-sizing: border-box;
-}
-input:last-of-type { border-bottom: none; }
-input::placeholder { color: var(--ios-secondary-text); }
-input:focus { outline: none; } /* Remove default focus outline */
-input[type="text"], input[type="number"], input[type="date"] {
-    width: 100%;
-    padding: 0.9rem 1rem;
-    border: none;
-    border-bottom: 1px solid var(--ios-separator-color);
-    background: transparent;
-    font-size: 1.05rem;
-    color: var(--ios-primary-text); /* Ensure text is dark on light background */
-    box-sizing: border-box;
-}
-
-button[type="submit"] {
-    padding: 0.9rem 1rem;
-    margin: 1rem; /* Separate from inputs within form-group */
-    border: none;
-    background: #e5e5ea6e;
-    color: white;
-    font-size: 1.05rem;
-    font-weight: 600;
-    border-radius: 25px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-button[type="submit"]:active {
-    background: #0060df; /* Darken on press */
-}
-
-ul { list-style: none; padding: 0; margin: 0; }
-li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.9rem 1rem;
-    border-bottom: 1px solid var(--ios-separator-color);
-    font-size: 1.05rem;
-}
-li:last-child { border-bottom: none; }
-li span { flex-grow: 1; }
-
-.remove-btn {
-    background: var(--ios-red);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    font-size: 0.8rem;
-    line-height: 28px;
-    text-align: center;
-    padding: 0;
-    flex-shrink: 0; /* Prevent shrinking on small screens */
-    margin-left: 0.5rem;
-}
-.remove-btn:active {
-    background: #c0362f;
-}
-
-h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--ios-primary-text); /* Ensure readable on light panels */
-    padding: 0.5rem 1rem; /* Adjusted for list/widget titles */
-    margin: 0;
-    text-align: left;
-}
-
-/* Bottom Navigation */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 88px; /* Taller for home indicator */
-    background: rgba(255, 255, 255, 0.5); /* Slightly less opaque */
-    backdrop-filter: blur(15px); /* More blur */
-    -webkit-backdrop-filter: blur(15px);
-    border-top: 1px solid rgba(0, 0, 0, 0.1); /* Darker border for contrast on light */
-    z-index: 1000;
-    padding-bottom: env(safe-area-inset-bottom); /* Respect iPhone X bottom bar */
-}
-
-.bottom-nav ul {
-    display: flex;
-    justify-content: space-around;
-    align-items: flex-start; /* Align items to top of nav area */
-    height: 100%;
-    padding: 0.5rem 0; /* Padding inside nav */
-}
-
-.bottom-nav a {
-    color: var(--ios-secondary-text);
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.7rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 0.5rem;
-    flex: 1; /* Distribute space evenly */
-}
-
-.bottom-nav .nav-icon {
-    font-size: 1.6rem;
-}
-
-.bottom-nav a.active {
-    color: var(--ios-accent-blue);
-}
-.bottom-nav a:active {
-    filter: brightness(0.8); /* Darken slightly on press */
-}
-
-/* Specific styling for Home Widgets */
-.widget-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    padding: 1rem 0; /* Adjust padding for widget grid */
-}
-
-#news-section ul {
-    list-style: none; /* Remove default bullet points */
-    padding: 0;
-    margin: 0;
-}
-
-#news-section li {
-    padding: 0.75rem 0; /* Adjust padding for news list items */
-    border-bottom: 1px solid var(--ios-separator-color);
-}
-
-#news-section li:last-child {
-    border-bottom: none;
-}
-
-#news-section li a {
-    color: var(--ios-primary-text); /* Ensure link text is readable */
-    text-decoration: none;
-    font-size: 0.95rem;
-    font-weight: 400;
-    display: block; /* Make the whole area clickable */
-    transition: color 0.2s;
-}
-
-#news-section li a:hover {
-    color: var(--ios-accent-blue); /* Highlight on hover */
-}
-
-.glass-widget {
-    background: #e5e5ea6e; /* Use tertiary for widgets */
-    backdrop-filter: blur(20px);
-    border: 2px solid rgb(255 255 255);
-    border-radius: 25px;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    text-align: left;
-    color: var(--ios-primary-text);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* Subtle shadow */
-}
-
-.glass-widget h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--ios-secondary-text); /* Use secondary text color for widget titles */
-    padding: 0;
-    margin: 0;
-}
-
-.glass-widget .widget-value {
-    font-size: 1.4rem;
-    font-weight: 700;
-    margin: 0.5rem 0;
-    color: var(--ios-primary-text);
-}
-
-.glass-widget .widget-action {
-    background: #93232338;
-    backdrop-filter:blur(50px);/* Solid blue for primary actions */
-    color: #541a1a;
-    border: none;
-    border: 2px solid white;
-    padding: 0.6rem 0.8rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center; /* Center text and icon */
-    width: 100%;
-}
-
-.glass-widget .widget-action i {
-    margin-left: 0.5rem;
-    font-size: 0.85rem;
-}
-
-.glass-widget .widget-action:active {
-    background: #0060df;
-}
-
-.quick-actions button.widget-action {
-    background: #30d15887; /* Green for quick add */
-    border: 2px solid white;
-    margin-top: 0.5rem;
-}
-.quick-actions button.widget-action:first-child {
-    margin-top: 0;
-}
-.quick-actions button.widget-action:active {
-    background: #24a849;
-}
-
-/* News Slider Specific Styling */
-.news-slider-container {
-    position: relative;
-    height: 5em; /* Increased height to accommodate title and description */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-#news-list {
-    flex-grow: 1;
-    margin: 0;
-    padding: 0 2.5rem;
-    list-style: none;
-    text-align: center;
-    position: relative;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; /* Smooth transition for slides */
-}
-
-#news-list li {
-    padding: 0;
-    border-bottom: none;
-    display: flex;
-    flex-direction: column; /* Stack title and description */
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    position: absolute; /* Allow transition */
-    width: calc(100% - 5rem); /* Account for padding */
-    top: 0;
-    left: 2.5rem;
-}
-
-#news-list li a {
-    text-decoration: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--ios-primary-text);
-}
-
-.news-title {
-    font-size: 1rem;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-    text-align: center;
-}
-
-.news-description {
-    font-size: 0.8rem;
-    color: var(--ios-secondary-text);
-    margin-top: 0.2rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* Limit to 2 lines */
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-    text-align: center;
-}
-
-.news-slider-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    padding: 0 0.5rem;
-    pointer-events: none;
-    z-index: 10; /* Ensure buttons are above slides */
-}
-
-.news-nav-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    color: var(--ios-primary-text);
-    border-radius: 50%;
-    width: 2em;
-    height: 2em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8em;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    pointer-events: all; /* Make buttons clickable */
-}
-
-.news-nav-btn:active {
-    background: rgba(255, 255, 255, 0.4);
-}
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuantumLeap | LMS</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 </head>
 <body>
-    <div class="status-bar">
-        <div id="time"></div>
-        <div id="date"></div>
-        <div id="weather"></div>
+
+    <div class="background-blobs">
+        <div class="blob"></div>
+        <div class="blob"></div>
+        <div class="blob"></div>
     </div>
 
-    <main>
-        <div id="home" class="page-content">
-            <div class="glass-widget" id="news-section">
-                <h3>Latest News</h3>
-                <div class="news-slider-container">
-                    <ul id="news-list">
-                        <li>Loading news...</li>
-                    </ul>
-                    <div class="news-slider-nav">
-                        <button id="news-prev" class="news-nav-btn"><i class="fa-solid fa-chevron-left"></i></button>
-                        <button id="news-next" class="news-nav-btn"><i class="fa-solid fa-chevron-right"></i></button>
+    <header class="glass">
+        <div class="header-container">
+            <a href="#" class="logo">QuantumLeap</a>
+            <nav>
+                <ul>
+                    <li><a href="courses.html">Courses</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#testimonials">Testimonials</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <div class="profile-dropdown">
+                    <div class="profile-icon-wrapper">
+                        <span class="material-symbols-outlined">person</span>
+                    </div>
+                    <div class="dropdown-content glass">
+                        <a href="#">Dashboard</a>
+                        <a href="#">My Courses</a>
+                        <a href="#">Settings</a>
+                        <a href="#">Logout</a>
                     </div>
                 </div>
             </div>
-            <div class="widget-grid">
-                <div class="glass-widget" id="destinations-widget">
-                    <h3>Destinations</h3>
-                    <p class="widget-value"></p>
-                    <button class="widget-action" data-page="destinations">View All <i class="fa-solid fa-arrow-right"></i></button>
-                </div>
-                <div class="glass-widget" id="budget-widget">
-                    <h3>Budget</h3>
-                    <p class="widget-value"></p>
-                    <button class="widget-action" data-page="budget">View Details <i class="fa-solid fa-arrow-right"></i></button>
-                </div>
-                <div class="glass-widget" id="progress-widget">
-                    <h3>Latest Update</h3>
-                    <p class="widget-value"></p>
-                    <button class="widget-action" data-page="progress">View Progress <i class="fa-solid fa-arrow-right"></i></button>
-                </div>
-                <div class="glass-widget quick-actions">
-                    <h3>Quick Actions</h3>
-                    <button class="widget-action" data-page="destinations">Add Destination <i class="fa-solid fa-plus"></i></button>
-                    <button class="widget-action" data-page="budget">Add Expense <i class="fa-solid fa-plus"></i></button>
-                </div>
-            </div>
+            <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
         </div>
+    </header>
+     <div class="mobile-nav glass" id="mobile-nav">
+        <a href="#courses">Courses</a>
+        <a href="#features">Features</a>
+        <a href="#testimonials">Testimonials</a>
+        <hr/>
+        <a href="#">Dashboard</a>
+        <a href="#">My Courses</a>
+        <a href="#">Settings</a>
+        <a href="#">Logout</a>
+    </div>
 
-        <div id="destinations" class="page-content">
-            <h2>Destinations</h2>
-            <div class="form-group">
-                <form id="destination-form">
-                    <input type="text" id="destination-name" placeholder="Destination Name" required>
-                    <input type="text" id="destination-country" placeholder="Country" required>
-                    <input type="date" id="destination-date" required>
-                    <button type="submit">Add Destination</button>
-                </form>
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1 class="hero-title">Unlock Your Potential with QuantumLeap</h1>
+                <p class="hero-subtitle">The future of learning is here. Access high-quality courses anytime, anywhere.</p>
+                <button class="cta-button">Browse Courses</button>
             </div>
-            <div class="list-group">
-                <ul id="destination-list"></ul>
+            <div class="hero-graphics">
+                <div class="graphic-card card1 glass"></div>
+                <div class="graphic-card card2 glass"></div>
+                <div class="graphic-card card3 glass"></div>
             </div>
-        </div>
+        </section>
 
-        <div id="budget" class="page-content">
-            <h2>Budget</h2>
-            <div class="form-group">
-                <form id="expense-form">
-                    <input type="text" id="expense-desc" placeholder="Expense Description" required>
-                    <input type="text" id="expense-category" placeholder="Category" required>
-                    <input type="number" id="expense-amount" placeholder="Amount" required>
-                    <button type="submit">Add Expense</button>
-                </form>
+        <section id="courses" class="course-section">
+            <h2 class="section-title">Featured Courses</h2>
+            <div class="course-grid">
+                <div class="course-card glass">
+                    <img src="https://via.placeholder.com/300x150/4DD0E1/000000?text=Web+Dev" alt="Course thumbnail">
+                    <div class="course-info">
+                        <h3>Modern Web Development</h3>
+                        <p>Master HTML, CSS, JavaScript, and React to build stunning websites.</p>
+                        <div class="course-meta">
+                            <span>8 weeks</span>
+                            <span>Beginner</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="course-card glass">
+                    <img src="https://via.placeholder.com/300x150/F06292/000000?text=Data+Science" alt="Course thumbnail">
+                    <div class="course-info">
+                        <h3>Data Science & ML</h3>
+                        <p>Dive into data analysis, visualization, and machine learning with Python.</p>
+                        <div class="course-meta">
+                            <span>12 weeks</span>
+                            <span>Intermediate</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="course-card glass">
+                    <img src="https://via.placeholder.com/300x150/BA68C8/000000?text=UX/UI" alt="Course thumbnail">
+                    <div class="course-info">
+                        <h3>Advanced UX/UI Design</h3>
+                        <p>Create intuitive and beautiful user interfaces with Figma and design thinking.</p>
+                        <div class="course-meta">
+                            <span>6 weeks</span>
+                            <span>Advanced</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="list-group">
-                <ul id="expense-list"></ul>
-                <h3>Total: $<span id="total-expenses">0.00</span></h3>
-            </div>
-        </div>
+        </section>
 
-        <div id="progress" class="page-content">
-            <h2>Progress</h2>
-            <div class="form-group">
-                <form id="progress-form">
-                    <input type="text" id="progress-update" placeholder="e.g., Booked flights" required>
-                    <button type="submit">Add Update</button>
-                </form>
+        <section id="features" class="features-section">
+            <h2 class="section-title">Why Choose Us?</h2>
+            <div class="features-grid">
+                <div class="feature-item glass">
+                    <span class="material-symbols-outlined">smart_display</span>
+                    <h3>Expert-Led Video Lessons</h3>
+                    <p>Learn from industry leaders with our engaging video courses.</p>
+                </div>
+                <div class="feature-item glass">
+                    <span class="material-symbols-outlined">workspace_premium</span>
+                    <h3>Get Certified</h3>
+                    <p>Receive a certificate upon completion to showcase your skills.</p>
+                </div>
+                <div class="feature-item glass">
+                    <span class="material-symbols-outlined">all_inclusive</span>
+                    <h3>Lifetime Access</h3>
+                    <p>Enroll once and get unlimited lifetime access to course materials.</p>
+                </div>
             </div>
-            <div class="list-group">
-                <ul id="progress-list"></ul>
+        </section>
+
+        <section id="testimonials" class="testimonials-section">
+            <h2 class="section-title">What Our Students Say</h2>
+            <div class="testimonial-card glass">
+                <p>"QuantumLeap transformed my career. The courses are top-notch and the platform is a joy to use. Highly recommended!"</p>
+                <div class="testimonial-author">
+                    <img src="https://via.placeholder.com/50/FFD54F/000000?text=S" alt="Author">
+                    <span>- Sarah J., Web Developer</span>
+                </div>
             </div>
-        </div>
+        </section>
+
     </main>
 
-    <nav class="bottom-nav">
-        <ul>
-            <li><a href="#" class="nav-link" data-page="home">
-                <i class="fa-solid fa-house nav-icon"></i>
-                <span>Home</span>
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="destinations">
-                <i class="fa-solid fa-map-location-dot nav-icon"></i>
-                <span>Destinations</span>
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="budget">
-                <i class="fa-solid fa-wallet nav-icon"></i>
-                <span>Budget</span>
-            </a></li>
-            <li><a href="#" class="nav-link" data-page="progress">
-                <i class="fa-solid fa-list-check nav-icon"></i>
-                <span>Progress</span>
-            </a></li>
-        </ul>
-    </nav>
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-about">
+                <h3>QuantumLeap</h3>
+                <p>The future of learning is here.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Navigate</h4>
+                <ul>
+                    <li><a href="#courses">Courses</a></li>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#">About Us</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-social">
+                <h4>Follow Us</h4>
+                 <a href="#">X</a>
+                 <a href="#">Instagram</a>
+                 <a href="#">LinkedIn</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 QuantumLeap. All Rights Reserved.</p>
+        </div>
+    </footer>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Page navigation
-            const navLinks = document.querySelectorAll('.nav-link');
-            const pages = document.querySelectorAll('.page-content');
-
-            function showPage(pageId) {
-                pages.forEach(page => page.classList.remove('active'));
-                navLinks.forEach(link => link.classList.remove('active'));
-
-                document.getElementById(pageId).classList.add('active');
-                document.querySelector(`.nav-link[data-page="${pageId}"]`).classList.add('active');
-
-                // Call specific render functions when navigating to a page
-                if (pageId === 'home') {
-                    renderHomeWidgets();
-                    renderNews(); // Render news when home page is active
-                }
-                if (pageId === 'destinations') renderDestinations();
-                if (pageId === 'budget') renderExpenses();
-                if (pageId === 'progress') renderProgress();
-            }
-
-            navLinks.forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const pageId = e.target.closest('.nav-link').getAttribute('data-page');
-                    showPage(pageId);
-                });
-            });
-
-            // --- Status Bar ---
-            const timeEl = document.getElementById('time');
-            const dateEl = document.getElementById('date');
-            const weatherEl = document.getElementById('weather');
-
-            function updateTime() {
-                const now = new Date();
-                timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                dateEl.textContent = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-            }
-
-            function getWeather(lat, lon) {
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
-                fetch(url)
-                    .then(response => response.json())
-                    .then(data => {
-                        const temp = Math.round(data.current_weather.temperature);
-                        const weatherCode = data.current_weather.weathercode;
-                        let emoji = ' ';
-
-                        if (weatherCode <= 1) { emoji = '☀️';
-                        } else if (weatherCode <= 3) { emoji = '☁️';
-                        } else if (weatherCode >= 45 && weatherCode <= 48) { emoji = '🌫️';
-                        } else if (weatherCode >= 51 && weatherCode <= 57) { emoji = '🌧️';
-                        } else if (weatherCode >= 61 && weatherCode <= 67) { emoji = '☔';
-                        } else if (weatherCode >= 71 && weatherCode <= 77) { emoji = '❄️';
-                        } else if (weatherCode >= 80 && weatherCode <= 82) { emoji = '⛈️';
-                        } else if (weatherCode >= 85 && weatherCode <= 86) { emoji = '🌨️';
-                        } else if (weatherCode >= 95 && weatherCode <= 99) { emoji = '🌩️';
-                        }
-                        
-                        weatherEl.innerHTML = `${emoji} ${temp}&deg;C`;
-                    })
-                    .catch(() => { weatherEl.textContent = 'Weather N/A'; });
-            }
-
-            function getLocation() {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => getWeather(position.coords.latitude, position.coords.longitude),
-                        () => { weatherEl.textContent = 'Enable location'; }
-                    );
-                } else {
-                    weatherEl.textContent = 'No Geolocation';
-                }
-            }
-
-            // --- News Feed ---
-            const newsList = document.getElementById('news-list');
-            const newsPrevBtn = document.getElementById('news-prev');
-            const newsNextBtn = document.getElementById('news-next');
-            let newsItems = [];
-            let currentNewsIndex = 0;
-            let autoSlideInterval;
-
-            const RSS_FEED_URL = 'https://www.ft.com/?format=rss'; // Example generic feed, user can replace with Sri Lankan feed
-            const CORS_PROXY = 'https://api.rss2json.com/v1/api.json?rss_url='; // Public CORS proxy
-
-            function showNewsItem(index) {
-                if (newsItems.length === 0) return;
-                newsList.innerHTML = ''; // Clear previous item
-                const li = document.createElement('li');
-                li.classList.add('news-slide'); // Add class for styling transitions
-                li.innerHTML = `
-                    <a href="${newsItems[index].link}" target="_blank" rel="noopener noreferrer">
-                        <div class="news-title">${newsItems[index].title}</div>
-                        <div class="news-description">${newsItems[index].description || newsItems[index].content}</div>
-                    </a>
-                `;
-                newsList.appendChild(li);
-            }
-
-            function nextNews() {
-                currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
-                showNewsItem(currentNewsIndex);
-            }
-
-            function prevNews() {
-                currentNewsIndex = (currentNewsIndex - 1 + newsItems.length) % newsItems.length;
-                showNewsItem(currentNewsIndex);
-            }
-
-            function startAutoSlide() {
-                clearInterval(autoSlideInterval); // Clear any existing interval
-                autoSlideInterval = setInterval(nextNews, 5000); // Change news every 5 seconds
-            }
-
-            function renderNews() {
-                newsList.innerHTML = '<li>Loading news...</li>';
-                fetch(CORS_PROXY + encodeURIComponent(RSS_FEED_URL))
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.items && data.items.length > 0) {
-                            newsItems = data.items.slice(0, 5); // Store top 5 news items
-                            currentNewsIndex = 0;
-                            showNewsItem(currentNewsIndex);
-                            startAutoSlide();
-                            newsPrevBtn.style.display = 'block';
-                            newsNextBtn.style.display = 'block';
-                        } else {
-                            newsList.innerHTML = '<li>No news items found.</li>';
-                            newsPrevBtn.style.display = 'none';
-                            newsNextBtn.style.display = 'none';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching RSS feed:', error);
-                        newsList.innerHTML = `<li>Error loading news. CORS may be an issue.</li>`;
-                        newsPrevBtn.style.display = 'none';
-                        newsNextBtn.style.display = 'none';
-                    });
-            }
-
-            newsPrevBtn.addEventListener('click', () => {
-                prevNews();
-                startAutoSlide(); // Reset auto-slide timer
-            });
-
-            newsNextBtn.addEventListener('click', () => {
-                nextNews();
-                startAutoSlide(); // Reset auto-slide timer
-            });
-
-            // --- Placeholder Rendering Functions (to be filled later) ---
-            let destinations = JSON.parse(localStorage.getItem('destinations')) || [];
-            let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-            let progress = JSON.parse(localStorage.getItem('progress')) || [];
-
-            // --- Destinations Functions ---
-            const destinationForm = document.getElementById('destination-form');
-            const destinationList = document.getElementById('destination-list');
-            // destinations is already declared globally
-            
-            function renderDestinations() {
-                destinationList.innerHTML = '';
-                destinations.forEach((dest, index) => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span>${dest.name}, ${dest.country} - ${dest.date}</span> <button data-index="${index}" class="remove-btn"><i class="fa-solid fa-xmark"></i></button>`;
-                    destinationList.appendChild(li);
-                });
-                if (typeof renderHomeWidgets === 'function') { // Check if home widgets are implemented yet
-                    renderHomeWidgets();
-                }
-            }
-
-            destinationForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                destinations.push({
-                    name: document.getElementById('destination-name').value,
-                    country: document.getElementById('destination-country').value,
-                    date: document.getElementById('destination-date').value
-                });
-                localStorage.setItem('destinations', JSON.stringify(destinations));
-                renderDestinations();
-                destinationForm.reset();
-            });
-
-            destinationList.addEventListener('click', (e) => {
-                if (e.target.closest('.remove-btn')) {
-                    const index = e.target.closest('.remove-btn').getAttribute('data-index');
-                    destinations.splice(index, 1);
-                    localStorage.setItem('destinations', JSON.stringify(destinations));
-                    renderDestinations();
-                }
-            });
-            // --- Budget Functions ---
-            const expenseForm = document.getElementById('expense-form');
-            const expenseList = document.getElementById('expense-list');
-            const totalEl = document.getElementById('total-expenses');
-            // expenses is already declared globally
-
-            function renderExpenses() {
-                expenseList.innerHTML = '';
-                let total = 0;
-                expenses.forEach((exp, index) => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span>${exp.desc} (${exp.category}): $${parseFloat(exp.amount).toFixed(2)}</span> <button data-index="${index}" class="remove-btn"><i class="fa-solid fa-xmark"></i></button>`;
-                    expenseList.appendChild(li);
-                    total += parseFloat(exp.amount);
-                });
-                totalEl.textContent = total.toFixed(2);
-                if (typeof renderHomeWidgets === 'function') { // Check if home widgets are implemented yet
-                    renderHomeWidgets();
-                }
-            }
-
-            expenseForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                expenses.push({
-                    desc: document.getElementById('expense-desc').value,
-                    category: document.getElementById('expense-category').value,
-                    amount: document.getElementById('expense-amount').value
-                });
-                localStorage.setItem('expenses', JSON.stringify(expenses));
-                renderExpenses();
-                expenseForm.reset();
-            });
-
-            expenseList.addEventListener('click', (e) => {
-                if (e.target.closest('.remove-btn')) {
-                    const index = e.target.closest('.remove-btn').getAttribute('data-index');
-                    expenses.splice(index, 1);
-                    localStorage.setItem('expenses', JSON.stringify(expenses));
-                    renderExpenses();
-                }
-            });
-            // --- Progress Functions ---
-            const progressForm = document.getElementById('progress-form');
-            const progressList = document.getElementById('progress-list');
-            // progress is already declared globally
-
-            function renderProgress() {
-                progressList.innerHTML = '';
-                progress.forEach((item, index) => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span>${item}</span> <button data-index="${index}" class="remove-btn"><i class="fa-solid fa-xmark"></i></button>`;
-                    progressList.appendChild(li);
-                });
-                if (typeof renderHomeWidgets === 'function') { // Check if home widgets are implemented yet
-                    renderHomeWidgets();
-                }
-            }
-
-            progressForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                progress.push(document.getElementById('progress-update').value);
-                localStorage.setItem('progress', JSON.stringify(progress));
-                renderProgress();
-                progressForm.reset();
-            });
-
-            progressList.addEventListener('click', (e) => {
-                if (e.target.closest('.remove-btn')) {
-                    const index = e.target.closest('.remove-btn').getAttribute('data-index');
-                    progress.splice(index, 1);
-                    localStorage.setItem('progress', JSON.stringify(progress));
-                    renderProgress();
-                }
-            });
-            // --- Home Page Widgets ---
-            // Widget action buttons on home page
-            document.addEventListener('click', (e) => { // Delegate event listener
-                if (e.target.closest('.widget-action')) {
-                    e.preventDefault();
-                    const pageId = e.target.closest('.widget-action').getAttribute('data-page');
-                    showPage(pageId);
-                }
-            });
-
-            function renderHomeWidgets() {
-                const destinationsCount = destinations.length;
-                const totalExpenses = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
-                const latestProgress = progress.length > 0 ? progress[progress.length - 1] : 'No updates yet.';
-
-                const destinationsWidgetValue = document.querySelector('#destinations-widget .widget-value');
-                if (destinationsWidgetValue) {
-                    destinationsWidgetValue.textContent = `${destinationsCount} Destinations`;
-                }
-                
-                const budgetWidgetValue = document.querySelector('#budget-widget .widget-value');
-                if (budgetWidgetValue) {
-                    budgetWidgetValue.textContent = `$${totalExpenses.toFixed(2)}`;
-                }
-
-                const progressWidgetValue = document.querySelector('#progress-widget .widget-value');
-                if (progressWidgetValue) {
-                    progressWidgetValue.textContent = latestProgress;
-                }
-            }
-
-
-            // Initial calls
-            updateTime();
-            setInterval(updateTime, 1000);
-            getLocation();
-            showPage('home'); // Display home page initially
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
