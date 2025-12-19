@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Player | QuantumLeap</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body>
+
+    <div class="background-blobs">
+        <div class="blob"></div>
+        <div class="blob"></div>
+        <div class="blob"></div>
+    </div>
+
+    <header class="glass">
+        <div class="header-container">
+            <a href="index.html" class="logo">QuantumLeap</a>
+            <nav>
+                <ul>
+                    <li><a href="courses.html">Courses</a></li>
+                    <li><a href="index.html#features">Features</a></li>
+                    <li><a href="index.html#testimonials">Testimonials</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                 <div class="profile-dropdown">
+                    <div class="profile-icon-wrapper">
+                        <span class="material-symbols-outlined">person</span>
+                    </div>
+                    <div class="dropdown-content glass">
+                        <a href="#">Dashboard</a>
+                        <a href="#">My Courses</a>
+                        <a href="#">Settings</a>
+                        <a href="#">Logout</a>
+                    </div>
+                </div>
+            </div>
+            <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+        </div>
+    </header>
+     <div class="mobile-nav glass" id="mobile-nav">
+        <a href="courses.html">Courses</a>
+        <a href="index.html#features">Features</a>
+        <a href="index.html#testimonials">Testimonials</a>
+        <hr/>
+        <a href="#">Dashboard</a>
+        <a href="#">My Courses</a>
+        <a href="#">Settings</a>
+        <a href="#">Logout</a>
+    </div>
+
+    <main>
+        <section class="video-player-section">
+            <h1 class="page-title" id="video-unit-title">Loading...</h1>
+            <div class="video-container glass">
+                <video id="unit-video" controls autoplay>
+                    <!-- The video source will be set dynamically by JavaScript -->
+                    <source src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                 <p class="placeholder-notice">Note: The requested videos (e.g., unit1.mp4) were not found. A placeholder is being used. Please replace the video files in the project directory.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-about">
+                <h3>QuantumLeap</h3>
+                <p>The future of learning is here.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Navigate</h4>
+                <ul>
+                    <li><a href="courses.html">Courses</a></li>
+                    <li><a href="index.html#features">Features</a></li>
+                    <li><a href="#">About Us</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-social">
+                <h4>Follow Us</h4>
+                 <a href="#">X</a>
+                 <a href="#">Instagram</a>
+                 <a href="#">LinkedIn</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 QuantumLeap. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
