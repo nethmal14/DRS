@@ -9,10 +9,10 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root {
-            --sys-bg: #0d0f12;
-            --sys-surface: #161b22;
+            --sys-bg: #05070a;
+            --sys-surface: rgba(22, 27, 34, 0.85);
             --sys-border: #30363d;
-            --sys-accent: #3fb950; /* Terminal Green */
+            --sys-accent: #3fb950;
             --sys-alert: #f85149; 
             --sys-text: #c9d1d9;
             --sys-dim: #8b949e;
@@ -31,12 +31,26 @@
             min-height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
+            position: relative;
+        }
+
+        /* Atmospheric Background */
+        #bg-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: linear-gradient(to bottom, #020408 0%, #0d1117 100%);
+        }
+
+        .landscape-svg {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 40vh;
+            z-index: -1; pointer-events: none; opacity: 0.6;
         }
 
         .view {
             display: none; width: 100%; max-width: 600px; margin: 0 auto;
             padding: 1rem 1rem calc(8rem + var(--safe-bottom));
             flex: 1; overflow-y: auto;
+            position: relative;
         }
 
         .sys-card {
@@ -44,8 +58,9 @@
             border: 1px solid var(--sys-border);
             padding: 1rem;
             margin-bottom: 1rem;
-            border-radius: 4px;
+            border-radius: 8px;
             position: relative;
+            backdrop-filter: blur(8px);
         }
 
         .label {
@@ -59,7 +74,7 @@
 
         input {
             width: 100%; padding: 12px; border: 1px solid var(--sys-border);
-            background: #010409; color: var(--sys-accent); font-size: 14px; margin-bottom: 12px;
+            background: rgba(1, 4, 9, 0.8); color: var(--sys-accent); font-size: 14px; margin-bottom: 12px;
             font-family: inherit; border-radius: 4px;
         }
         input:focus { border-color: var(--sys-accent); outline: none; }
@@ -105,7 +120,7 @@
             bottom: calc(4.5rem + var(--safe-bottom));
             left: 1rem; right: 1rem;
             max-width: 500px; margin: 0 auto;
-            background: #161b22;
+            background: rgba(22, 27, 34, 0.9);
             border: 1px solid var(--sys-border);
             border-left: 4px solid var(--sys-accent);
             padding: 10px 15px;
@@ -114,26 +129,34 @@
             justify-content: space-between;
             z-index: 1001;
             cursor: pointer;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
         }
 
+        /* Updated Expanded Player - Half Height */
         #media-expanded {
             position: fixed; 
             bottom: 0; left: 0; right: 0;
-            height: 100vh;
-            background: var(--sys-bg); 
+            height: 70vh;
+            background: var(--sys-surface); 
             z-index: 2000;
             display: none; flex-direction: column; 
-            padding: 2rem;
-            animation: slideUp 0.3s ease-out;
+            padding: 1.5rem;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 20px 20px 0 0;
+            border-top: 1px solid var(--sys-border);
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+            backdrop-filter: blur(20px);
         }
 
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: #0d1117; border-top: 1px solid var(--sys-border);
+            background: rgba(13, 17, 23, 0.95); border-top: 1px solid var(--sys-border);
             display: none; grid-template-columns: repeat(3, 1fr);
             padding: 5px 0 calc(5px + var(--safe-bottom)); z-index: 1000;
+            backdrop-filter: blur(10px);
         }
         .nav-item {
             text-align: center; font-size: 11px;
@@ -143,11 +166,12 @@
 
         .terminal-header {
             padding: 4px 8px;
-            background: var(--sys-border);
+            background: rgba(48, 54, 61, 0.5);
             font-size: 10px;
             color: var(--sys-text);
             margin-bottom: 1rem;
             display: flex; justify-content: space-between;
+            border-radius: 4px;
         }
 
         #yt-wrapper { position: absolute; top: -9999px; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
@@ -157,29 +181,64 @@
 
         .watcher-active { color: var(--sys-blue) !important; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        .msg-feed { max-height: 150px; overflow-y: auto; font-size: 11px; color: var(--sys-dim); border-top: 1px solid var(--sys-border); padding-top: 10px; margin-top: 10px; }
+        .msg-entry { margin-bottom: 5px; border-bottom: 1px dashed #222; padding-bottom: 2px; }
+
+        .firefly {
+            position: absolute;
+            width: 3px; height: 3px;
+            background: #fff9c4;
+            border-radius: 50%;
+            filter: blur(1px);
+            box-shadow: 0 0 5px #fff9c4;
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
+    <!-- Background Scenery -->
+    <div id="bg-canvas"></div>
+    <svg class="landscape-svg" viewBox="0 0 1000 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Moon -->
+        <circle cx="850" cy="100" r="40" fill="#f0f0f0" opacity="0.8" />
+        <circle cx="850" cy="100" r="50" fill="#f0f0f0" opacity="0.1" />
+        <!-- Mountains -->
+        <path d="M0,400 L0,300 L150,150 L300,320 L450,100 L650,350 L850,200 L1000,380 L1000,400 Z" fill="#080a0f" />
+        <path d="M0,400 L0,350 L200,250 L400,380 L600,220 L800,390 L1000,320 L1000,400 Z" fill="#0c1117" opacity="0.7" />
+        <!-- Trees -->
+        <g opacity="0.4">
+            <path d="M50,400 L65,340 L80,400 Z" fill="#020408" />
+            <path d="M120,400 L135,330 L150,400 Z" fill="#020408" />
+            <path d="M220,400 L240,310 L260,400 Z" fill="#020408" />
+            <path d="M720,400 L740,320 L760,400 Z" fill="#020408" />
+            <path d="M900,400 L920,350 L940,400 Z" fill="#020408" />
+        </g>
+    </svg>
+
     <div id="notification-center"></div>
 
+    <!-- Login View -->
     <div id="view-login" class="view" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
         <div style="width: 100%;">
-            <div style="margin-bottom: 2rem;">
-                <div style="color: var(--sys-accent); font-size: 18px; font-weight: bold;">DRS-ONE Kernel v5.4.0</div>
-                <div style="color: var(--sys-dim);">Standard System Authentication</div>
+            <div style="margin-bottom: 2rem; text-align: center;">
+                <div style="color: var(--sys-accent); font-size: 20px; font-weight: bold; letter-spacing: 2px;">DRS-ONE KERNEL</div>
+                <div style="color: var(--sys-dim); font-size: 10px;">MOONLIGHT ACCESS v5.4.1</div>
             </div>
             <div class="sys-card">
                 <span class="label">SSH_AUTH</span>
-                <input type="password" id="pass-in" placeholder="Enter Access Key...">
-                <button class="btn btn-primary" id="login-trigger">Login to Console</button>
+                <input type="password" id="pass-in" placeholder="Access Key...">
+                <button class="btn btn-primary" id="login-trigger">Initialize Session</button>
             </div>
         </div>
     </div>
 
+    <!-- Traveler View -->
     <div id="view-home" class="view">
         <div class="terminal-header">
-            <span>user@drs-one: ~</span>
+            <span>traveler@drs-one: ~</span>
             <span id="watcher-status" style="color: var(--sys-dim);">WATCHERS: OFFLINE</span>
         </div>
         
@@ -193,6 +252,12 @@
             <div id="tracking-status" style="color: var(--sys-dim); font-size: 10px; margin-top: 10px;">GPS: DISCONNECTED</div>
         </div>
 
+        <div class="sys-card">
+            <span class="label">UPLINK_MESSAGE</span>
+            <input type="text" id="traveler-msg" placeholder="Broadcast to Watchers...">
+            <button class="btn btn-primary" onclick="broadcastMsg()">SEND SIGNAL</button>
+        </div>
+
         <div class="sys-card" id="audio-card">
             <span class="label">AUDIO_SUBSYSTEM</span>
             <div id="audio-status" style="color: #d29922; margin-bottom: 8px; font-weight: bold;">[ INITIALIZING ]</div>
@@ -202,25 +267,35 @@
         <div id="yt-wrapper"><div id="yt-player"></div></div>
     </div>
 
+    <!-- Watcher View -->
     <div id="view-monitor" class="view">
+        <div class="terminal-header">
+            <span>watcher@drs-one: ~</span>
+            <span style="color: var(--sys-accent);">MODE: MONITORING_ACTIVE</span>
+        </div>
+        
         <span class="label">SUBJECT_TELEMETRY</span>
         <div id="subject-info" class="sys-card">
             <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
-                <div><div class="label" style="font-size: 9px;">COORDINATES_PRIMARY</div><div id="dash-coords" style="color:#fff; font-size: 24px; font-weight:700;">--</div></div>
+                <div><div class="label" style="font-size: 9px;">COORDINATES_PRIMARY</div><div id="dash-coords" style="color:#fff; font-size: 32px; font-weight:700;">OFFLINE</div></div>
                 <div><div class="label" style="font-size: 9px;">LAST_ACK_TIME</div><div id="dash-sync" style="color:#fff; font-size: 16px; font-weight:700;">--</div></div>
+            </div>
+            <div class="msg-feed" id="watcher-feed">
+                <div class="label" style="font-size: 8px; margin: 0 0 5px 0;">INCOMING_SIGNALS</div>
             </div>
         </div>
 
         <div class="sys-card">
-            <span class="label">REMOTE_COMMAND_PIPE</span>
-            <input type="text" id="cmd-input" placeholder="Enter string payload...">
+            <span class="label">INTERCEPT_COMMAND</span>
+            <input type="text" id="cmd-input" placeholder="Alert payload...">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button class="btn btn-alert" onclick="sendCmd('ALERT')">SIGTERM</button>
-                <button class="btn btn-primary" onclick="sendCmd('MSG')">WRITE</button>
+                <button class="btn btn-alert" onclick="sendCmd('ALERT')">TRIGGER ALERT</button>
+                <button class="btn btn-primary" onclick="sendCmd('MSG')">SEND CMD</button>
             </div>
         </div>
     </div>
 
+    <!-- Config View -->
     <div id="view-config" class="view">
         <span class="label">SYSTEM_REGISTRY</span>
         <div class="sys-card">
@@ -232,44 +307,48 @@
         <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert); margin-top:2rem; border-color: rgba(248,81,73,0.3);">SHUTDOWN</button>
     </div>
 
+    <!-- Mini Media Bar -->
     <div id="media-bar" onclick="openExpanded()">
         <div style="display: flex; align-items: center; gap: 12px; width: 70%;">
-            <div style="width: 32px; height: 32px; background: #000; display: flex; align-items: center; justify-content: center; border: 1px solid var(--sys-border);">
+            <div style="width: 32px; height: 32px; background: #000; display: flex; align-items: center; justify-content: center; border: 1px solid var(--sys-border); border-radius: 4px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sys-accent)"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
             </div>
-            <div id="track-title" style="font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">...</div>
+            <div id="track-title" style="font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff;">...</div>
         </div>
         <button onclick="event.stopPropagation(); togglePlay()" style="background:none; border:none; color:var(--sys-accent); cursor:pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
     </div>
 
+    <!-- Expanded Player - Sheet Style -->
     <div id="media-expanded">
-        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div style="width: 40px; height: 5px; background: var(--sys-border); border-radius: 5px; margin: 0 auto 1.5rem auto; cursor: pointer;" onclick="closeExpanded()"></div>
+        
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <div class="label" style="margin:0;">STREAM_BUFFER_01</div>
-            <button onclick="closeExpanded()" style="background:none; border:none; color:var(--sys-dim); font-size: 28px;">&times;</button>
+            <button onclick="closeExpanded()" style="background:none; border:none; color:var(--sys-dim); font-size: 24px; cursor: pointer;">&times;</button>
         </div>
         
-        <div style="width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--sys-border); margin-bottom: 2rem; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+        <div style="width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--sys-border); margin-bottom: 1.5rem; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
             <img id="exp-thumb" src="" style="width:100%; height:100%; object-fit:contain;">
         </div>
 
-        <div style="margin-bottom: 2rem;">
-            <div id="exp-title" style="color:#fff; font-size:18px; font-weight: 700; margin-bottom: 8px;">...</div>
-            <div style="color: var(--sys-accent); font-size: 11px;">SOURCE_LINK: STABLE</div>
+        <div style="margin-bottom: 1.5rem; text-align: center;">
+            <div id="exp-title" style="color:#fff; font-size:16px; font-weight: 700; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">...</div>
+            <div style="color: var(--sys-accent); font-size: 10px; letter-spacing: 1px;">ENCRYPTED_STREAM_STABLE</div>
         </div>
 
-        <div style="margin-top: auto; padding-bottom: 4rem;">
+        <div style="margin-top: auto; padding-bottom: 2rem;">
             <div class="prog-bar-bg" style="height: 6px;"><div id="exp-prog" class="prog-bar-fill"></div></div>
             
-            <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 3rem;">
-                <button onclick="player.previousVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-                <button onclick="togglePlay()" style="background: var(--sys-accent); color:#000; border-radius:4px; width:80px; height:60px; display:flex; align-items:center; justify-content:center; border:none;"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-                <button onclick="player.nextVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+            <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 2rem;">
+                <button onclick="player.previousVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+                <button onclick="togglePlay()" style="background: var(--sys-accent); color:#000; border-radius:50%; width:64px; height:64px; display:flex; align-items:center; justify-content:center; border:none; box-shadow: 0 0 15px var(--sys-accent);"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path id="exp-play-icon" d="M8 5v14l11-7z"/></svg></button>
+                <button onclick="player.nextVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
             </div>
         </div>
     </div>
 
     <nav class="bottom-nav" id="hud">
-        <div class="nav-item active" onclick="nav('home')">/bin/main</div>
+        <div class="nav-item active" id="nav-main-btn" onclick="nav('home')">/bin/main</div>
         <div class="nav-item" onclick="nav('monitor')">/usr/top</div>
         <div class="nav-item" onclick="nav('config')">/etc/sys</div>
     </nav>
@@ -290,6 +369,50 @@
         let player, isPlaying = false, trackWatchId = null;
         let playlists = JSON.parse(localStorage.getItem('drs_pl_v3') || '[]');
         let currentPlaylistId = localStorage.getItem('drs_curr_pl');
+        let currentRole = null;
+        let fireflies = [];
+
+        // Firefly Logic
+        function createFireflies() {
+            const container = document.body;
+            for(let i=0; i<15; i++) {
+                const f = document.createElement('div');
+                f.className = 'firefly';
+                f.style.left = Math.random() * 100 + 'vw';
+                f.style.top = Math.random() * 100 + 'vh';
+                container.appendChild(f);
+                fireflies.push({
+                    el: f,
+                    x: Math.random() * 100,
+                    y: Math.random() * 100,
+                    vx: (Math.random() - 0.5) * 0.05,
+                    vy: (Math.random() - 0.5) * 0.05,
+                    life: Math.random() * Math.PI
+                });
+            }
+        }
+
+        function updateFireflies() {
+            if (!isPlaying) {
+                fireflies.forEach(f => f.el.style.opacity = 0);
+                requestAnimationFrame(updateFireflies);
+                return;
+            }
+
+            fireflies.forEach(f => {
+                f.x += f.vx;
+                f.y += f.vy;
+                f.life += 0.01;
+                
+                if (f.x < 0) f.x = 100; if (f.x > 100) f.x = 0;
+                if (f.y < 0) f.y = 100; if (f.y > 100) f.y = 0;
+
+                f.el.style.left = f.x + 'vw';
+                f.el.style.top = f.y + 'vh';
+                f.el.style.opacity = (Math.sin(f.life) + 1) / 2 * 0.4;
+            });
+            requestAnimationFrame(updateFireflies);
+        }
 
         function notify(msg, type='info') {
             const center = document.getElementById('notification-center');
@@ -299,28 +422,40 @@
             toast.innerHTML = `<div style="font-size:10px; color:var(--sys-dim); margin-bottom:4px;">SYSTEM_ALERT</div><div>${msg}</div>`;
             center.appendChild(toast);
             setTimeout(() => toast.remove(), 5000);
+
+            if (Notification.permission === "granted") {
+                new Notification("DRS-ONE System Alert", { body: msg });
+            }
+        }
+
+        if (Notification.permission !== "denied") {
+            Notification.requestPermission();
         }
 
         function startTracking() {
             if (!navigator.geolocation) return notify("GPS_HARDWARE_NOT_FOUND", "alert");
-            
             document.getElementById('broadcast-btn').innerText = "BROADCASTING...";
             document.getElementById('tracking-status').innerText = "GPS: BROADCAST_ACTIVE";
             
             trackWatchId = navigator.geolocation.watchPosition(pos => {
                 const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, ts: Date.now() };
                 db.ref('trip/location').set(loc);
-                document.getElementById('loc-display').innerText = `${loc.lat.toFixed(3)}, ${loc.lng.toFixed(3)}`;
+                if(document.getElementById('loc-display')) document.getElementById('loc-display').innerText = `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`;
             }, err => notify(`GPS_ERROR: ${err.message}`, "alert"), { enableHighAccuracy: true });
-            
-            notify("Location stream established. Monitoring uplink.");
         }
 
         function stopTracking() {
             if(trackWatchId) navigator.geolocation.clearWatch(trackWatchId);
             document.getElementById('broadcast-btn').innerText = "BROADCAST LIVE";
             document.getElementById('tracking-status').innerText = "GPS: DISCONNECTED";
-            notify("Uplink terminated.");
+        }
+
+        function broadcastMsg() {
+            const val = document.getElementById('traveler-msg').value;
+            if(!val) return;
+            db.ref('trip/messages').push({ text: val, ts: Date.now() });
+            document.getElementById('traveler-msg').value = '';
+            notify("Signal transmitted to watchers.");
         }
 
         function onYouTubeIframeAPIReady() {
@@ -335,14 +470,11 @@
                 const listId = parsePlaylistId(currentPlaylistId);
                 e.target.cuePlaylist({ list: listId });
                 document.getElementById('media-bar').style.display = 'flex';
-                const activePl = playlists.find(p => p.url === currentPlaylistId);
-                if (activePl) document.getElementById('active-pl-name').innerText = activePl.name;
                 
                 const checkAutoStart = setInterval(() => {
                     if (player.getPlayerState() === YT.PlayerState.CUED) player.playVideo();
                     else if (player.getPlayerState() === YT.PlayerState.PLAYING) {
                         clearInterval(checkAutoStart);
-                        document.getElementById('audio-status').innerText = "[ ACTIVE_LINK ]";
                         startProgressLoop();
                     }
                 }, 1000);
@@ -351,14 +483,18 @@
 
         function onPlayerStateChange(ev) {
             isPlaying = (ev.data === YT.PlayerState.PLAYING);
+            const playIcon = document.getElementById('exp-play-icon');
+            
             if (isPlaying) {
                 const data = player.getVideoData();
                 document.getElementById('track-title').innerText = data.title;
                 document.getElementById('exp-title').innerText = data.title;
                 document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/mqdefault.jpg`;
-                document.getElementById('audio-status').innerText = "[ ACTIVE_LINK ]";
+                if(document.getElementById('audio-status')) document.getElementById('audio-status').innerText = "[ ACTIVE_LINK ]";
+                if(playIcon) playIcon.setAttribute('d', 'M6 19h4V5H6v14zm8-14v14h4V5h-4z'); // Pause Icon
             } else {
-                document.getElementById('audio-status').innerText = "[ PAUSED ]";
+                if(document.getElementById('audio-status')) document.getElementById('audio-status').innerText = "[ PAUSED ]";
+                if(playIcon) playIcon.setAttribute('d', 'M8 5v14l11-7z'); // Play Icon
             }
         }
 
@@ -366,7 +502,7 @@
             setInterval(() => {
                 if(isPlaying && player && player.getDuration) {
                     const prog = (player.getCurrentTime() / player.getDuration()) * 100;
-                    document.getElementById('prog-fill').style.width = prog + '%';
+                    if(document.getElementById('prog-fill')) document.getElementById('prog-fill').style.width = prog + '%';
                     document.getElementById('exp-prog').style.width = prog + '%';
                 }
             }, 1000);
@@ -392,63 +528,83 @@
         };
 
         function initSession(role) {
+            currentRole = role;
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('hud').style.display = 'grid';
+            
             if (role === 'traveler') { 
                 nav('home');
-                initPresenceMonitor(); 
+                initTravelerPresence(); 
             } else { 
                 nav('monitor'); 
-                initWatcher(); 
+                initWatcherPresence(); 
             }
+            
             db.ref('trip/presence/' + role).set(true);
             db.ref('trip/presence/' + role).onDisconnect().remove();
+            
+            createFireflies();
+            updateFireflies();
         }
 
-        function initPresenceMonitor() {
+        function initTravelerPresence() {
             db.ref('trip/presence/watcher').on('value', snap => {
                 const active = snap.val();
                 const statusEl = document.getElementById('watcher-status');
                 if(active) {
-                    statusEl.innerText = "WATCHERS: ACTIVE_LINK";
+                    statusEl.innerText = "WATCHERS: ACTIVE";
                     statusEl.classList.add('watcher-active');
-                    notify("Watchers are active on site. Signal monitoring enabled.");
+                    notify("Watcher uplink established.");
                 } else {
                     statusEl.innerText = "WATCHERS: OFFLINE";
                     statusEl.classList.remove('watcher-active');
                 }
             });
 
-            // Monitor Commands (Remote notifications)
             db.ref('trip/command').on('value', snap => {
                 const cmd = snap.val();
                 if(cmd && Date.now() - cmd.ts < 5000) {
-                    notify(`REMOTE_SIGNAL: ${cmd.msg}`, cmd.type === 'ALERT' ? 'alert' : 'info');
+                    notify(`WATCHER_ALERT: ${cmd.msg}`, 'alert');
                 }
             });
         }
 
-        function initWatcher() {
+        function initWatcherPresence() {
             db.ref('trip/location').on('value', snap => {
                 const data = snap.val();
                 if (!data) return;
                 document.getElementById('dash-coords').innerText = `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
                 document.getElementById('dash-sync').innerText = new Date(data.ts).toLocaleTimeString();
-                document.getElementById('loc-display').innerText = `${data.lat.toFixed(3)}, ${data.lng.toFixed(3)}`;
+            });
+
+            db.ref('trip/messages').limitToLast(10).on('child_added', snap => {
+                const msg = snap.val();
+                const feed = document.getElementById('watcher-feed');
+                const div = document.createElement('div');
+                div.className = 'msg-entry';
+                div.innerHTML = `<span style="color:var(--sys-accent)">[${new Date(msg.ts).toLocaleTimeString()}]</span> ${msg.text}`;
+                feed.prepend(div);
+                if(Date.now() - msg.ts < 5000) notify(`SUBJECT_SIGNAL: ${msg.text}`);
             });
         }
 
         function sendCmd(type) {
-            const msg = document.getElementById('cmd-input').value || type;
+            const msg = document.getElementById('cmd-input').value || (type === 'ALERT' ? 'IMMEDIATE_STOP' : 'REQUEST_SYNC');
             db.ref('trip/command').set({ type, msg, ts: Date.now() });
+            notify(`Alert dispatched: ${msg}`, 'alert');
         }
 
         window.nav = (v) => {
             document.querySelectorAll('.view').forEach(e => e.style.display='none');
-            document.getElementById(`view-${v}`).style.display='block';
+            const target = document.getElementById(`view-${v}`);
+            if(target) target.style.display='block';
+            
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(n => n.onclick.toString().includes(v));
-            if (activeNav) activeNav.classList.add('active');
+            const items = document.querySelectorAll('.nav-item');
+            if(v === 'home') items[0].classList.add('active');
+            if(v === 'monitor') items[1].classList.add('active');
+            if(v === 'config') items[2].classList.add('active');
+
             if (v === 'config') renderPL();
         };
 
