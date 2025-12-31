@@ -240,19 +240,18 @@
                 this.sync();
                 if (this.role === 'watched') this.gps.track();
                 
-                // Set up the global callback for YouTube API
+                // Define global ready handler
                 window.onYouTubeIframeAPIReady = () => {
-                   this.audio.initPlayer();
+                    this.audio.initPlayer();
                 };
                 
-                // Check if API is already ready (if the script loaded faster than app.init)
+                // If script already loaded
                 if (window.YT && window.YT.Player) {
                     this.audio.initPlayer();
                 }
             },
 
             sync: function() {
-                // Persistent Library Listener
                 db.ref('trip/playlists').on('value', snap => {
                     const data = snap.val();
                     const list = document.getElementById('pl-manager-list');
@@ -281,19 +280,15 @@
                     list.innerHTML = html;
                 });
 
-                // Active Stream Listener
                 db.ref('trip/activeStream').on('value', snap => {
                     const stream = snap.val();
                     if (stream && stream.id !== this.activePlId) {
                         this.activePlId = stream.id;
                         this.audio.playNew(stream.id);
-                        
-                        // Force UI refresh for library items
                         db.ref('trip/playlists').once('value', () => {}); 
                     }
                 });
 
-                // Location Listener
                 db.ref('trip/location').on('value', snap => {
                     const loc = snap.val();
                     if (loc) {
@@ -332,71 +327,89 @@
 
             audio: {
                 initPlayer: function(id = null) {
-                    if (this.player) return;
-                    this.player = new YT.Player('yt-iframe', {
-                        height: '1', width: '1',
+                    if (app.player) return;
+                    
+                    app.player = new YT.Player('yt-iframe', {
+                        height: '1',
+                        width: '1',
                         playerVars: { 
                             listType: 'playlist', 
                             list: id || undefined, 
                             autoplay: 1, 
                             controls: 0,
+                            modestbranding: 1,
                             enablejsapi: 1
                         },
                         events: {
                             onReady: (e) => {
-                                if (id) e.target.loadPlaylist({ list: id, listType: 'playlist', index: 0, play: true });
-                                app.audio.updateUI(e);
+                                if (id) {
+                                    e.target.loadPlaylist({
+                                        listType: 'playlist',
+                                        list: id,
+                                        index: 0,
+                                        startSeconds: 0,
+                                        suggestedQuality: 'small'
+                                    });
+                                }
+                                this.updateUI(e);
                             },
                             onStateChange: (e) => this.updateUI(e),
-                            onError: (e) => console.error("YT Error", e)
+                            onError: (e) => {
+                                console.error("YT API Error", e.data);
+                                // If restricted, try playing as a single video or just skipping
+                                if (e.data === 150 || e.data === 101) {
+                                    document.getElementById('track-title').innerText = "Track Restricted - Skipping...";
+                                    setTimeout(() => app.audio.next(), 2000);
+                                }
+                            }
                         }
                     });
-                    // Store locally on app object for button access
-                    app.player = this.player;
                 },
+
                 playNew: function(id) {
-                    if (this.player && typeof this.player.loadPlaylist === 'function') {
-                        try {
-                            this.player.loadPlaylist({ list: id, listType: 'playlist', index: 0, play: true });
-                        } catch(e) {
-                            this.player = null;
-                            this.initPlayer(id);
-                        }
+                    if (app.player && typeof app.player.loadPlaylist === 'function') {
+                        app.player.loadPlaylist({
+                            listType: 'playlist',
+                            list: id,
+                            index: 0,
+                            startSeconds: 0,
+                            suggestedQuality: 'small'
+                        });
                     } else {
-                        if (window.YT && window.YT.Player) {
-                            this.initPlayer(id);
-                        }
+                        this.initPlayer(id);
                     }
                 },
+
                 toggle: function() {
-                    if (!this.player || !this.player.getPlayerState) return;
-                    const s = this.player.getPlayerState();
-                    // YT.PlayerState.PLAYING is 1
-                    if (s === 1) {
-                        this.player.pauseVideo();
+                    if (!app.player || typeof app.player.getPlayerState !== 'function') return;
+                    const state = app.player.getPlayerState();
+                    if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) {
+                        app.player.pauseVideo();
                     } else {
-                        this.player.playVideo();
+                        app.player.playVideo();
                     }
                 },
+
                 next: function() {
-                    if (this.player && typeof this.player.nextVideo === 'function') {
-                        this.player.nextVideo();
+                    if (app.player && typeof app.player.nextVideo === 'function') {
+                        app.player.nextVideo();
                     }
                 },
+
                 prev: function() {
-                    if (this.player && typeof this.player.previousVideo === 'function') {
-                        this.player.previousVideo();
+                    if (app.player && typeof app.player.previousVideo === 'function') {
+                        app.player.previousVideo();
                     }
                 },
+
                 updateUI: function(e) {
-                    // 1 = playing, 2 = paused, 3 = buffering, -1 = unstarted
                     const state = e.target.getPlayerState();
-                    const isPlaying = state === 1 || state === 3;
+                    const isPlaying = (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING);
                     
                     const playBtn = document.getElementById('svg-play');
                     const pauseBtn = document.getElementById('svg-pause');
                     
-                    if(playBtn && pauseBtn) {
+                    if (playBtn && pauseBtn) {
                         if (isPlaying) {
                             playBtn.classList.add('hidden');
                             pauseBtn.classList.remove('hidden');
@@ -406,18 +419,22 @@
                         }
                     }
                     
-                    const data = e.target.getVideoData();
-                    if (data && data.title) {
-                        document.getElementById('track-title').innerText = data.title;
-                    }
+                    // Update Title
+                    try {
+                        const data = e.target.getVideoData();
+                        if (data && data.title) {
+                            document.getElementById('track-title').innerText = data.title;
+                        }
+                    } catch(err) {}
 
-                    if (typeof e.target.getPlaylist === 'function') {
+                    // Update Queue Info
+                    try {
                         const playlist = e.target.getPlaylist();
                         const currentIdx = e.target.getPlaylistIndex();
                         if (playlist && playlist.length > 0) {
-                            document.getElementById('queue-list').innerText = `Track ${currentIdx + 1} of ${playlist.length}`;
+                            document.getElementById('queue-list').innerText = `Syncing track ${currentIdx + 1} of ${playlist.length}`;
                         }
-                    }
+                    } catch(err) {}
                 }
             },
 
