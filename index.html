@@ -134,10 +134,10 @@
         }
         .nav-item.active { color: var(--sys-accent); font-weight: bold; }
 
-        /* VITAL: Player must exist but be invisible without using display:none */
+        /* IMPROVED PROXY: Fixed position at 1px to ensure it's "visible" to mobile engines */
         #yt-wrapper {
-            position: fixed; top: 0; left: 0; width: 1px; height: 1px;
-            opacity: 0.01; pointer-events: none; overflow: hidden; z-index: -1;
+            position: fixed; top: 1px; left: 1px; width: 1px; height: 1px;
+            opacity: 0.001; overflow: hidden; z-index: -1; pointer-events: none;
         }
 
         #loader {
@@ -299,17 +299,18 @@
             document.getElementById('m-next').onclick = () => player && player.nextVideo();
         });
 
-        // --- NEW PROXY MEDIA ENGINE ---
+        // --- ENHANCED PROXY MEDIA ENGINE ---
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('yt-player', {
-                height: '100', width: '100', // Small but non-zero to satisfy mobile visibility checks
+                height: '100', width: '100', 
                 playerVars: { 
                     'listType': 'playlist', 
                     'autoplay': 0, 
                     'enablejsapi': 1,
-                    'controls': 1, // Sometimes needed for mobile browser to treat it as media
+                    'controls': 1, 
                     'playsinline': 1,
-                    'rel': 0
+                    'rel': 0,
+                    'modestbranding': 1
                 },
                 events: {
                     'onReady': (e) => {
@@ -328,6 +329,7 @@
         function onPlayerStateChange(event) {
             const btn = document.getElementById('m-play');
             
+            // Map states to UI and MediaSession
             if (event.data == YT.PlayerState.PLAYING) {
                 isPlaying = true;
                 btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
@@ -338,6 +340,10 @@
                 isPlaying = false;
                 btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
+                if (event.data == YT.PlayerState.ENDED) document.getElementById('audio-status').innerText = "FEED ENDED";
+                else document.getElementById('audio-status').innerText = "FEED PAUSED";
+            } else if (event.data == YT.PlayerState.BUFFERING) {
+                document.getElementById('audio-status').innerText = "SYNCING BUFFER...";
             }
         }
 
@@ -357,13 +363,19 @@
                 ]
             });
 
-            navigator.mediaSession.setActionHandler('play', () => player.playVideo());
-            navigator.mediaSession.setActionHandler('pause', () => player.pauseVideo());
-            navigator.mediaSession.setActionHandler('nexttrack', () => player.nextVideo());
-            navigator.mediaSession.setActionHandler('previoustrack', () => player.previousVideo());
+            // Re-bind actions to ensure they stay active after track changes
+            const actions = {
+                'play': () => player.playVideo(),
+                'pause': () => player.pauseVideo(),
+                'nexttrack': () => player.nextVideo(),
+                'previoustrack': () => player.previousVideo()
+            };
+
+            Object.keys(actions).forEach(action => {
+                try { navigator.mediaSession.setActionHandler(action, actions[action]); } catch(e) {}
+            });
         }
 
-        // Dedicated Function for First-Tap Activation (Browser Requirement)
         function primeAudio() {
             if (!player) return;
             const savedYt = localStorage.getItem('drs_yt');
@@ -372,7 +384,7 @@
                 return;
             }
 
-            // Mobile browsers require a physical play() call inside a touch event
+            // Force interaction context for browser's autoplay policy
             player.loadPlaylist({ list: savedYt });
             audioPrimed = true;
             document.getElementById('prime-btn').style.display = 'none';
