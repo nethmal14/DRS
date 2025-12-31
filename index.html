@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DRS-ONE | System</title>
+    <title>DRS-ONE | Secure Kernel</title>
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
@@ -34,7 +36,6 @@
             position: relative;
         }
 
-        /* Atmospheric Background */
         #bg-canvas {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1;
@@ -56,23 +57,23 @@
         .sys-card {
             background: var(--sys-surface);
             border: 1px solid var(--sys-border);
-            padding: 1rem;
+            padding: 1.2rem;
             margin-bottom: 1rem;
             border-radius: 8px;
-            position: relative;
             backdrop-filter: blur(8px);
         }
 
         .label {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--sys-accent);
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             display: block;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
-        .label::before { content: "[ "; opacity: 0.5; }
-        .label::after { content: " ]"; opacity: 0.5; }
+        .label::before { content: "> "; }
 
-        input {
+        input, select {
             width: 100%; padding: 12px; border: 1px solid var(--sys-border);
             background: rgba(1, 4, 9, 0.8); color: var(--sys-accent); font-size: 14px; margin-bottom: 12px;
             font-family: inherit; border-radius: 4px;
@@ -82,15 +83,20 @@
         .btn {
             width: 100%; padding: 12px; border: none; font-size: 12px;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: opacity 0.2s; font-family: inherit; border-radius: 4px;
-            text-transform: uppercase; letter-spacing: 0.5px;
+            transition: all 0.2s; font-family: inherit; border-radius: 4px;
+            text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold;
         }
         .btn-primary { background: #238636; color: #fff; }
         .btn-alert { background: var(--sys-alert); color: #fff; }
         .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
-        .btn:active { opacity: 0.7; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Notification System */
+        /* Auth specific */
+        .auth-toggle {
+            text-align: center; margin-top: 15px; font-size: 11px; color: var(--sys-dim); cursor: pointer;
+        }
+        .auth-toggle span { color: var(--sys-blue); text-decoration: underline; }
+
         #notification-center {
             position: fixed; top: 1rem; left: 1rem; right: 1rem;
             z-index: 9999; pointer-events: none;
@@ -101,99 +107,39 @@
             padding: 12px 16px; margin-bottom: 10px;
             border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             animation: slideInDown 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-            pointer-events: auto; backdrop-filter: blur(10px);
-        }
-        @keyframes slideInDown { from { transform: translateY(-150%); } to { transform: translateY(0); } }
-
-        /* Bigger Location UI */
-        #loc-display {
-            font-size: 32px;
-            font-weight: 700;
-            color: #fff;
-            letter-spacing: -1px;
-            margin: 10px 0;
-            line-height: 1;
+            pointer-events: auto;
         }
 
-        #media-bar {
-            position: fixed;
-            bottom: calc(4.5rem + var(--safe-bottom));
-            left: 1rem; right: 1rem;
-            max-width: 500px; margin: 0 auto;
-            background: rgba(22, 27, 34, 0.9);
-            border: 1px solid var(--sys-border);
-            border-left: 4px solid var(--sys-accent);
-            padding: 10px 15px;
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            z-index: 1001;
-            cursor: pointer;
-            border-radius: 8px;
-            backdrop-filter: blur(10px);
-        }
-
-        /* Updated Expanded Player - Half Height */
-        #media-expanded {
-            position: fixed; 
-            bottom: 0; left: 0; right: 0;
-            height: 70vh;
-            background: var(--sys-surface); 
-            z-index: 2000;
-            display: none; flex-direction: column; 
-            padding: 1.5rem;
-            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            border-radius: 20px 20px 0 0;
-            border-top: 1px solid var(--sys-border);
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
-            backdrop-filter: blur(20px);
-        }
-
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        #loc-display { font-size: 32px; font-weight: 700; color: #fff; margin: 10px 0; }
 
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: rgba(13, 17, 23, 0.95); border-top: 1px solid var(--sys-border);
             display: none; grid-template-columns: repeat(2, 1fr);
             padding: 5px 0 calc(5px + var(--safe-bottom)); z-index: 1000;
-            backdrop-filter: blur(10px);
         }
-        .nav-item {
-            text-align: center; font-size: 11px;
-            color: var(--sys-dim); cursor: pointer; padding: 10px 0;
-        }
+        .nav-item { text-align: center; font-size: 11px; color: var(--sys-dim); cursor: pointer; padding: 10px 0; }
         .nav-item.active { color: var(--sys-accent); border-top: 2px solid var(--sys-accent); }
 
         .terminal-header {
-            padding: 4px 8px;
-            background: rgba(48, 54, 61, 0.5);
-            font-size: 10px;
-            color: var(--sys-text);
-            margin-bottom: 1rem;
-            display: flex; justify-content: space-between;
-            border-radius: 4px;
+            padding: 6px 10px; background: rgba(48, 54, 61, 0.3);
+            font-size: 10px; color: var(--sys-dim); margin-bottom: 1rem;
+            display: flex; justify-content: space-between; border-radius: 4px;
         }
 
-        #yt-wrapper { position: absolute; top: -9999px; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-        
-        .prog-bar-bg { width: 100%; height: 4px; background: #30363d; margin: 10px 0; border-radius: 2px; }
-        .prog-bar-fill { height: 100%; background: var(--sys-accent); width: 0%; transition: width 0.5s; }
-
-        .watcher-active { color: var(--sys-blue) !important; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-
-        .msg-feed { max-height: 250px; overflow-y: auto; font-size: 11px; color: var(--sys-dim); border-top: 1px solid var(--sys-border); padding-top: 10px; margin-top: 10px; }
-        .msg-entry { margin-bottom: 5px; border-bottom: 1px dashed #222; padding-bottom: 2px; }
-
         .firefly {
-            position: absolute;
-            width: 3px; height: 3px;
-            background: #fff9c4;
-            border-radius: 50%;
-            filter: blur(1px);
-            box-shadow: 0 0 5px #fff9c4;
-            opacity: 0;
-            pointer-events: none;
+            position: absolute; width: 2px; height: 2px;
+            background: #fff9c4; border-radius: 50%;
+            filter: blur(1px); opacity: 0; pointer-events: none;
+        }
+        
+        #media-bar {
+            position: fixed; bottom: calc(4.5rem + var(--safe-bottom));
+            left: 1rem; right: 1rem; max-width: 500px; margin: 0 auto;
+            background: rgba(22, 27, 34, 0.9); border: 1px solid var(--sys-border);
+            border-left: 4px solid var(--sys-accent); padding: 10px 15px;
+            display: none; align-items: center; justify-content: space-between;
+            z-index: 1001; border-radius: 8px; backdrop-filter: blur(10px);
         }
     </style>
 </head>
@@ -201,32 +147,35 @@
 
     <div id="bg-canvas"></div>
     <svg class="landscape-svg" viewBox="0 0 1000 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="850" cy="100" r="40" fill="#f0f0f0" opacity="0.8" />
-        <circle cx="850" cy="100" r="50" fill="#f0f0f0" opacity="0.1" />
         <path d="M0,400 L0,300 L150,150 L300,320 L450,100 L650,350 L850,200 L1000,380 L1000,400 Z" fill="#080a0f" />
-        <path d="M0,400 L0,350 L200,250 L400,380 L600,220 L800,390 L1000,320 L1000,400 Z" fill="#0c1117" opacity="0.7" />
-        <g opacity="0.4">
-            <path d="M50,400 L65,340 L80,400 Z" fill="#020408" />
-            <path d="M120,400 L135,330 L150,400 Z" fill="#020408" />
-            <path d="M220,400 L240,310 L260,400 Z" fill="#020408" />
-            <path d="M720,400 L740,320 L760,400 Z" fill="#020408" />
-            <path d="M900,400 L920,350 L940,400 Z" fill="#020408" />
-        </g>
     </svg>
 
     <div id="notification-center"></div>
 
-    <!-- Login View -->
-    <div id="view-login" class="view" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+    <!-- Auth View -->
+    <div id="view-auth" class="view" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
         <div style="width: 100%;">
             <div style="margin-bottom: 2rem; text-align: center;">
-                <div style="color: var(--sys-accent); font-size: 20px; font-weight: bold; letter-spacing: 2px;">DRS-ONE KERNEL</div>
-                <div style="color: var(--sys-dim); font-size: 10px;">AUTHORIZATION REQUIRED</div>
+                <div style="color: var(--sys-accent); font-size: 24px; font-weight: bold; letter-spacing: 4px;">DRS-ONE</div>
+                <div id="auth-subtitle" style="color: var(--sys-dim); font-size: 10px;">USER_AUTHENTICATION_REQUIRED</div>
             </div>
+            
             <div class="sys-card">
-                <span class="label">SSH_AUTH</span>
-                <input type="password" id="pass-in" placeholder="Access Key...">
-                <button class="btn btn-primary" id="login-trigger">Initialize Session</button>
+                <span class="label" id="auth-label">SIGN_IN</span>
+                <input type="email" id="auth-email" placeholder="Email Address">
+                <input type="password" id="auth-pass" placeholder="Secret Key">
+                
+                <div id="reg-fields" style="display: none;">
+                    <select id="auth-role">
+                        <option value="traveler">Traveler (Broadcast Mode)</option>
+                        <option value="watcher">Watcher (Monitor Mode)</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" id="auth-trigger">Execute Protocol</button>
+                <div class="auth-toggle" id="auth-toggle-btn">
+                    Don't have an ID? <span>Create New Identity</span>
+                </div>
             </div>
         </div>
     </div>
@@ -234,113 +183,65 @@
     <!-- TRAVELER DASHBOARD -->
     <div id="view-traveler" class="view">
         <div class="terminal-header">
-            <span>traveler@drs-one: ~</span>
-            <span id="watcher-status" style="color: var(--sys-dim);">WATCHERS: OFFLINE</span>
+            <span id="traveler-id">USER: DISCONNECTED</span>
+            <span id="watcher-status">WATCHERS: 0</span>
         </div>
         
         <div class="sys-card">
-            <span class="label">LIVE_GEOLOCATION</span>
-            <div id="loc-display">GPS_IDLE</div>
+            <span class="label">GPS_BROADCAST_UNIT</span>
+            <div id="loc-display">IDLE</div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button class="btn btn-primary" id="broadcast-btn" onclick="startTracking()" style="flex: 2;">BROADCAST LIVE</button>
-                <button class="btn btn-ghost" onclick="stopTracking()" style="flex: 1;">STOP</button>
+                <button class="btn btn-primary" id="broadcast-btn" onclick="startTracking()" style="flex: 2;">START BROADCAST</button>
+                <button class="btn btn-ghost" onclick="stopTracking()" style="flex: 1;">HALT</button>
             </div>
         </div>
 
         <div class="sys-card">
-            <span class="label">UPLINK_MESSAGE</span>
-            <input type="text" id="traveler-msg" placeholder="Broadcast to Watchers...">
+            <span class="label">COMMS_UPLINK</span>
+            <input type="text" id="traveler-msg" placeholder="Signal text...">
             <button class="btn btn-primary" onclick="broadcastMsg()">SEND SIGNAL</button>
-        </div>
-
-        <div class="sys-card" id="audio-card">
-            <span class="label">AUDIO_SUBSYSTEM</span>
-            <div id="audio-status" style="color: #d29922; margin-bottom: 8px; font-weight: bold;">[ READY ]</div>
-            <div class="prog-bar-bg"><div id="prog-fill" class="prog-bar-fill"></div></div>
         </div>
     </div>
 
     <!-- WATCHER DASHBOARD -->
     <div id="view-watcher" class="view">
         <div class="terminal-header">
-            <span>watcher@drs-one: ~</span>
-            <span style="color: var(--sys-accent);">MODE: TELEMETRY_INTERCEPT</span>
+            <span id="watcher-id">USER: MONITOR</span>
+            <span style="color: var(--sys-accent);">MODE: LIVE_INTEL</span>
+        </div>
+
+        <div class="sys-card">
+            <span class="label">TARGET_UID</span>
+            <input type="text" id="target-uid-in" placeholder="Enter Traveler ID to track...">
+            <button class="btn btn-primary" onclick="linkToTarget()">ESTABLISH LINK</button>
         </div>
         
-        <div id="subject-info" class="sys-card">
-            <span class="label">SUBJECT_POSITION</span>
-            <div id="dash-coords" style="color:#fff; font-size: 32px; font-weight:700;">OFFLINE</div>
-            <div class="label" style="font-size: 9px; margin-top:10px;">LAST_SYNC_TS</div>
-            <div id="dash-sync" style="color:var(--sys-dim); font-size: 14px;">--:--:--</div>
-        </div>
-
-        <div class="sys-card">
-            <span class="label">INCOMING_SIGNALS</span>
-            <div class="msg-feed" id="watcher-feed"></div>
-        </div>
-
-        <div class="sys-card">
-            <span class="label">UPLINK_COMMAND</span>
-            <input type="text" id="cmd-input" placeholder="Message to traveler...">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button class="btn btn-alert" onclick="sendCmd('ALERT')">SEND ALERT</button>
-                <button class="btn btn-primary" onclick="sendCmd('MSG')">SEND MESSAGE</button>
+        <div id="watcher-monitor" style="display: none;">
+            <div class="sys-card">
+                <span class="label">TARGET_COORDINATES</span>
+                <div id="dash-coords" style="color:#fff; font-size: 28px; font-weight:700;">WAITING...</div>
+                <div id="dash-sync" style="color:var(--sys-dim); font-size: 11px; margin-top:5px;">LAST_UPDATE: --</div>
+            </div>
+            <div class="sys-card">
+                <span class="label">SIGNAL_LOG</span>
+                <div id="watcher-feed" style="max-height: 150px; overflow-y: auto; font-size: 11px;"></div>
             </div>
         </div>
     </div>
 
-    <!-- System Config View -->
+    <!-- Config -->
     <div id="view-config" class="view">
-        <span class="label">SYSTEM_REGISTRY</span>
+        <span class="label">USER_PROFILE</span>
         <div class="sys-card">
-            <input type="text" id="pl-name-in" placeholder="Source Alias">
-            <input type="text" id="pl-url-in" placeholder="Playlist ID or URL">
-            <button class="btn btn-primary" onclick="addPlaylist()">ADD SOURCE</button>
-        </div>
-        <div id="playlist-list"></div>
-        <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert); margin-top:2rem; border-color: rgba(248,81,73,0.3);">SHUTDOWN_SESSION</button>
-    </div>
-
-    <!-- Audio Wrapper -->
-    <div id="yt-wrapper"><div id="yt-player"></div></div>
-
-    <!-- Mini Media Bar -->
-    <div id="media-bar" onclick="openExpanded()">
-        <div style="display: flex; align-items: center; gap: 12px; width: 70%;">
-            <div style="width: 32px; height: 32px; background: #000; display: flex; align-items: center; justify-content: center; border: 1px solid var(--sys-border); border-radius: 4px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sys-accent)"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-            </div>
-            <div id="track-title" style="font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff;">...</div>
-        </div>
-        <button onclick="event.stopPropagation(); togglePlay()" style="background:none; border:none; color:var(--sys-accent); cursor:pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-    </div>
-
-    <!-- Expanded Player -->
-    <div id="media-expanded">
-        <div style="width: 40px; height: 5px; background: var(--sys-border); border-radius: 5px; margin: 0 auto 1.5rem auto; cursor: pointer;" onclick="closeExpanded()"></div>
-        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <div class="label" style="margin:0;">STREAM_BUFFER_01</div>
-            <button onclick="closeExpanded()" style="background:none; border:none; color:var(--sys-dim); font-size: 24px; cursor: pointer;">&times;</button>
-        </div>
-        <div style="width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--sys-border); margin-bottom: 1.5rem; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-            <img id="exp-thumb" src="" style="width:100%; height:100%; object-fit:contain;">
-        </div>
-        <div style="margin-bottom: 1.5rem; text-align: center;">
-            <div id="exp-title" style="color:#fff; font-size:16px; font-weight: 700; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">...</div>
-        </div>
-        <div style="margin-top: auto; padding-bottom: 2rem;">
-            <div class="prog-bar-bg" style="height: 6px;"><div id="exp-prog" class="prog-bar-fill"></div></div>
-            <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 2rem;">
-                <button onclick="player.previousVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-                <button onclick="togglePlay()" style="background: var(--sys-accent); color:#000; border-radius:50%; width:64px; height:64px; display:flex; align-items:center; justify-content:center; border:none;"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path id="exp-play-icon" d="M8 5v14l11-7z"/></svg></button>
-                <button onclick="player.nextVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
-            </div>
+            <div id="profile-email" style="margin-bottom: 5px;">...</div>
+            <div id="profile-uid" style="font-size: 10px; color: var(--sys-dim); margin-bottom: 15px;">...</div>
+            <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert);">TERMINATE_SESSION</button>
         </div>
     </div>
 
     <nav class="bottom-nav" id="hud">
-        <div class="nav-item active" id="nav-dash-btn" onclick="nav('dash')">/bin/dash</div>
-        <div class="nav-item" onclick="nav('config')">/etc/sys</div>
+        <div class="nav-item active" id="nav-dash-btn" onclick="nav('dash')">DASHBOARD</div>
+        <div class="nav-item" onclick="nav('config')">SETTINGS</div>
     </nav>
 
     <script>
@@ -355,231 +256,169 @@
         };
 
         firebase.initializeApp(fbConfig);
+        const auth = firebase.auth();
         const db = firebase.database();
-        let player, isPlaying = false, trackWatchId = null;
-        let playlists = JSON.parse(localStorage.getItem('drs_pl_v3') || '[]');
-        let currentPlaylistId = localStorage.getItem('drs_curr_pl');
-        let currentRole = null;
-        let fireflies = [];
+        
+        let currentUser = null;
+        let isRegistering = false;
+        let trackWatchId = null;
 
-        function createFireflies() {
-            for(let i=0; i<15; i++) {
-                const f = document.createElement('div');
-                f.className = 'firefly';
-                document.body.appendChild(f);
-                fireflies.push({ el: f, x: Math.random()*100, y: Math.random()*100, vx: (Math.random()-0.5)*0.03, vy: (Math.random()-0.5)*0.03, life: Math.random()*Math.PI });
+        // UI State Management
+        const nav = (v) => {
+            document.querySelectorAll('.view').forEach(e => e.style.display='none');
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            
+            if (v === 'dash') {
+                db.ref(`users/${auth.currentUser.uid}/role`).once('value', snap => {
+                    const role = snap.val() || 'traveler';
+                    document.getElementById(`view-${role}`).style.display = 'block';
+                });
+                document.getElementById('nav-dash-btn').classList.add('active');
+            } else {
+                document.getElementById(`view-${v}`).style.display = 'block';
+                document.querySelectorAll('.nav-item')[1].classList.add('active');
             }
-        }
+        };
 
-        function updateFireflies() {
-            fireflies.forEach(f => {
-                if (!isPlaying) { f.el.style.opacity = 0; return; }
-                f.x += f.vx; f.y += f.vy; f.life += 0.01;
-                if (f.x < 0) f.x = 100; if (f.x > 100) f.x = 0;
-                if (f.y < 0) f.y = 100; if (f.y > 100) f.y = 0;
-                f.el.style.left = f.x + 'vw'; f.el.style.top = f.y + 'vh';
-                f.el.style.opacity = (Math.sin(f.life) + 1) / 2 * 0.4;
-            });
-            requestAnimationFrame(updateFireflies);
-        }
+        // Auth Logic
+        document.getElementById('auth-toggle-btn').onclick = () => {
+            isRegistering = !isRegistering;
+            document.getElementById('auth-label').innerText = isRegistering ? 'CREATE_IDENTITY' : 'SIGN_IN';
+            document.getElementById('reg-fields').style.display = isRegistering ? 'block' : 'none';
+            document.getElementById('auth-toggle-btn').innerHTML = isRegistering ? 
+                'Already have an ID? <span>Sign In</span>' : 'Don\'t have an ID? <span>Create New Identity</span>';
+        };
+
+        document.getElementById('auth-trigger').onclick = async () => {
+            const email = document.getElementById('auth-email').value;
+            const pass = document.getElementById('auth-pass').value;
+            const role = document.getElementById('auth-role').value;
+
+            if(!email || !pass) return notify("CREDENTIALS_MISSING", "alert");
+
+            try {
+                if (isRegistering) {
+                    const res = await auth.createUserWithEmailAndPassword(email, pass);
+                    await db.ref(`users/${res.user.uid}`).set({ email, role, createdAt: Date.now() });
+                    notify("IDENTITY_CREATED");
+                } else {
+                    await auth.signInWithEmailAndPassword(email, pass);
+                    notify("KERNEL_ACCESS_GRANTED");
+                }
+            } catch (e) {
+                notify(e.message, "alert");
+            }
+        };
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('view-auth').style.display = 'none';
+                document.getElementById('hud').style.display = 'grid';
+                document.getElementById('profile-email').innerText = user.email;
+                document.getElementById('profile-uid').innerText = `UID: ${user.uid}`;
+                
+                db.ref(`users/${user.uid}/role`).once('value', snap => {
+                    const role = snap.val();
+                    if(role === 'traveler') {
+                        document.getElementById('traveler-id').innerText = `TRAVELER: ${user.email.split('@')[0]}`;
+                        initTraveler();
+                    } else {
+                        document.getElementById('watcher-id').innerText = `WATCHER: ${user.email.split('@')[0]}`;
+                    }
+                    nav('dash');
+                });
+            } else {
+                document.getElementById('view-auth').style.display = 'flex';
+                document.getElementById('hud').style.display = 'none';
+                document.querySelectorAll('.view').forEach(e => e.style.display='none');
+                document.getElementById('view-auth').style.display = 'flex';
+            }
+        });
 
         function notify(msg, type='info') {
             const center = document.getElementById('notification-center');
             const toast = document.createElement('div');
             toast.className = 'toast';
             if(type === 'alert') toast.style.borderLeftColor = 'var(--sys-alert)';
-            toast.innerHTML = `<div style="font-size:10px; color:var(--sys-dim); margin-bottom:4px;">SYSTEM_ALERT</div><div>${msg}</div>`;
+            toast.innerHTML = `<div style="font-size:9px; color:var(--sys-dim); margin-bottom:2px;">SYS_LOG</div><div>${msg}</div>`;
             center.appendChild(toast);
-            setTimeout(() => toast.remove(), 5000);
+            setTimeout(() => toast.remove(), 4000);
         }
 
-        // Logic to switch views based on role
-        window.nav = (v) => {
-            document.querySelectorAll('.view').forEach(e => e.style.display='none');
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            
-            if (v === 'dash') {
-                document.getElementById(`view-${currentRole}`).style.display = 'block';
-                document.getElementById('nav-dash-btn').classList.add('active');
-            } else {
-                document.getElementById(`view-${v}`).style.display = 'block';
-                const items = document.querySelectorAll('.nav-item');
-                items[1].classList.add('active');
-                if (v === 'config') renderPL();
-            }
-        };
-
-        document.getElementById('login-trigger').onclick = () => {
-            const p = document.getElementById('pass-in').value;
-            let role = null;
-            if (p === '1122') role = 'traveler';
-            else if (p === '1212') role = 'watcher';
-
-            if (role) {
-                localStorage.setItem('drs_role', role);
-                initSession(role);
-            } else {
-                notify("INVALID_ACCESS_KEY", "alert");
-            }
-        };
-
-        function initSession(role) {
-            currentRole = role;
-            document.getElementById('view-login').style.display = 'none';
-            document.getElementById('hud').style.display = 'grid';
-            
-            if (role === 'traveler') initTravelerSubsystem();
-            else initWatcherSubsystem();
-            
-            nav('dash');
-            createFireflies();
-            updateFireflies();
-            
-            db.ref('trip/presence/' + role).set(true);
-            db.ref('trip/presence/' + role).onDisconnect().remove();
-        }
-
-        // --- TRAVELER LOGIC ---
-        function initTravelerSubsystem() {
-            db.ref('trip/presence/watcher').on('value', snap => {
-                const active = snap.val();
-                const statusEl = document.getElementById('watcher-status');
-                if(active) { statusEl.innerText = "WATCHERS: ACTIVE"; statusEl.classList.add('watcher-active'); }
-                else { statusEl.innerText = "WATCHERS: OFFLINE"; statusEl.classList.remove('watcher-active'); }
-            });
-
-            db.ref('trip/command').on('value', snap => {
-                const cmd = snap.val();
-                if(cmd && Date.now() - cmd.ts < 5000) notify(`WATCHER_ALERT: ${cmd.msg}`, 'alert');
+        // Traveler Features
+        function initTraveler() {
+            // Monitor if anyone is watching THIS specific traveler
+            db.ref(`live/${auth.currentUser.uid}/watchers`).on('value', snap => {
+                const count = snap.numChildren();
+                document.getElementById('watcher-status').innerText = `WATCHERS: ${count}`;
             });
         }
 
         function startTracking() {
-            if (!navigator.geolocation) return notify("GPS_HARDWARE_NOT_FOUND", "alert");
+            if (!navigator.geolocation) return notify("GPS_UNAVAILABLE", "alert");
             document.getElementById('broadcast-btn').innerText = "BROADCASTING...";
             trackWatchId = navigator.geolocation.watchPosition(pos => {
                 const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, ts: Date.now() };
-                db.ref('trip/location').set(loc);
+                db.ref(`live/${auth.currentUser.uid}/location`).set(loc);
                 document.getElementById('loc-display').innerText = `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`;
             }, null, { enableHighAccuracy: true });
         }
 
         function stopTracking() {
             if(trackWatchId) navigator.geolocation.clearWatch(trackWatchId);
-            document.getElementById('broadcast-btn').innerText = "BROADCAST LIVE";
-            document.getElementById('loc-display').innerText = "GPS_IDLE";
+            document.getElementById('broadcast-btn').innerText = "START BROADCAST";
+            document.getElementById('loc-display').innerText = "IDLE";
+            db.ref(`live/${auth.currentUser.uid}/location`).remove();
         }
 
         function broadcastMsg() {
-            const val = document.getElementById('traveler-msg').value;
-            if(!val) return;
-            db.ref('trip/messages').push({ text: val, ts: Date.now() });
+            const text = document.getElementById('traveler-msg').value;
+            if(!text) return;
+            db.ref(`live/${auth.currentUser.uid}/messages`).push({ text, ts: Date.now() });
             document.getElementById('traveler-msg').value = '';
         }
 
-        // --- WATCHER LOGIC ---
-        function initWatcherSubsystem() {
-            db.ref('trip/location').on('value', snap => {
+        // Watcher Features
+        function linkToTarget() {
+            const targetUid = document.getElementById('target-uid-in').value;
+            if(!targetUid) return notify("TARGET_ID_REQUIRED", "alert");
+
+            // Register as a watcher for this traveler
+            const watcherRef = db.ref(`live/${targetUid}/watchers/${auth.currentUser.uid}`);
+            watcherRef.set(true);
+            watcherRef.onDisconnect().remove();
+
+            document.getElementById('watcher-monitor').style.display = 'block';
+            
+            // Listen to location
+            db.ref(`live/${targetUid}/location`).on('value', snap => {
                 const data = snap.val();
-                if (!data) return;
-                document.getElementById('dash-coords').innerText = `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
-                document.getElementById('dash-sync').innerText = new Date(data.ts).toLocaleTimeString();
-            });
-
-            db.ref('trip/messages').limitToLast(10).on('child_added', snap => {
-                const msg = snap.val();
-                const feed = document.getElementById('watcher-feed');
-                const div = document.createElement('div');
-                div.className = 'msg-entry';
-                div.innerHTML = `<span style="color:var(--sys-accent)">[${new Date(msg.ts).toLocaleTimeString()}]</span> ${msg.text}`;
-                feed.prepend(div);
-            });
-        }
-
-        function sendCmd(type) {
-            const msg = document.getElementById('cmd-input').value || "SYSTEM_PING";
-            db.ref('trip/command').set({ type, msg, ts: Date.now() });
-            notify(`Command dispatched: ${msg}`);
-            document.getElementById('cmd-input').value = '';
-        }
-
-        // --- AUDIO ENGINE ---
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('yt-player', {
-                playerVars: { 'listType': 'playlist', 'autoplay': 1, 'controls': 0, 'playsinline': 1, 'mute': 1 },
-                events: { 
-                    'onReady': (e) => {
-                        if (currentPlaylistId) {
-                            player.cuePlaylist({ list: parsePlaylistId(currentPlaylistId) });
-                            document.getElementById('media-bar').style.display = 'flex';
-                        }
-                    }, 
-                    'onStateChange': onPlayerStateChange 
+                if(data) {
+                    document.getElementById('dash-coords').innerText = `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
+                    document.getElementById('dash-sync').innerText = `LAST_SYNC: ${new Date(data.ts).toLocaleTimeString()}`;
+                } else {
+                    document.getElementById('dash-coords').innerText = "OFFLINE";
                 }
             });
+
+            // Listen to messages
+            db.ref(`live/${targetUid}/messages`).limitToLast(5).on('child_added', snap => {
+                const m = snap.val();
+                const div = document.createElement('div');
+                div.style.padding = '5px 0';
+                div.style.borderBottom = '1px solid #222';
+                div.innerHTML = `<span style="color:var(--sys-dim)">[${new Date(m.ts).toLocaleTimeString()}]</span> ${m.text}`;
+                const feed = document.getElementById('watcher-feed');
+                feed.prepend(div);
+            });
+
+            notify("LINK_ESTABLISHED");
         }
 
-        function onPlayerStateChange(ev) {
-            isPlaying = (ev.data === YT.PlayerState.PLAYING);
-            if (isPlaying) {
-                const data = player.getVideoData();
-                document.getElementById('track-title').innerText = data.title;
-                document.getElementById('exp-title').innerText = data.title;
-                document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/mqdefault.jpg`;
-                if(document.getElementById('audio-status')) document.getElementById('audio-status').innerText = "[ STREAM_ACTIVE ]";
-                document.getElementById('exp-play-icon').setAttribute('d', 'M6 19h4V5H6v14zm8-14v14h4V5h-4z');
-            } else {
-                if(document.getElementById('audio-status')) document.getElementById('audio-status').innerText = "[ PAUSED ]";
-                document.getElementById('exp-play-icon').setAttribute('d', 'M8 5v14l11-7z');
-            }
+        function logout() {
+            auth.signOut();
         }
-
-        setInterval(() => {
-            if(isPlaying && player && player.getDuration) {
-                const prog = (player.getCurrentTime() / player.getDuration()) * 100;
-                if(document.getElementById('prog-fill')) document.getElementById('prog-fill').style.width = prog + '%';
-                document.getElementById('exp-prog').style.width = prog + '%';
-            }
-        }, 1000);
-
-        function togglePlay() {
-            if (player.isMuted()) player.unMute();
-            if (isPlaying) player.pauseVideo(); else player.playVideo();
-        }
-
-        function parsePlaylistId(url) {
-            if (url.includes('list=')) return new URLSearchParams(url.split('?')[1]).get('list');
-            return url;
-        }
-
-        function openExpanded() { document.getElementById('media-expanded').style.display='flex'; }
-        function closeExpanded() { document.getElementById('media-expanded').style.display='none'; }
-
-        function renderPL() {
-            const list = document.getElementById('playlist-list');
-            list.innerHTML = playlists.map((p, i) => `
-                <div class="sys-card" style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:bold; cursor:pointer; color:var(--sys-accent);" onclick="selectPL('${p.url}')">$ ${p.name}</span>
-                    <button onclick="delPL(${i})" style="background:none; border:none; color:var(--sys-alert); font-weight:700;">rm</button>
-                </div>
-            `).join('');
-        }
-
-        function addPlaylist() {
-            const name = document.getElementById('pl-name-in').value;
-            const url = document.getElementById('pl-url-in').value;
-            if(!name || !url) return;
-            playlists.push({name, url});
-            localStorage.setItem('drs_pl_v3', JSON.stringify(playlists));
-            renderPL();
-        }
-
-        function selectPL(url) { localStorage.setItem('drs_curr_pl', url); location.reload(); }
-        function delPL(i) { playlists.splice(i, 1); localStorage.setItem('drs_pl_v3', JSON.stringify(playlists)); renderPL(); }
-        function logout() { localStorage.removeItem('drs_role'); location.reload(); }
-
-        const savedRole = localStorage.getItem('drs_role');
-        if (savedRole) initSession(savedRole);
     </script>
 </body>
 </html>
