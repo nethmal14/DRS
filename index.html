@@ -134,10 +134,10 @@
         }
         .nav-item.active { color: var(--sys-accent); font-weight: bold; }
 
-        /* IMPROVED PROXY: Fixed position at 1px to ensure it's "visible" to mobile engines */
+        /* HIDDEN BUT INTERSECTING: Fixed 1px container so browser doesn't kill it */
         #yt-wrapper {
-            position: fixed; top: 1px; left: 1px; width: 1px; height: 1px;
-            opacity: 0.001; overflow: hidden; z-index: -1; pointer-events: none;
+            position: fixed; top: 0; left: 0; width: 1px; height: 1px;
+            opacity: 0.001; overflow: hidden; pointer-events: none; z-index: -100;
         }
 
         #loader {
@@ -166,7 +166,7 @@
         <div style="width: 100%;">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h1 class="mono" style="font-size: 20px; margin: 0; color: var(--sys-accent);">drs.one</h1>
-                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.4.3-proxy-engine</p>
+                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.4.4-audio-only</p>
             </div>
             <div class="sys-card">
                 <span class="label">ssh_identity</span>
@@ -226,8 +226,8 @@
     <div id="view-config" class="view">
         <span class="label">system.kernel_config</span>
         <div class="sys-card">
-            <span class="label">playlist_id</span>
-            <input type="text" id="yt-in" placeholder="YT_PLAYLIST_ID">
+            <span class="label">playlist_url_or_id</span>
+            <input type="text" id="yt-in" placeholder="https://youtube.com/playlist?list=...">
             <button class="btn btn-primary" id="config-save">Apply Config</button>
         </div>
         <button class="btn" style="color:#f85149; font-size:11px; border:1px solid #3e1e1e;" onclick="logout()" class="mono">kill -9 session</button>
@@ -299,37 +299,52 @@
             document.getElementById('m-next').onclick = () => player && player.nextVideo();
         });
 
-        // --- ENHANCED PROXY MEDIA ENGINE ---
+        // --- NEW AUDIO-ONLY PROXY ENGINE ---
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('yt-player', {
-                height: '100', width: '100', 
+                height: '200', width: '200', // Small but not 0 to satisfy mobile policy
                 playerVars: { 
                     'listType': 'playlist', 
                     'autoplay': 0, 
                     'enablejsapi': 1,
-                    'controls': 1, 
-                    'playsinline': 1,
+                    'controls': 0, // No native controls, we use our bar
+                    'playsinline': 1, // Crucial for mobile background play
                     'rel': 0,
-                    'modestbranding': 1
+                    'modestbranding': 1,
+                    'iv_load_policy': 3
                 },
                 events: {
-                    'onReady': (e) => {
-                        const savedYt = localStorage.getItem('drs_yt');
-                        if (savedYt) {
-                            e.target.cuePlaylist({ list: savedYt });
-                            document.getElementById('media-bar').style.display = 'flex';
-                            document.getElementById('audio-status').innerText = "ENGINE READY";
-                        }
-                    },
-                    'onStateChange': onPlayerStateChange
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
+                    'onError': (e) => {
+                        console.error("YT ERROR", e.data);
+                        document.getElementById('audio-status').innerText = "ENGINE ERROR: " + e.data;
+                    }
                 }
             });
+        }
+
+        function onPlayerReady(e) {
+            const savedYt = localStorage.getItem('drs_yt');
+            if (savedYt) {
+                // We use cuePlaylist so it doesn't auto-trigger audio until user hits Prime/Play
+                e.target.cuePlaylist({ list: parsePlaylistId(savedYt) });
+                document.getElementById('media-bar').style.display = 'flex';
+                document.getElementById('audio-status').innerText = "ENGINE READY";
+            }
+        }
+
+        function parsePlaylistId(input) {
+            if (input.includes('list=')) {
+                const urlParams = new URLSearchParams(input.split('?')[1]);
+                return urlParams.get('list');
+            }
+            return input; // Return as-is if it looks like a direct ID
         }
 
         function onPlayerStateChange(event) {
             const btn = document.getElementById('m-play');
             
-            // Map states to UI and MediaSession
             if (event.data == YT.PlayerState.PLAYING) {
                 isPlaying = true;
                 btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
@@ -340,8 +355,7 @@
                 isPlaying = false;
                 btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
-                if (event.data == YT.PlayerState.ENDED) document.getElementById('audio-status').innerText = "FEED ENDED";
-                else document.getElementById('audio-status').innerText = "FEED PAUSED";
+                document.getElementById('audio-status').innerText = event.data == YT.PlayerState.ENDED ? "FEED ENDED" : "FEED PAUSED";
             } else if (event.data == YT.PlayerState.BUFFERING) {
                 document.getElementById('audio-status').innerText = "SYNCING BUFFER...";
             }
@@ -358,12 +372,9 @@
                 title: title,
                 artist: "DRS-ONE System",
                 album: "Satellite Feed",
-                artwork: [
-                    { src: 'https://via.placeholder.com/512/58a6ff/000000?text=DRS-ONE', sizes: '512x512', type: 'image/png' }
-                ]
+                artwork: [{ src: 'https://via.placeholder.com/512/58a6ff/000000?text=DRS-ONE', sizes: '512x512', type: 'image/png' }]
             });
 
-            // Re-bind actions to ensure they stay active after track changes
             const actions = {
                 'play': () => player.playVideo(),
                 'pause': () => player.pauseVideo(),
@@ -384,8 +395,8 @@
                 return;
             }
 
-            // Force interaction context for browser's autoplay policy
-            player.loadPlaylist({ list: savedYt });
+            // user interaction context
+            player.loadPlaylist({ list: parsePlaylistId(savedYt) });
             audioPrimed = true;
             document.getElementById('prime-btn').style.display = 'none';
             document.getElementById('audio-status').innerText = "ENGINE ONLINE";
@@ -511,8 +522,8 @@
         }
 
         function saveConfig() {
-            const id = document.getElementById('yt-in').value.trim();
-            localStorage.setItem('drs_yt', id);
+            const input = document.getElementById('yt-in').value.trim();
+            localStorage.setItem('drs_yt', input);
             showToast("CONFIG UPDATED");
             setTimeout(() => location.reload(), 1000);
         }
