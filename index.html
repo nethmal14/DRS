@@ -29,12 +29,13 @@
             min-height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
-            transition: background 0.2s ease;
         }
 
-        /* Reactive Pulse Background */
-        body.music-reactive {
-            background: radial-gradient(circle at center, #161b22 0%, #0d1117 100%);
+        #particle-canvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
         }
 
         .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
@@ -49,14 +50,14 @@
         .auth-container { height: 100vh; display: flex; align-items: center; justify-content: center; }
         
         .sys-card {
-            background: var(--sys-surface);
+            background: rgba(22, 27, 34, 0.8);
             border: 1px solid var(--sys-border);
             border-radius: 6px;
             padding: 1.25rem;
             margin-bottom: 1rem;
             position: relative;
             overflow: hidden;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(12px);
         }
 
         .label {
@@ -84,7 +85,6 @@
         .btn-primary { background: var(--sys-accent); color: #0d1117; }
         .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
 
-        /* Watcher Eye Indicator */
         #watcher-eye {
             position: fixed; top: 1.5rem; right: 1.5rem;
             color: #f85149; display: none; z-index: 1000;
@@ -93,23 +93,12 @@
         }
         @keyframes blink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.9); } }
 
-        /* Weather Animations */
-        .weather-anim { position: absolute; inset: 0; opacity: 0.15; pointer-events: none; z-index: 1; }
-        .clouds-bg::after {
-            content: ""; position: absolute; top: 0; left: -100%; width: 200%; height: 100%;
-            background: radial-gradient(circle, #fff 10%, transparent 40%), radial-gradient(circle, #fff 5%, transparent 30%);
-            background-size: 50px 50px;
-            animation: drift 10s linear infinite;
-        }
-        @keyframes drift { to { transform: translateX(50%); } }
-
-        /* Media Player Bar */
         #media-bar {
             position: fixed;
             bottom: calc(4.5rem + var(--safe-bottom));
             left: 50%; transform: translateX(-50%);
             width: 90%; max-width: 480px;
-            background: #21262d;
+            background: rgba(33, 38, 45, 0.9);
             border: 1px solid var(--sys-border);
             border-radius: 12px;
             padding: 10px 16px;
@@ -119,6 +108,7 @@
             z-index: 1001;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
             cursor: pointer;
+            backdrop-filter: blur(8px);
         }
 
         .media-info { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
@@ -126,23 +116,25 @@
         .media-controls { display: flex; gap: 12px; align-items: center; }
         .m-btn { background: none; border: none; color: #fff; cursor: pointer; padding: 5px; }
 
-        /* Expanded Media View */
+        /* Modified Expanded Media View: Partial Height Sheet */
         #media-expanded {
-            position: fixed; inset: 0; background: var(--sys-bg); z-index: 2000;
-            display: none; flex-direction: column; padding: 2rem;
-            animation: slideUp 0.3s ease-out;
+            position: fixed; 
+            bottom: 0; left: 0; right: 0;
+            height: 65vh; /* Partial height */
+            background: #161b22; 
+            z-index: 2000;
+            display: none; flex-direction: column; 
+            padding: 1.5rem;
+            border-top: 1px solid var(--sys-border);
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .visualizer {
-            flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 4px;
-            padding-bottom: 2rem; height: 150px;
-        }
-        .v-bar { width: 6px; background: var(--sys-accent); border-radius: 3px 3px 0 0; transition: height 0.1s; }
-
         .art-box {
-            width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px;
-            margin-bottom: 2rem; overflow: hidden; border: 1px solid var(--sys-border);
+            width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px;
+            margin-bottom: 1.5rem; overflow: hidden; border: 1px solid var(--sys-border);
             display: flex; align-items: center; justify-content: center;
         }
         .art-box img { width: 100%; height: 100%; object-fit: cover; }
@@ -186,23 +178,22 @@
         .playlist-del { color: #f85149; cursor: pointer; padding-left: 10px; font-size: 10px; }
     </style>
 </head>
-<body class="music-reactive">
+<body>
 
+    <canvas id="particle-canvas"></canvas>
     <div id="loader"><div class="spin"></div></div>
 
-    <!-- Active Watcher Icon -->
     <div id="watcher-eye" title="System Monitor Active">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
     </div>
     
     <div id="yt-wrapper"><div id="yt-player"></div></div>
 
-    <!-- LOGIN -->
     <div id="view-login" class="view auth-container">
         <div style="width: 100%;">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h1 class="mono" style="font-size: 20px; margin: 0; color: var(--sys-accent);">drs.one</h1>
-                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.6.0-eye-active</p>
+                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.7.0-reactive-net</p>
             </div>
             <div class="sys-card">
                 <span class="label">ssh_identity</span>
@@ -213,7 +204,6 @@
         </div>
     </div>
 
-    <!-- HOME -->
     <div id="view-home" class="view">
         <div style="margin-bottom: 2rem;">
             <span class="label">system.current_node</span>
@@ -228,7 +218,6 @@
                 <div id="temp-display" style="font-size: 24px; font-weight: 300;" class="mono">--</div>
             </div>
             <div class="sys-card" id="weather-card">
-                <div id="weather-effect" class="weather-anim"></div>
                 <span class="label">env.condition</span>
                 <div id="weather-display" style="font-size: 12px; font-weight: 600;" class="mono">SYNCING</div>
             </div>
@@ -241,7 +230,6 @@
         </div>
     </div>
 
-    <!-- CONFIG / PLAYLISTS -->
     <div id="view-config" class="view">
         <span class="label">system.kernel_config</span>
         <div class="sys-card">
@@ -250,16 +238,13 @@
             <input type="text" id="pl-url-in" placeholder="YouTube Playlist URL">
             <button class="btn btn-primary" onclick="addPlaylist()">Save to Storage</button>
         </div>
-
         <div class="sys-card">
             <span class="label">local_repositories</span>
             <div id="playlist-list" class="mono"></div>
         </div>
-        
         <button class="btn btn-ghost" onclick="logout()" style="color:#f85149; margin-top:1rem;">kill -9 session</button>
     </div>
 
-    <!-- UPLINK -->
     <div id="view-uplink" class="view">
         <span class="label">uplink.telemetry</span>
         <div class="sys-card" style="text-align: center; padding: 30px 20px;">
@@ -268,28 +253,26 @@
         </div>
     </div>
 
-    <!-- MONITOR -->
     <div id="view-monitor" class="view">
         <h2 class="mono" style="font-size: 14px; color: var(--sys-accent); margin-bottom: 2rem;">drs.monitor</h2>
         <div id="monitor-stream"></div>
     </div>
 
-    <!-- Media UI -->
     <div id="media-expanded">
-        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <span class="label" style="margin:0;">media.expanded_node</span>
+        <div style="width: 40px; height: 4px; background: var(--sys-border); border-radius: 2px; margin: 0 auto 1.5rem auto;"></div>
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <span class="label" style="margin:0;">media.uplink_node</span>
             <button class="m-btn" onclick="closeExpanded()" style="color:var(--sys-dim)">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
             </button>
         </div>
         <div class="art-box"><img id="exp-thumb" src=""></div>
-        <div style="text-align: center; margin-bottom: 1rem;">
-            <h3 id="exp-title" style="margin:0 0 8px 0; color:#fff; font-size:16px;">---</h3>
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <h3 id="exp-title" style="margin:0 0 8px 0; color:#fff; font-size:16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">---</h3>
         </div>
-        <div class="visualizer" id="visualizer"></div>
-        <div style="display: flex; justify-content: center; gap: 30px; align-items: center;">
+        <div style="display: flex; justify-content: center; gap: 30px; align-items: center; margin-top: auto; padding-bottom: 2rem;">
             <button class="m-btn" onclick="player.previousVideo()"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-            <button class="m-btn" id="exp-play" onclick="togglePlay()" style="background: var(--sys-accent); color:#000; border-radius:50%; width:64px; height:64px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+            <button class="m-btn" id="exp-play" onclick="togglePlay()" style="background: var(--sys-accent); color:#0d1117; border-radius:50%; width:64px; height:64px; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 15px rgba(88, 166, 255, 0.3);"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
             <button class="m-btn" onclick="player.nextVideo()"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
         </div>
     </div>
@@ -326,71 +309,112 @@
         let playlists = JSON.parse(localStorage.getItem('drs_playlists') || '[]');
         let currentPlaylistId = localStorage.getItem('drs_current_pl');
 
+        // Particle System
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let musicIntensity = 0;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+                this.life = Math.random() * 0.5 + 0.5;
+            }
+            update() {
+                const boost = isPlaying ? (musicIntensity * 5) : 1;
+                this.x += this.speedX * boost;
+                this.y += this.speedY * boost;
+                
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+            draw() {
+                ctx.fillStyle = isPlaying ? `rgba(88, 166, 255, ${this.life * musicIntensity})` : `rgba(139, 148, 158, 0.1)`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * (isPlaying ? musicIntensity * 2 : 1), 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < 100; i++) particles.push(new Particle());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Background pulse based on intensity
+            if (isPlaying) {
+                const glow = musicIntensity * 30;
+                const gradient = ctx.createRadialGradient(
+                    canvas.width/2, canvas.height/2, 0,
+                    canvas.width/2, canvas.height/2, canvas.width/2
+                );
+                gradient.addColorStop(0, `rgba(22, 27, 34, 1)`);
+                gradient.addColorStop(1, `rgba(13, 17, 23, 1)`);
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             firebase.initializeApp(config);
             db = firebase.database();
-            
             setTimeout(() => document.getElementById('loader').style.display='none', 800);
-            
             const role = localStorage.getItem('drs_v3_role');
             if (role) startSession(role);
             else document.getElementById('view-login').style.display = 'flex';
-
             document.getElementById('login-trigger').onclick = handleLogin;
             document.getElementById('gps-trigger').onclick = pushGps;
-            initVisualizer();
+            initParticles();
+            animate();
         });
 
-        // --- WATCHER DETECTION (THE EYE) ---
         function setupPresence(role) {
             const presenceRef = db.ref('trip/presence/' + role);
             presenceRef.set(true);
             presenceRef.onDisconnect().remove();
-
-            // Traveler listens to Watcher presence
             if (role === 'traveler') {
                 db.ref('trip/presence/watcher').on('value', snap => {
                     const eye = document.getElementById('watcher-eye');
                     eye.style.display = snap.val() ? 'block' : 'none';
-                    if (snap.val()) showToast("NODE UNDER OBSERVATION");
+                    if (snap.val()) showToast("WATCHER DETECTED");
                 });
             }
         }
 
-        // --- VISUALIZER & REACTIVE BG ---
-        function initVisualizer() {
-            const viz = document.getElementById('visualizer');
-            for(let i=0; i<18; i++) {
-                const bar = document.createElement('div');
-                bar.className = 'v-bar';
-                bar.style.height = '10%';
-                viz.appendChild(bar);
-            }
-        }
-
-        function updateVisualizer() {
-            if(!isPlaying) {
-                document.body.style.background = '#0d1117';
+        function simulateMusicIntensity() {
+            if (!isPlaying) {
+                musicIntensity = 0;
                 return;
             }
-            
-            const bars = document.querySelectorAll('.v-bar');
-            let sum = 0;
-            bars.forEach(bar => {
-                const h = 10 + Math.random() * 85;
-                bar.style.height = `${h}%`;
-                sum += h;
-            });
-
-            // Cool BG Pulse based on "intensity"
-            const avg = sum / bars.length;
-            const glow = Math.floor(avg / 4);
-            document.body.style.background = `radial-gradient(circle at center, #161b22 0%, #0d1117 ${100 - glow}%, #000 100%)`;
-            
-            if(isPlaying) requestAnimationFrame(() => setTimeout(updateVisualizer, 80));
+            // Real-time music is hard without Web Audio API on YT, so we simulate jitter
+            musicIntensity = 0.3 + Math.random() * 0.7;
+            setTimeout(simulateMusicIntensity, 100);
         }
 
-        // --- AUDIO ENGINE ---
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('yt-player', {
                 playerVars: { 'listType': 'playlist', 'autoplay': 0, 'enablejsapi': 1, 'controls': 0, 'playsinline': 1 },
@@ -416,12 +440,13 @@
             const btnExp = document.getElementById('exp-play');
             if (event.data == YT.PlayerState.PLAYING) {
                 isPlaying = true;
+                simulateMusicIntensity();
                 const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
                 btnMini.innerHTML = icon; btnExp.innerHTML = icon;
                 updateMediaMetadata();
-                updateVisualizer();
             } else {
                 isPlaying = false;
+                musicIntensity = 0;
                 const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
                 btnMini.innerHTML = icon; btnExp.innerHTML = icon;
             }
@@ -450,7 +475,6 @@
         function openExpanded() { document.getElementById('media-expanded').style.display = 'flex'; }
         function closeExpanded() { document.getElementById('media-expanded').style.display = 'none'; }
 
-        // --- NAVIGATION & SESSIONS ---
         function startSession(role) {
             document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
             setupPresence(role);
@@ -483,7 +507,6 @@
             if(v === 'config') renderPlaylists();
         };
 
-        // --- PLAYLISTS ---
         function renderPlaylists() {
             const list = document.getElementById('playlist-list');
             list.innerHTML = playlists.map((pl, idx) => `
@@ -515,7 +538,6 @@
             renderPlaylists();
         }
 
-        // --- DATA SYNC ---
         function initTraveler() {
             navigator.geolocation.getCurrentPosition(pos => {
                 const { latitude: lat, longitude: lon } = pos.coords;
