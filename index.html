@@ -2,672 +2,330 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DRS-ONE | System</title>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Liquid Glass Music</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js"></script>
     <style>
         :root {
-            --sys-bg: #05070a;
-            --sys-surface: #161b22;
-            --sys-border: #30363d;
-            --sys-accent: #58a6ff;
-            --sys-text: #c9d1d9;
-            --sys-dim: #8b949e;
-            --sys-alert: #f85149;
-            --safe-bottom: env(safe-area-inset-bottom);
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background: #020202;
+            font-family: -apple-system, system-ui, sans-serif;
+            color: white; user-select: none;
+        }
 
-        body {
-            margin: 0; padding: 0;
-            background: var(--sys-bg);
-            color: var(--sys-text);
-            font-family: -apple-system, "Segoe UI", "Roboto", "Helvetica", sans-serif;
-            font-size: 14px;
-            min-height: 100vh;
-            display: flex; flex-direction: column;
+        #canvas-bg {
+            position: fixed; inset: 0; z-index: 0;
+            filter: blur(80px) saturate(1.5);
+            opacity: 0.7;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid var(--glass-border);
+            border-radius: 44px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+        }
+
+        .input-glass {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 14px 20px;
+            outline: none;
+            transition: all 0.3s;
+            width: 100%;
+            color: white;
+        }
+
+        .input-glass:focus {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.3);
+            box-shadow: 0 0 20px rgba(255,255,255,0.05);
+        }
+
+        .liquid-button {
+            position: relative;
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
             overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        #bg-canvas {
-            position: fixed;
-            inset: 0;
+        .liquid-button:active { transform: scale(0.94); }
+
+        .ripple {
+            position: absolute;
+            background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, transparent 70%);
+            border-radius: 50%;
             pointer-events: none;
-            z-index: 1;
+            transform: scale(0);
+            animation: ripple-animation 0.8s ease-out;
         }
 
-        .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
-
-        .view {
-            display: none; width: 100%; max-width: 540px; margin: 0 auto;
-            padding: 1rem 1.5rem calc(8rem + var(--safe-bottom));
-            flex: 1; overflow-y: auto;
-            position: relative; z-index: 10;
+        @keyframes ripple-animation {
+            to { transform: scale(4); opacity: 0; }
         }
 
-        .auth-container { height: 100vh; display: flex; align-items: center; justify-content: center; }
-        
-        .sys-card {
-            background: rgba(13, 17, 23, 0.7);
-            border: 1px solid var(--sys-border);
-            border-radius: 6px;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
-            position: relative;
-            overflow: hidden;
-            backdrop-filter: blur(20px);
+        .expandable {
+            max-height: 0; overflow: hidden; opacity: 0;
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .alert-card {
-            border: 1px solid var(--sys-alert);
-            background: rgba(248, 81, 73, 0.1);
-            animation: pulse-border 2s infinite;
-        }
+        .expandable.open { max-height: 500px; opacity: 1; margin-top: 1.5rem; }
 
-        @keyframes pulse-border {
-            0% { border-color: var(--sys-alert); box-shadow: 0 0 0 0 rgba(248, 81, 73, 0.4); }
-            70% { border-color: transparent; box-shadow: 0 0 0 10px rgba(248, 81, 73, 0); }
-            100% { border-color: var(--sys-alert); box-shadow: 0 0 0 0 rgba(248, 81, 73, 0); }
-        }
+        #youtube-player { position: absolute; left: -9999px; }
 
-        .label {
-            font-family: "SFMono-Regular", monospace;
-            font-size: 11px;
-            color: var(--sys-dim);
-            margin-bottom: 8px;
-            display: block;
-            position: relative;
-            z-index: 2;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
-        input {
-            width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--sys-border);
-            background: #0d1117; color: #fff; font-size: 13px; margin-bottom: 12px;
-            font-family: "SFMono-Regular", monospace;
+        .liquid-slider {
+            -webkit-appearance: none; width: 100%; height: 4px;
+            background: rgba(255,255,255,0.1); border-radius: 2px;
         }
-        input:focus { border-color: var(--sys-accent); outline: none; }
-
-        .btn {
-            width: 100%; padding: 12px; border-radius: 4px; border: none; font-size: 13px;
-            font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: background 0.2s;
-            text-decoration: none;
-        }
-        .btn-primary { background: var(--sys-accent); color: #0d1117; }
-        .btn-alert { background: var(--sys-alert); color: #fff; }
-        .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
-
-        #watcher-eye {
-            position: fixed; top: 1.5rem; right: 1.5rem;
-            color: #f85149; display: none; z-index: 1000;
-            filter: drop-shadow(0 0 8px rgba(248, 81, 73, 0.4));
-            animation: blink 2s infinite;
-        }
-        @keyframes blink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.9); } }
-
-        #media-bar {
-            position: fixed;
-            bottom: calc(4.5rem + var(--safe-bottom));
-            left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 480px;
-            background: rgba(33, 38, 45, 0.9);
-            border: 1px solid var(--sys-border);
-            border-radius: 12px;
-            padding: 10px 16px;
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            z-index: 1001;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            cursor: pointer;
-            backdrop-filter: blur(8px);
-        }
-
-        .media-info { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
-        .media-title { font-size: 12px; font-weight: 600; color: #fff; }
-        .media-controls { display: flex; gap: 12px; align-items: center; }
-        .m-btn { background: none; border: none; color: #fff; cursor: pointer; padding: 5px; }
-
-        #media-expanded {
-            position: fixed; 
-            bottom: 0; left: 0; right: 0;
-            height: 65vh;
-            background: #161b22; 
-            z-index: 2000;
-            display: none; flex-direction: column; 
-            padding: 1.5rem;
-            border-top: 1px solid var(--sys-border);
-            border-radius: 24px 24px 0 0;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
-            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
-        .art-box {
-            width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px;
-            margin-bottom: 1.5rem; overflow: hidden; border: 1px solid var(--sys-border);
-            display: flex; align-items: center; justify-content: center;
-        }
-        .art-box img { width: 100%; height: 100%; object-fit: cover; }
-
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: var(--sys-surface); border-top: 1px solid var(--sys-border);
-            display: none; grid-template-columns: repeat(3, 1fr);
-            padding: 8px 0 calc(8px + var(--safe-bottom)); z-index: 1000;
-        }
-        .nav-item {
-            text-align: center; font-size: 11px; font-family: "SFMono-Regular", monospace;
-            color: var(--sys-dim); cursor: pointer; padding: 10px 0;
-        }
-        .nav-item.active { color: var(--sys-accent); font-weight: bold; }
-
-        #yt-wrapper {
-            position: fixed; top: 0; left: 0; width: 1px; height: 1px;
-            opacity: 0.001; overflow: hidden; pointer-events: none; z-index: -100;
-        }
-
-        #loader {
-            position: fixed; inset: 0; background: var(--sys-bg); z-index: 9999;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .spin { width: 20px; height: 20px; border: 2px solid #333; border-top-color: var(--sys-accent); border-radius: 50%; animation: s 0.6s linear infinite; }
-        @keyframes s { to { transform: rotate(360deg); } }
-
-        .toast {
-            position: fixed; bottom: 6rem; left: 50%; transform: translateX(-50%);
-            background: var(--sys-accent); color: #000; padding: 8px 16px; border-radius: 20px;
-            font-size: 12px; font-weight: 600; z-index: 10001; display: none;
-        }
-
-        .playlist-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 10px; border-bottom: 1px solid var(--sys-border);
-        }
-        .playlist-name { font-size: 12px; color: #fff; cursor: pointer; flex: 1; }
-        .playlist-name.active { color: var(--sys-accent); font-weight: bold; }
-        .playlist-del { color: #f85149; cursor: pointer; padding-left: 10px; font-size: 10px; }
-
-        .feed-container {
-            max-height: 150px; overflow-y: auto; padding: 5px;
-            border: 1px solid var(--sys-border); background: #0d1117;
-            border-radius: 4px; font-size: 11px; line-height: 1.4;
-        }
-        .feed-item { margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px; }
-
-        /* LIVE MAP STYLES */
-        .map-frame-container {
-            width: 100%;
-            height: 250px;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid var(--sys-border);
-            margin-top: 10px;
-            background: #000;
-        }
-        .map-frame-container iframe {
-            width: 100%;
-            height: 100%;
-            border: 0;
-            filter: grayscale(1) invert(0.9) contrast(1.2); /* Cyberpunk map look */
+        .liquid-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px;
+            background: white; border-radius: 50%; cursor: pointer;
+            box-shadow: 0 0 10px rgba(255,255,255,0.8);
         }
     </style>
 </head>
 <body>
 
-    <canvas id="bg-canvas"></canvas>
-    <div id="loader"><div class="spin"></div></div>
+    <canvas id="canvas-bg"></canvas>
+    <div id="youtube-player"></div>
 
-    <div id="watcher-eye" title="System Monitor Active">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-    </div>
-    
-    <div id="yt-wrapper"><div id="yt-player"></div></div>
-
-    <div id="view-login" class="view auth-container">
-        <div style="width: 100%;">
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <h1 class="mono" style="font-size: 20px; margin: 0; color: var(--sys-accent);">drs.one</h1>
-                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.8.0-persistent-node</p>
+    <!-- Auth Layer -->
+    <div id="auth-layer" class="fixed inset-0 flex items-center justify-center z-50 transition-all duration-1000 bg-black/40 backdrop-blur-md">
+        <div class="glass-panel p-10 text-center max-w-sm w-full mx-4 space-y-6">
+            <h1 class="text-3xl font-thin tracking-widest uppercase">Sonic Glass</h1>
+            <div class="space-y-4">
+                <input id="auth-name" type="text" placeholder="Your Name" class="input-glass">
+                <input id="auth-pswd" type="password" placeholder="Password" class="input-glass">
             </div>
-            <div class="sys-card">
-                <span class="label">ssh_identity</span>
-                <input type="text" id="user-in" placeholder="user_id">
-                <input type="password" id="pass-in" placeholder="passphrase">
-                <button class="btn btn-primary" id="login-trigger">Execute Login</button>
-            </div>
+            <button id="btn-login-action" class="liquid-button w-full py-4 glass-panel bg-white/5 border-white/20 hover:bg-white/10 tracking-[0.3em]">GET IN</button>
+            <p id="auth-msg" class="text-xs text-white/40 h-4"></p>
         </div>
     </div>
 
-    <!-- Traveler View -->
-    <div id="view-home" class="view">
-        <div id="comms-alert-zone"></div>
+    <!-- Main Player UI -->
+    <div id="main-player" class="fixed inset-0 flex flex-col items-center justify-center p-6 opacity-0 pointer-events-none transition-all duration-1000 scale-95">
         
-        <div style="margin-bottom: 2rem;">
-            <span class="label">system.current_node</span>
-            <h2 id="loc-display" style="font-size: 24px; font-weight: 600; margin: 0; color: #fff;">LOCATING...</h2>
+        <div class="text-center mb-12 w-full">
+            <h2 id="track-title" class="text-4xl font-light tracking-tight truncate px-4">Silent Stream</h2>
+            <p id="playlist-name" class="text-white/30 text-xs mt-3 tracking-[0.4em] uppercase">Connect to Flow</p>
         </div>
 
-        <div class="sys-card">
-            <span class="label">signal.broadcast_status</span>
-            <input type="text" id="status-msg-in" placeholder="Type short signal..." maxlength="50" style="margin-bottom: 10px;">
-            <button class="btn btn-ghost mono" style="font-size: 11px;" onclick="broadcastStatus()">TRANSMIT_SIGNAL</button>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="sys-card">
-                <span class="label">env.thermal</span>
-                <div id="temp-display" style="font-size: 24px; font-weight: 300;" class="mono">--</div>
+        <div class="glass-panel w-full max-w-md p-10 relative overflow-hidden">
+            <!-- Controls -->
+            <div class="flex items-center justify-around mb-10">
+                <button id="btn-prev" class="liquid-button p-4 text-white/40">
+                    <svg width="24" height="24" fill="currentColor"><path d="M6 6h2v12H6V6zm3.5 6L18 6v12l-8.5-6z"/></svg>
+                </button>
+                <button id="btn-play" class="liquid-button w-24 h-24 glass-panel bg-white/5 border-white/20 shadow-2xl">
+                    <svg id="play-icon" width="36" height="36" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <button id="btn-next" class="liquid-button p-4 text-white/40">
+                    <svg width="24" height="24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                </button>
             </div>
-            <div class="sys-card" id="weather-card">
-                <span class="label">env.condition</span>
-                <div id="weather-display" style="font-size: 12px; font-weight: 600;" class="mono">SYNCING</div>
+
+            <!-- Progress -->
+            <div class="space-y-3">
+                <input type="range" id="seek-bar" class="liquid-slider" value="0" step="1">
+                <div class="flex justify-between text-[10px] text-white/20 font-mono tracking-widest">
+                    <span id="current-time">00:00</span>
+                    <span id="total-duration">00:00</span>
+                </div>
             </div>
-        </div>
 
-        <div class="sys-card" id="audio-card">
-            <span class="label">system.audio_service</span>
-            <div id="audio-status" class="mono" style="font-size: 11px; margin-bottom: 10px;">ENGINE OFFLINE</div>
-            <button class="btn btn-ghost mono" style="font-size:10px;" id="prime-btn" onclick="primeAudio()">INITIALIZE ENGINE</button>
-        </div>
-    </div>
-
-    <div id="view-config" class="view">
-        <span class="label">system.kernel_config</span>
-        <div class="sys-card">
-            <span class="label">identity.phone_uplink</span>
-            <input type="tel" id="user-phone-in" placeholder="+1234567890">
-            <button class="btn btn-ghost" onclick="savePhone()">Sync Phone Node</button>
-        </div>
-        <div class="sys-card">
-            <span class="label">add_new_playlist</span>
-            <input type="text" id="pl-name-in" placeholder="Library Name">
-            <input type="text" id="pl-url-in" placeholder="YouTube Playlist URL">
-            <button class="btn btn-primary" onclick="addPlaylist()">Save to Storage</button>
-        </div>
-        <div class="sys-card">
-            <span class="label">local_repositories</span>
-            <div id="playlist-list" class="mono"></div>
-        </div>
-        <button class="btn btn-ghost" onclick="logout()" style="color:#f85149; margin-top:1rem;">kill -9 session</button>
-    </div>
-
-    <div id="view-uplink" class="view">
-        <span class="label">uplink.telemetry</span>
-        <div class="sys-card" style="text-align: center; padding: 30px 20px;">
-            <button class="btn btn-primary" id="gps-trigger">Push GPS Burst</button>
-            <p id="ping-ts" class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 20px;">READY</p>
-        </div>
-    </div>
-
-    <!-- Watcher View -->
-    <div id="view-monitor" class="view">
-        <h2 class="mono" style="font-size: 14px; color: var(--sys-accent); margin-bottom: 2rem;">drs.monitor</h2>
-        
-        <!-- ENHANCED MONITOR STREAM WITH LIVE MAP -->
-        <div id="monitor-stream"></div>
-        
-        <div class="sys-card">
-            <span class="label">signal.decode_feed</span>
-            <div id="status-feed" class="feed-container mono">
-                <div style="color:var(--sys-dim)">Listening for signals...</div>
+            <!-- Playlists Section -->
+            <div class="mt-8">
+                <button id="toggle-playlists" class="w-full text-[10px] tracking-[0.5em] text-white/20 py-4 border-t border-white/5">ARCHIVE</button>
+                <div id="playlist-container" class="expandable space-y-4">
+                    <div id="playlist-list" class="max-h-32 overflow-y-auto space-y-2 pr-2 custom-scrollbar"></div>
+                    <div class="flex gap-2">
+                        <input id="input-yt-url" type="text" placeholder="YouTube URL" class="input-glass text-xs py-3">
+                        <button id="btn-add-playlist" class="w-12 h-12 glass-panel flex-shrink-0 flex items-center justify-center text-xl">+</button>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div class="sys-card">
-            <span class="label">uplink.commands</span>
-            <button class="btn btn-alert" onclick="requestCall()">REQUEST_VOICE_UPLINK</button>
-            <p class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 10px; text-align: center;">Signal persists until traveler dismisses</p>
-        </div>
     </div>
 
-    <!-- Media UI -->
-    <div id="media-expanded">
-        <div style="width: 40px; height: 4px; background: var(--sys-border); border-radius: 2px; margin: 0 auto 1.5rem auto;"></div>
-        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <span class="label" style="margin:0;">media.uplink_node</span>
-            <button class="m-btn" onclick="closeExpanded()" style="color:var(--sys-dim)">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-            </button>
-        </div>
-        <div class="art-box"><img id="exp-thumb" src=""></div>
-        <div style="text-align: center; margin-bottom: 1.5rem;">
-            <h3 id="exp-title" style="margin:0 0 8px 0; color:#fff; font-size:16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">---</h3>
-        </div>
-        <div style="display: flex; justify-content: center; gap: 30px; align-items: center; margin-top: auto; padding-bottom: 2rem;">
-            <button class="m-btn" onclick="player.previousVideo()"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-            <button class="m-btn" id="exp-play" onclick="togglePlay()" style="background: var(--sys-accent); color:#0d1117; border-radius:50%; width:64px; height:64px; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 15px rgba(88, 166, 255, 0.3);"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-            <button class="m-btn" onclick="player.nextVideo()"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
-        </div>
-    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    <div id="media-bar" onclick="openExpanded(event)">
-        <div class="media-info"><div class="media-title" id="track-title">DRS Audio</div></div>
-        <div class="media-controls" onclick="event.stopPropagation()">
-            <button class="m-btn" onclick="player.previousVideo()"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-            <button class="m-btn" id="m-play" onclick="togglePlay()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-            <button class="m-btn" onclick="player.nextVideo()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
-        </div>
-    </div>
-
-    <nav class="bottom-nav" id="hud">
-        <div class="nav-item active" onclick="nav('home')">status</div>
-        <div class="nav-item" onclick="nav('uplink')">uplink</div>
-        <div class="nav-item" onclick="nav('config')">config</div>
-    </nav>
-
-    <div id="toast" class="toast">ACK</div>
-
-    <script>
-        const config = {
+        const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
             authDomain: "trip-tracker-57ce0.firebaseapp.com",
-            databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
             projectId: "trip-tracker-57ce0",
             appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
         };
 
-        let db, player, isPlaying = false, audioPrimed = false;
-        let playlists = JSON.parse(localStorage.getItem('drs_playlists') || '[]');
-        let currentPlaylistId = localStorage.getItem('drs_current_pl');
-        let musicIntensity = 0;
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const APP_ID = "sonic-glass-v1";
 
-        // --- REACTIVE STARFIELD BACKGROUND ---
-        const canvas = document.getElementById('bg-canvas');
+        let player, currentUser, isPlaying = false, analyzerData;
+
+        // Visualizer Setup
+        const canvas = document.getElementById('canvas-bg');
         const ctx = canvas.getContext('2d');
-        let stars = [];
+        const circles = Array(6).fill().map(() => ({
+            x: Math.random() * innerWidth, y: Math.random() * innerHeight,
+            r: Math.random() * 200 + 150, vx: Math.random() - 0.5, vy: Math.random() - 0.5,
+            c: `hsla(${Math.random()*360}, 60%, 40%, 0.4)`
+        }));
 
-        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        window.addEventListener('resize', resize); resize();
-
-        class Star {
-            constructor() { this.init(); }
-            init() {
-                this.x = (Math.random() - 0.5) * canvas.width;
-                this.y = (Math.random() - 0.5) * canvas.height;
-                this.z = Math.random() * canvas.width;
-                this.pz = this.z;
-            }
-            update() {
-                const speed = isPlaying ? (6 + musicIntensity * 45) : 3;
-                this.z -= speed;
-                if (this.z < 1) { this.init(); this.pz = this.z; }
-            }
-            draw() {
-                const sx = (this.x / this.z) * canvas.width + canvas.width/2;
-                const sy = (this.y / this.z) * canvas.height + canvas.height/2;
-                const r = (1 - this.z / canvas.width) * 2.5;
-                const px = (this.x / this.pz) * canvas.width + canvas.width/2;
-                const py = (this.y / this.pz) * canvas.height + canvas.height/2;
-                
-                ctx.beginPath();
-                ctx.strokeStyle = isPlaying ? `rgba(88, 166, 255, ${0.1 + musicIntensity})` : `rgba(139, 148, 158, 0.2)`;
-                ctx.lineWidth = r;
-                ctx.moveTo(px, py);
-                ctx.lineTo(sx, sy);
-                ctx.stroke();
-                this.pz = this.z;
-            }
-        }
-
-        for(let i=0; i<350; i++) stars.push(new Star());
         function animate() {
-            ctx.fillStyle = '#05070a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            stars.forEach(s => { s.update(); s.draw(); });
+            ctx.fillStyle = 'rgba(2,2,2,0.15)';
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            let pulse = isPlaying ? (Math.sin(Date.now()*0.002)*20 + 10) : 0;
+            circles.forEach(c => {
+                c.x += c.vx; c.y += c.vy;
+                if(c.x < 0 || c.x > canvas.width) c.vx *= -1;
+                if(c.y < 0 || c.y > canvas.height) c.vy *= -1;
+                const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r + pulse);
+                g.addColorStop(0, c.c); g.addColorStop(1, 'transparent');
+                ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c.x,c.y,c.r + pulse,0,Math.PI*2); ctx.fill();
+            });
             requestAnimationFrame(animate);
         }
+        window.addEventListener('resize', () => { canvas.width = innerWidth; canvas.height = innerHeight; });
+        canvas.width = innerWidth; canvas.height = innerHeight;
+        animate();
 
-        document.addEventListener('DOMContentLoaded', () => {
-            firebase.initializeApp(config);
-            db = firebase.database();
-            
-            // Notification Permission
-            if ("Notification" in window && Notification.permission === "default") {
-                Notification.requestPermission();
+        // Auth: Name + Pswd Logic (Map Name to a fake email)
+        document.getElementById('btn-login-action').onclick = async () => {
+            const name = document.getElementById('auth-name').value.trim().toLowerCase();
+            const pswd = document.getElementById('auth-pswd').value;
+            const msg = document.getElementById('auth-msg');
+            if(!name || pswd.length < 6) { msg.innerText = "Check name & password (min 6)"; return; }
+
+            const email = `${name}@sonicglass.app`;
+            try {
+                // Try Login
+                await signInWithEmailAndPassword(auth, email, pswd);
+            } catch (err) {
+                if(err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+                    // Try Register
+                    try {
+                        await createUserWithEmailAndPassword(auth, email, pswd);
+                    } catch (regErr) { msg.innerText = "Access Denied"; }
+                } else { msg.innerText = "Error Connecting"; }
             }
+        };
 
-            setTimeout(() => {
-                const loader = document.getElementById('loader');
-                if (loader) loader.style.display='none';
-            }, 800);
+        onAuthStateChanged(auth, async (user) => {
+            if(user) {
+                currentUser = user;
+                document.getElementById('auth-layer').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('auth-layer').classList.add('hidden');
+                    const main = document.getElementById('main-player');
+                    main.classList.remove('pointer-events-none');
+                    main.style.opacity = '1'; main.classList.remove('scale-95');
+                }, 1000);
 
-            const role = localStorage.getItem('drs_v3_role');
-            if (role) startSession(role);
-            else document.getElementById('view-login').style.display = 'flex';
-            document.getElementById('login-trigger').onclick = handleLogin;
-            document.getElementById('gps-trigger').onclick = pushGps;
-            animate();
+                const userRef = doc(db, 'artifacts', APP_ID, 'users', user.uid);
+                const snap = await getDoc(userRef);
+                if(!snap.exists()) await setDoc(userRef, { playlists: [] });
+                onSnapshot(userRef, (d) => renderPlaylists(d.data()?.playlists || []));
+            }
         });
 
-        function startSession(role) {
-            document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
-            setupPresence(role);
-            if (role === 'traveler') {
-                nav('home'); document.getElementById('hud').style.display = 'grid';
-                initTraveler();
-            } else {
-                document.getElementById('view-monitor').style.display = 'block';
-                initWatcher();
-            }
-        }
-
-        function setupPresence(role) {
-            const presenceRef = db.ref('trip/presence/' + role);
-            presenceRef.set(true); presenceRef.onDisconnect().remove();
-            
-            if (role === 'traveler') {
-                db.ref('trip/presence/watcher').on('value', snap => {
-                    const eye = document.getElementById('watcher-eye');
-                    if (eye) eye.style.display = snap.val() ? 'block' : 'none';
-                });
-
-                db.ref('trip/call_request').on('value', snap => {
-                    const req = snap.val(); 
-                    const zone = document.getElementById('comms-alert-zone');
-                    const isRecent = req && (Date.now() - req.ts < 1800000);
-                    if (req && req.active && isRecent) {
-                        const phone = localStorage.getItem('drs_phone');
-                        if (Notification.permission === "granted" && document.hidden) {
-                            new Notification("DRS_ONE: CALL REQUEST", { body: "Watcher is requesting urgent voice uplink." });
-                        }
-                        zone.innerHTML = `
-                            <div class="sys-card alert-card">
-                                <span class="label" style="color:var(--sys-alert)">CRITICAL_COMMS_REQUEST</span>
-                                <p class="mono" style="font-size:12px; margin-bottom:15px;">Watcher requested uplink at ${new Date(req.ts).toLocaleTimeString()}.</p>
-                                <div style="display:flex; gap:10px;">
-                                    <a href="tel:${phone}" class="btn btn-alert" style="flex:2" onclick="clearCallRequest()">INITIATE_CALL</a>
-                                    <button class="btn btn-ghost" style="flex:1" onclick="clearCallRequest()">DISMISS</button>
-                                </div>
-                            </div>`;
-                    } else {
-                        zone.innerHTML = '';
-                    }
-                });
-            }
-        }
-
-        function broadcastStatus() {
-            const input = document.getElementById('status-msg-in');
-            const msg = input.value.trim();
-            if (!msg) return;
-            db.ref('trip/status_feed').push({ text: msg, ts: Date.now() });
-            input.value = '';
-            showToast("SIGNAL_TX_OK");
-        }
-
-        function initWatcher() {
-            db.ref('trip/location').on('value', snap => {
-                const loc = snap.val(); if (!loc) return;
-                const mapUrl = `https://maps.google.com/maps?q=${loc.lat},${loc.lng}&z=15&output=embed&t=m`;
-                document.getElementById('monitor-stream').innerHTML = `
-                    <div class="sys-card">
-                        <span class="label">node.coords</span>
-                        <h3 class="mono">${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}</h3>
-                        <div class="map-frame-container">
-                            <iframe src="${mapUrl}" allowfullscreen loading="lazy"></iframe>
-                        </div>
-                        <a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:15px; text-decoration:none;">OPEN FULL MAP</a>
-                    </div>`;
-            });
-
-            const feedContainer = document.getElementById('status-feed');
-            db.ref('trip/status_feed').limitToLast(10).on('child_added', snap => {
-                const data = snap.val();
-                if (feedContainer.innerHTML.includes('Listening')) feedContainer.innerHTML = '';
-                const time = new Date(data.ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                const entry = document.createElement('div');
-                entry.className = 'feed-item';
-                entry.innerHTML = `<span style="color:var(--sys-accent)">[${time}]</span> ${data.text}`;
-                feedContainer.prepend(entry);
-            });
-        }
-
-        function requestCall() { 
-            db.ref('trip/call_request').set({ active: true, ts: Date.now() }); 
-            showToast("UPLINK REQUESTED"); 
-        }
-
-        function clearCallRequest() { 
-            db.ref('trip/call_request').update({ active: false }); 
-        }
-
-        // --- FIXED AUDIO ENGINE ---
-        window.onYouTubeIframeAPIReady = function() {
-            player = new YT.Player('yt-player', {
-                playerVars: { 
-                    'listType': 'playlist', 
-                    'autoplay': 0, 
-                    'enablejsapi': 1, 
-                    'controls': 0, 
-                    'playsinline': 1,
-                    'origin': window.location.origin
-                },
-                events: { 
-                    'onReady': onPlayerReady, 
-                    'onStateChange': onPlayerStateChange 
-                }
+        // YouTube Audio Engine
+        window.onYouTubeIframeAPIReady = () => {
+            player = new YT.Player('youtube-player', {
+                events: { 'onStateChange': onState, 'onReady': () => setInterval(updateUI, 500) }
             });
         };
 
-        function onPlayerReady(e) {
-            if (currentPlaylistId) {
-                e.target.cuePlaylist({ list: parsePlaylistId(currentPlaylistId) });
-                document.getElementById('media-bar').style.display = 'flex';
-                document.getElementById('audio-status').innerText = "ENGINE READY";
+        function onState(e) {
+            isPlaying = (e.data == YT.PlayerState.PLAYING);
+            updatePlayIcon();
+            if(isPlaying) document.getElementById('track-title').innerText = player.getVideoData().title;
+        }
+
+        function updatePlayIcon() {
+            document.getElementById('play-icon').innerHTML = isPlaying ? 
+                `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>` : `<path d="M8 5v14l11-7z"/>`;
+        }
+
+        function updateUI() {
+            if(player?.getCurrentTime) {
+                const cur = player.getCurrentTime(), dur = player.getDuration();
+                document.getElementById('seek-bar').value = (cur/dur)*100 || 0;
+                document.getElementById('current-time').innerText = format(cur);
+                document.getElementById('total-duration').innerText = format(dur);
             }
         }
+        const format = s => `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
 
-        function parsePlaylistId(url) { 
-            if (url.includes('list=')) {
-                return new URLSearchParams(url.split('?')[1]).get('list');
-            }
-            return url; 
+        // Playlist Actions
+        async function addPl() {
+            const url = document.getElementById('input-yt-url').value;
+            const match = url.match(/[&?]list=([^&]+)/);
+            if(!match) return;
+            await updateDoc(doc(db, 'artifacts', APP_ID, 'users', currentUser.uid), {
+                playlists: arrayUnion({ id: match[1], name: "Flow "+Date.now().toString().slice(-4) })
+            });
+            document.getElementById('input-yt-url').value = "";
         }
 
-        function onPlayerStateChange(event) {
-            const btnMini = document.getElementById('m-play');
-            const btnExp = document.getElementById('exp-play');
-            if (event.data == YT.PlayerState.PLAYING) {
-                isPlaying = true; pulseMusic();
-                const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-                if(btnMini) btnMini.innerHTML = icon; 
-                if(btnExp) btnExp.innerHTML = icon; 
-                updateMediaMetadata();
-            } else {
-                isPlaying = false; musicIntensity = 0;
-                const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-                if(btnMini) btnMini.innerHTML = icon; 
-                if(btnExp) btnExp.innerHTML = icon;
-            }
-        }
-
-        function pulseMusic() {
-            if (!isPlaying) { musicIntensity = 0; return; }
-            musicIntensity = 0.2 + Math.random() * 0.8; 
-            setTimeout(pulseMusic, 80);
-        }
-
-        function updateMediaMetadata() {
-            const data = player.getVideoData();
-            const trackTitle = document.getElementById('track-title');
-            const expTitle = document.getElementById('exp-title');
-            const expThumb = document.getElementById('exp-thumb');
-            if(trackTitle) trackTitle.innerText = data.title;
-            if(expTitle) expTitle.innerText = data.title;
-            if(expThumb) expThumb.src = `https://img.youtube.com/vi/${data.video_id}/maxresdefault.jpg`;
-        }
-
-        function primeAudio() {
-            if (!currentPlaylistId) return showToast("SELECT PLAYLIST");
-            player.loadPlaylist({ list: parsePlaylistId(currentPlaylistId) });
-            audioPrimed = true; 
-            const primeBtn = document.getElementById('prime-btn');
-            if(primeBtn) primeBtn.style.display = 'none';
-        }
-
-        function togglePlay() { 
-            if (!audioPrimed) return primeAudio(); 
-            isPlaying ? player.pauseVideo() : player.playVideo(); 
-        }
-
-        function openExpanded() { document.getElementById('media-expanded').style.display = 'flex'; }
-        function closeExpanded() { document.getElementById('media-expanded').style.display = 'none'; }
-        
-        function handleLogin() {
-            const p = document.getElementById('pass-in').value;
-            if (p === '1122' || p === '1212') {
-                const role = p === '1122' ? 'traveler' : 'watcher';
-                localStorage.setItem('drs_v3_role', role); startSession(role);
-            }
-        }
-        function savePhone() { localStorage.setItem('drs_phone', document.getElementById('user-phone-in').value); showToast("PHONE UPDATED"); }
-        function logout() { localStorage.clear(); location.reload(); }
-        window.nav = (v) => {
-            document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
-            document.getElementById(`view-${v}`).style.display = 'block';
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            if(v === 'config') renderPlaylists();
-        };
-        function renderPlaylists() {
+        function renderPlaylists(pls) {
             const list = document.getElementById('playlist-list');
-            list.innerHTML = playlists.map((pl, idx) => `
-                <div class="playlist-item">
-                    <div class="playlist-name ${pl.url === currentPlaylistId ? 'active' : ''}" onclick="selectPlaylist('${pl.url}')">${pl.name}</div>
-                    <div class="playlist-del" onclick="deletePlaylist(${idx})">DEL</div>
-                </div>`).join('');
-        }
-        function addPlaylist() {
-            const name = document.getElementById('pl-name-in').value, url = document.getElementById('pl-url-in').value;
-            if(!name || !url) return;
-            playlists.push({ name, url }); localStorage.setItem('drs_playlists', JSON.stringify(playlists)); renderPlaylists();
-        }
-        function selectPlaylist(url) { currentPlaylistId = url; localStorage.setItem('drs_current_pl', url); location.reload(); }
-        function deletePlaylist(idx) { playlists.splice(idx, 1); localStorage.setItem('drs_playlists', JSON.stringify(playlists)); renderPlaylists(); }
-        function initTraveler() {
-            navigator.geolocation.getCurrentPosition(pos => {
-                const locDisplay = document.getElementById('loc-display');
-                if(locDisplay) locDisplay.innerText = `${pos.coords.latitude.toFixed(3)}N, ${pos.coords.longitude.toFixed(3)}E`;
+            list.innerHTML = "";
+            pls.forEach(p => {
+                const el = document.createElement('div');
+                el.className = "flex justify-between items-center glass-panel px-5 py-3 bg-white/5 hover:bg-white/10 cursor-pointer text-xs tracking-widest";
+                el.innerHTML = `<span class="truncate">${p.name}</span><span class="del opacity-20 hover:opacity-100 px-2">×</span>`;
+                el.onclick = (e) => {
+                    if(e.target.classList.contains('del')) {
+                        updateDoc(doc(db, 'artifacts', APP_ID, 'users', currentUser.uid), { playlists: arrayRemove(p) });
+                    } else {
+                        player.loadPlaylist({ list: p.id, listType: 'playlist' });
+                        document.getElementById('playlist-name').innerText = p.name;
+                    }
+                };
+                list.appendChild(el);
             });
         }
-        async function pushGps() {
-            navigator.geolocation.getCurrentPosition(async pos => {
-                await db.ref('trip/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts: new Date().toISOString() });
-                const pingTs = document.getElementById('ping-ts');
-                if(pingTs) pingTs.innerText = "SYNC: " + new Date().toLocaleTimeString();
-                showToast("SYNC COMPLETE");
-            });
-        }
-        function showToast(m) {
-            const t = document.getElementById('toast'); 
-            if(t) {
-                t.innerText = m; t.style.display = 'block';
-                setTimeout(() => t.style.display = 'none', 2000);
-            }
-        }
+
+        // Logic & Liquid Interactions
+        document.getElementById('btn-play').onclick = () => isPlaying ? player.pauseVideo() : player.playVideo();
+        document.getElementById('btn-next').onclick = () => player.nextVideo();
+        document.getElementById('btn-prev').onclick = () => player.previousVideo();
+        document.getElementById('btn-add-playlist').onclick = addPl;
+        document.getElementById('toggle-playlists').onclick = () => document.getElementById('playlist-container').classList.toggle('open');
+        document.getElementById('seek-bar').oninput = (e) => player.seekTo((e.target.value/100)*player.getDuration());
+
+        window.addEventListener('mousedown', (e) => {
+            const ripple = document.createElement('div');
+            ripple.className = 'ripple';
+            ripple.style.left = e.clientX + 'px';
+            ripple.style.top = e.clientY + 'px';
+            ripple.style.width = ripple.style.height = '100px';
+            document.body.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 800);
+        });
+
+        // Load YouTube API
+        const t = document.createElement('script'); t.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(t);
     </script>
-    <script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
+
