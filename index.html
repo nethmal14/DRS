@@ -1,311 +1,263 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Tracking & Broadcast System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
-    <style>
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(229, 231, 235, 0.5);
-        }
-        .pulse {
-            animation: pulse-animation 2s infinite;
-        }
-        @keyframes pulse-animation {
-            0% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0.5); }
-            100% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Tracker</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
+    authDomain: "trip-tracker-57ce0.firebaseapp.com",
+    databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
+    projectId: "trip-tracker-57ce0",
+    storageBucket: "trip-tracker-57ce0.firebasestorage.app",
+    messagingSenderId: "236146303848",
+    appId: "1:236146303848:web:933f1e79e8a97687db6cdd",
+    measurementId: "G-ZBPCS6QPR5"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+<style>
+:root {
+  --bg: #0f172a;
+  --card: #111827;
+  --accent: #38bdf8;
+  --accent-soft: #0ea5e9;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #020617, #020617);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 380px;
+  padding: 16px;
+}
+
+.card {
+  background: linear-gradient(180deg, #020617, #020617);
+  border: 1px solid #1f2933;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 20px 40px rgba(0,0,0,.4);
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 1.6rem;
+  letter-spacing: .3px;
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 1.2rem;
+}
+
+p {
+  color: var(--muted);
+  margin: 6px 0 12px;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #1f2937;
+  background: #020617;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+textarea {
+  min-height: 90px;
+  resize: none;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  border-radius: 14px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+  color: #020617;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid #1f2937;
+  color: var(--text);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.status {
+  margin-top: 8px;
+  font-size: .9rem;
+  color: #22c55e;
+}
+
+.value-box {
+  background: #020617;
+  border-radius: 14px;
+  padding: 14px;
+  margin-top: 6px;
+  font-size: .95rem;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.hidden { display: none; }
+
+.error {
+  color: #ef4444;
+  text-align: center;
+  margin-top: 10px;
+}
+</style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans text-slate-900">
 
-    <!-- Auth Overlay -->
-    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
-        <div class="glass-card w-full max-w-md rounded-2xl p-8 shadow-2xl">
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-slate-800">Secure Access</h1>
-                <p class="text-slate-500 mt-2">Enter credentials to enter the system</p>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">User Role</label>
-                    <select id="role-select" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                        <option value="watched">Type 1: Watched (The Subject)</option>
-                        <option value="watcher">Type 2: Watcher (Observer)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Passcode</label>
-                    <input type="password" id="passcode-input" placeholder="••••" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-center text-2xl tracking-widest">
-                </div>
-                <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95">
-                    Login
-                </button>
-                <p id="login-error" class="text-red-500 text-sm text-center hidden">Incorrect passcode for this role.</p>
-            </div>
-        </div>
+<body>
+
+<div class="container">
+  <div class="card">
+
+    <h1>Trip Tracker</h1>
+
+    <!-- LOGIN -->
+    <div id="login">
+      <input id="user" placeholder="Username">
+      <input id="pass" type="password" placeholder="Password">
+      <button onclick="login()">Continue</button>
+      <div id="err" class="error"></div>
     </div>
 
-    <!-- Main App Container -->
-    <div id="app" class="hidden">
-        <!-- Navigation -->
-        <nav class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
-            <div class="flex items-center space-x-2">
-                <div id="status-dot" class="w-3 h-3 rounded-full bg-green-500"></div>
-                <span class="font-bold text-lg tracking-tight">TRACKING SYSTEM</span>
-            </div>
-            <div class="flex items-center space-x-4">
-                <span id="display-role" class="bg-slate-100 px-3 py-1 rounded-full text-xs font-semibold uppercase text-slate-600"></span>
-                <button onclick="location.reload()" class="text-sm text-slate-400 hover:text-red-500 transition-colors">Logout</button>
-            </div>
-        </nav>
+    <!-- WATCHED -->
+    <div id="watched" class="hidden">
+      <h2>You’re Traveling</h2>
+      <p>Send updates to mum</p>
 
-        <main class="max-w-4xl mx-auto p-4 md:p-8">
-            
-            <!-- WATCHED INTERFACE -->
-            <section id="watched-ui" class="hidden space-y-6">
-                <div class="glass-card rounded-2xl p-6 shadow-sm">
-                    <h2 class="text-xl font-bold mb-4 flex items-center">
-                        <span class="mr-2">📢</span> Broadcast Update
-                    </h2>
-                    <textarea id="broadcast-msg" rows="3" class="w-full p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Type a message to all watchers..."></textarea>
-                    <div class="mt-4 flex flex-col sm:flex-row gap-3">
-                        <button onclick="updateStatus()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all">
-                            Send Message
-                        </button>
-                        <button onclick="updateLocation()" id="loc-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center">
-                            <span id="loc-btn-text">Update My Location</span>
-                        </button>
-                    </div>
-                </div>
+      <textarea id="msg" placeholder="E.g. Reached hotel safely"></textarea>
+      <button onclick="sendMsg()">Send Message</button>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <p class="text-sm text-slate-500 uppercase font-bold mb-1">Current Status</p>
-                        <p id="watched-current-msg" class="text-lg italic font-medium">"Waiting for update..."</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <p class="text-sm text-slate-500 uppercase font-bold mb-1">Location Coordinates</p>
-                        <p id="watched-current-coords" class="text-lg font-mono">None shared yet</p>
-                    </div>
-                </div>
-            </section>
+      <button onclick="sendLocation()">Share Current Location</button>
+      <div id="status" class="status"></div>
 
-            <!-- WATCHER INTERFACE -->
-            <section id="watcher-ui" class="hidden space-y-6">
-                <div id="live-feed-card" class="glass-card rounded-2xl p-8 shadow-xl border-t-4 border-t-blue-500">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-slate-800">Live Status Feed</h2>
-                            <p class="text-slate-500">Real-time updates from the subject</p>
-                        </div>
-                        <div class="flex flex-col items-end">
-                            <span class="text-xs font-bold text-slate-400 uppercase">Last Sync</span>
-                            <span id="last-update-time" class="text-sm font-medium">Never</span>
-                        </div>
-                    </div>
-
-                    <div class="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-8">
-                        <p id="watcher-display-msg" class="text-xl md:text-2xl font-semibold text-blue-900 text-center leading-relaxed">
-                            Awaiting initial broadcast...
-                        </p>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div id="location-box" class="hidden bg-slate-50 rounded-xl p-4 flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">📍</div>
-                                <div>
-                                    <p class="text-xs font-bold text-slate-400 uppercase">Subject Location</p>
-                                    <p id="watcher-display-coords" class="text-sm font-mono text-slate-700">--</p>
-                                </div>
-                            </div>
-                            <a id="gmaps-link" href="#" target="_blank" class="bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-600 px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center">
-                                Open Map
-                            </a>
-                        </div>
-                        <div id="no-location-box" class="bg-slate-100 rounded-xl p-4 text-center text-slate-500 text-sm italic">
-                            No location data available yet.
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-        </main>
+      <button class="secondary" onclick="logout()">Logout</button>
     </div>
 
-    <!-- Notification Toast -->
-    <div id="toast" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center space-x-3 z-50">
-        <span id="toast-msg">Success</span>
+    <!-- WATCHER -->
+    <div id="watcher" class="hidden">
+      <h2>Mum’s View</h2>
+
+      <p>Latest message</p>
+      <div id="msgBox" class="value-box">Waiting for update…</div>
+
+      <p>Last known location</p>
+      <div id="locBox" class="value-box">Waiting for location…</div>
+
+      <button class="secondary" onclick="logout()">Logout</button>
     </div>
 
-    <script type="module">
-        // --- DATA LAYER (Embedded hidden config) ---
-        const CONFIG = {
-            roles: {
-                watched: { pswd: '1122', ui: 'watched-ui' },
-                watcher: { pswd: '1212', ui: 'watcher-ui' }
-            },
-            appId: typeof __app_id !== 'undefined' ? __app_id : 'live-tracker-101'
-        };
+  </div>
+</div>
 
-        // --- FIREBASE SETUP ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js');
-        const { getAuth, signInAnonymously, onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
-        const { getFirestore, doc, setDoc, onSnapshot, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+<script>
+// 🔥 FIREBASE CONFIG (KEEP YOUR VALUES)
+firebase.initializeApp({
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  databaseURL: "YOUR_DB_URL",
+  projectId: "YOUR_ID",
+  storageBucket: "YOUR_BUCKET",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+});
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+const db = firebase.database();
 
-        let currentUserRole = null;
-        let isAuthReady = false;
+// LOGIN
+function login() {
+  if (user.value === "watched" && pass.value === "1122") {
+    show(false, true);
+  } else if (pass.value === "1212") {
+    show(false, false);
+  } else {
+    err.textContent = "Incorrect login details";
+  }
+}
 
-        // Login Handler
-        window.handleLogin = async () => {
-            const role = document.getElementById('role-select').value;
-            const pswd = document.getElementById('passcode-input').value;
-            const errorEl = document.getElementById('login-error');
+function show(_, watchedUser) {
+  login.classList.add("hidden");
+  watchedUser ? watched.classList.remove("hidden") : watcher.classList.remove("hidden");
+}
 
-            if (pswd === CONFIG.roles[role].pswd) {
-                errorEl.classList.add('hidden');
-                currentUserRole = role;
-                
-                // Show App UI
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
-                document.getElementById('display-role').innerText = role;
-                document.getElementById(CONFIG.roles[role].ui).classList.remove('hidden');
+// SEND MESSAGE
+function sendMsg() {
+  db.ref("trip/message").set(msg.value);
+  msg.value = "";
+}
 
-                // Start Auth & Listeners
-                if (!isAuthReady) {
-                    await signInAnonymously(auth);
-                }
-            } else {
-                errorEl.classList.remove('hidden');
-                errorEl.innerText = "Access denied: Incorrect password.";
-            }
-        };
+// SEND LOCATION
+function sendLocation() {
+  navigator.geolocation.getCurrentPosition(p => {
+    const link = `https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`;
+    db.ref("trip/location").set(link);
+    status.textContent = "Location shared successfully";
+  });
+}
 
-        // Watched Logic
-        window.updateStatus = async () => {
-            const msg = document.getElementById('broadcast-msg').value;
-            if (!msg.trim()) return showToast("Enter a message first!");
+// REAL-TIME UPDATES
+db.ref("trip/message").on("value", s => {
+  if (s.exists()) msgBox.textContent = s.val();
+});
 
-            try {
-                const trackingRef = doc(db, 'artifacts', CONFIG.appId, 'public', 'data', 'tracking');
-                await setDoc(trackingRef, {
-                    message: msg,
-                    updatedAt: serverTimestamp()
-                }, { merge: true });
-                
-                document.getElementById('broadcast-msg').value = '';
-                showToast("Message broadcasted!");
-            } catch (err) {
-                console.error(err);
-                showToast("Error sending update.");
-            }
-        };
+db.ref("trip/location").on("value", s => {
+  if (s.exists()) locBox.innerHTML = `<a href="${s.val()}" target="_blank">Open in Google Maps</a>`;
+});
 
-        window.updateLocation = () => {
-            const btn = document.getElementById('loc-btn');
-            const btnText = document.getElementById('loc-btn-text');
-            
-            if (!navigator.geolocation) {
-                return showToast("Geolocation is not supported by your browser");
-            }
+function logout() {
+  location.reload();
+}
+</script>
 
-            btn.disabled = true;
-            btnText.innerText = "Locating...";
-
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const { latitude, longitude } = position.coords;
-                try {
-                    const trackingRef = doc(db, 'artifacts', CONFIG.appId, 'public', 'data', 'tracking');
-                    await setDoc(trackingRef, {
-                        lat: latitude,
-                        lng: longitude,
-                        updatedAt: serverTimestamp()
-                    }, { merge: true });
-                    
-                    showToast("Location synchronized!");
-                } catch (err) {
-                    showToast("Failed to sync location.");
-                } finally {
-                    btn.disabled = false;
-                    btnText.innerText = "Update My Location";
-                }
-            }, (err) => {
-                showToast("Location access denied.");
-                btn.disabled = false;
-                btnText.innerText = "Update My Location";
-            });
-        };
-
-        // Real-time Listener (Universal)
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                isAuthReady = true;
-                const trackingRef = doc(db, 'artifacts', CONFIG.appId, 'public', 'data', 'tracking');
-                
-                onSnapshot(trackingRef, (snap) => {
-                    if (snap.exists()) {
-                        const data = snap.data();
-                        updateUIs(data);
-                    }
-                }, (error) => console.error("Snapshot error:", error));
-            }
-        });
-
-        function updateUIs(data) {
-            const { message, lat, lng, updatedAt } = data;
-            const timeStr = updatedAt ? new Date(updatedAt.seconds * 1000).toLocaleTimeString() : 'Just now';
-
-            // Update Watched UI if active
-            if (currentUserRole === 'watched') {
-                if (message) document.getElementById('watched-current-msg').innerText = `"${message}"`;
-                if (lat && lng) document.getElementById('watched-current-coords').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-            }
-
-            // Update Watcher UI if active
-            if (currentUserRole === 'watcher') {
-                document.getElementById('last-update-time').innerText = timeStr;
-                if (message) {
-                    document.getElementById('watcher-display-msg').innerText = message;
-                }
-                
-                if (lat && lng) {
-                    document.getElementById('location-box').classList.remove('hidden');
-                    document.getElementById('no-location-box').classList.add('hidden');
-                    document.getElementById('watcher-display-coords').innerText = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                    document.getElementById('gmaps-link').href = `https://www.google.com/maps?q=${lat},${lng}`;
-                    
-                    // Add pulse effect to live feed when new location comes in
-                    const feed = document.getElementById('live-feed-card');
-                    feed.classList.add('pulse');
-                    setTimeout(() => feed.classList.remove('pulse'), 2000);
-                }
-            }
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-msg').innerText = msg;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
-        }
-    </script>
 </body>
 </html>
-
-
