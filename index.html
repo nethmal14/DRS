@@ -6,7 +6,6 @@
     <title>DRS-ONE | System</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root {
             --sys-bg: #05070a;
@@ -197,6 +196,23 @@
             border-radius: 4px; font-size: 11px; line-height: 1.4;
         }
         .feed-item { margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px; }
+
+        /* LIVE MAP STYLES */
+        .map-frame-container {
+            width: 100%;
+            height: 250px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--sys-border);
+            margin-top: 10px;
+            background: #000;
+        }
+        .map-frame-container iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            filter: grayscale(1) invert(0.9) contrast(1.2); /* Cyberpunk map look */
+        }
     </style>
 </head>
 <body>
@@ -289,6 +305,8 @@
     <!-- Watcher View -->
     <div id="view-monitor" class="view">
         <h2 class="mono" style="font-size: 14px; color: var(--sys-accent); margin-bottom: 2rem;">drs.monitor</h2>
+        
+        <!-- ENHANCED MONITOR STREAM WITH LIVE MAP -->
         <div id="monitor-stream"></div>
         
         <div class="sys-card">
@@ -411,7 +429,11 @@
                 Notification.requestPermission();
             }
 
-            setTimeout(() => document.getElementById('loader').style.display='none', 800);
+            setTimeout(() => {
+                const loader = document.getElementById('loader');
+                if (loader) loader.style.display='none';
+            }, 800);
+
             const role = localStorage.getItem('drs_v3_role');
             if (role) startSession(role);
             else document.getElementById('view-login').style.display = 'flex';
@@ -438,25 +460,19 @@
             
             if (role === 'traveler') {
                 db.ref('trip/presence/watcher').on('value', snap => {
-                    document.getElementById('watcher-eye').style.display = snap.val() ? 'block' : 'none';
+                    const eye = document.getElementById('watcher-eye');
+                    if (eye) eye.style.display = snap.val() ? 'block' : 'none';
                 });
 
-                // PERSISTENT CALL LISTENER
                 db.ref('trip/call_request').on('value', snap => {
                     const req = snap.val(); 
                     const zone = document.getElementById('comms-alert-zone');
-                    
-                    // Logic: Must be active AND within the last 30 minutes to prevent ancient alerts
                     const isRecent = req && (Date.now() - req.ts < 1800000);
-
                     if (req && req.active && isRecent) {
                         const phone = localStorage.getItem('drs_phone');
-                        
-                        // Native Push Simulation
                         if (Notification.permission === "granted" && document.hidden) {
                             new Notification("DRS_ONE: CALL REQUEST", { body: "Watcher is requesting urgent voice uplink." });
                         }
-
                         zone.innerHTML = `
                             <div class="sys-card alert-card">
                                 <span class="label" style="color:var(--sys-alert)">CRITICAL_COMMS_REQUEST</span>
@@ -485,13 +501,18 @@
         function initWatcher() {
             db.ref('trip/location').on('value', snap => {
                 const loc = snap.val(); if (!loc) return;
+                const mapUrl = `https://maps.google.com/maps?q=${loc.lat},${loc.lng}&z=15&output=embed&t=m`;
                 document.getElementById('monitor-stream').innerHTML = `
                     <div class="sys-card">
                         <span class="label">node.coords</span>
-                        <h3 class="mono">${loc.lat}, ${loc.lng}</h3>
-                        <a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:10px; text-decoration:none;">TRACE MAP</a>
+                        <h3 class="mono">${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}</h3>
+                        <div class="map-frame-container">
+                            <iframe src="${mapUrl}" allowfullscreen loading="lazy"></iframe>
+                        </div>
+                        <a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:15px; text-decoration:none;">OPEN FULL MAP</a>
                     </div>`;
             });
+
             const feedContainer = document.getElementById('status-feed');
             db.ref('trip/status_feed').limitToLast(10).on('child_added', snap => {
                 const data = snap.val();
@@ -505,10 +526,7 @@
         }
 
         function requestCall() { 
-            db.ref('trip/call_request').set({ 
-                active: true, 
-                ts: Date.now() 
-            }); 
+            db.ref('trip/call_request').set({ active: true, ts: Date.now() }); 
             showToast("UPLINK REQUESTED"); 
         }
 
@@ -516,13 +534,24 @@
             db.ref('trip/call_request').update({ active: false }); 
         }
 
-        // --- YT AUDIO ENGINE ---
-        function onYouTubeIframeAPIReady() {
+        // --- FIXED AUDIO ENGINE ---
+        window.onYouTubeIframeAPIReady = function() {
             player = new YT.Player('yt-player', {
-                playerVars: { 'listType': 'playlist', 'autoplay': 0, 'enablejsapi': 1, 'controls': 0, 'playsinline': 1 },
-                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
+                playerVars: { 
+                    'listType': 'playlist', 
+                    'autoplay': 0, 
+                    'enablejsapi': 1, 
+                    'controls': 0, 
+                    'playsinline': 1,
+                    'origin': window.location.origin
+                },
+                events: { 
+                    'onReady': onPlayerReady, 
+                    'onStateChange': onPlayerStateChange 
+                }
             });
-        }
+        };
+
         function onPlayerReady(e) {
             if (currentPlaylistId) {
                 e.target.cuePlaylist({ list: parsePlaylistId(currentPlaylistId) });
@@ -530,36 +559,60 @@
                 document.getElementById('audio-status').innerText = "ENGINE READY";
             }
         }
-        function parsePlaylistId(url) { return url.includes('list=') ? new URLSearchParams(url.split('?')[1]).get('list') : url; }
+
+        function parsePlaylistId(url) { 
+            if (url.includes('list=')) {
+                return new URLSearchParams(url.split('?')[1]).get('list');
+            }
+            return url; 
+        }
+
         function onPlayerStateChange(event) {
-            const btnMini = document.getElementById('m-play'), btnExp = document.getElementById('exp-play');
+            const btnMini = document.getElementById('m-play');
+            const btnExp = document.getElementById('exp-play');
             if (event.data == YT.PlayerState.PLAYING) {
                 isPlaying = true; pulseMusic();
                 const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-                btnMini.innerHTML = icon; btnExp.innerHTML = icon; updateMediaMetadata();
+                if(btnMini) btnMini.innerHTML = icon; 
+                if(btnExp) btnExp.innerHTML = icon; 
+                updateMediaMetadata();
             } else {
                 isPlaying = false; musicIntensity = 0;
                 const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-                btnMini.innerHTML = icon; btnExp.innerHTML = icon;
+                if(btnMini) btnMini.innerHTML = icon; 
+                if(btnExp) btnExp.innerHTML = icon;
             }
         }
+
         function pulseMusic() {
             if (!isPlaying) { musicIntensity = 0; return; }
             musicIntensity = 0.2 + Math.random() * 0.8; 
             setTimeout(pulseMusic, 80);
         }
+
         function updateMediaMetadata() {
             const data = player.getVideoData();
-            document.getElementById('track-title').innerText = data.title;
-            document.getElementById('exp-title').innerText = data.title;
-            document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/maxresdefault.jpg`;
+            const trackTitle = document.getElementById('track-title');
+            const expTitle = document.getElementById('exp-title');
+            const expThumb = document.getElementById('exp-thumb');
+            if(trackTitle) trackTitle.innerText = data.title;
+            if(expTitle) expTitle.innerText = data.title;
+            if(expThumb) expThumb.src = `https://img.youtube.com/vi/${data.video_id}/maxresdefault.jpg`;
         }
+
         function primeAudio() {
             if (!currentPlaylistId) return showToast("SELECT PLAYLIST");
             player.loadPlaylist({ list: parsePlaylistId(currentPlaylistId) });
-            audioPrimed = true; document.getElementById('prime-btn').style.display = 'none';
+            audioPrimed = true; 
+            const primeBtn = document.getElementById('prime-btn');
+            if(primeBtn) primeBtn.style.display = 'none';
         }
-        function togglePlay() { if (!audioPrimed) return primeAudio(); isPlaying ? player.pauseVideo() : player.playVideo(); }
+
+        function togglePlay() { 
+            if (!audioPrimed) return primeAudio(); 
+            isPlaying ? player.pauseVideo() : player.playVideo(); 
+        }
+
         function openExpanded() { document.getElementById('media-expanded').style.display = 'flex'; }
         function closeExpanded() { document.getElementById('media-expanded').style.display = 'none'; }
         
@@ -595,20 +648,26 @@
         function deletePlaylist(idx) { playlists.splice(idx, 1); localStorage.setItem('drs_playlists', JSON.stringify(playlists)); renderPlaylists(); }
         function initTraveler() {
             navigator.geolocation.getCurrentPosition(pos => {
-                document.getElementById('loc-display').innerText = `${pos.coords.latitude.toFixed(3)}N, ${pos.coords.longitude.toFixed(3)}E`;
+                const locDisplay = document.getElementById('loc-display');
+                if(locDisplay) locDisplay.innerText = `${pos.coords.latitude.toFixed(3)}N, ${pos.coords.longitude.toFixed(3)}E`;
             });
         }
         async function pushGps() {
             navigator.geolocation.getCurrentPosition(async pos => {
                 await db.ref('trip/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts: new Date().toISOString() });
-                document.getElementById('ping-ts').innerText = "SYNC: " + new Date().toLocaleTimeString();
+                const pingTs = document.getElementById('ping-ts');
+                if(pingTs) pingTs.innerText = "SYNC: " + new Date().toLocaleTimeString();
                 showToast("SYNC COMPLETE");
             });
         }
         function showToast(m) {
-            const t = document.getElementById('toast'); t.innerText = m; t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 2000);
+            const t = document.getElementById('toast'); 
+            if(t) {
+                t.innerText = m; t.style.display = 'block';
+                setTimeout(() => t.style.display = 'none', 2000);
+            }
         }
     </script>
+    <script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
