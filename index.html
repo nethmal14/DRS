@@ -6,7 +6,6 @@
     <title>DRS-ONE | System</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <!-- YouTube API for audio control -->
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root {
@@ -34,7 +33,6 @@
 
         .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
 
-        /* Views */
         .view {
             display: none; width: 100%; max-width: 540px; margin: 0 auto;
             padding: 2rem 1.5rem calc(8rem + var(--safe-bottom));
@@ -79,11 +77,7 @@
         .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
 
         /* Weather Animations */
-        .weather-anim {
-            position: absolute; inset: 0; opacity: 0.15; pointer-events: none; z-index: 1;
-        }
-        
-        /* Cloud Animation */
+        .weather-anim { position: absolute; inset: 0; opacity: 0.15; pointer-events: none; z-index: 1; }
         .clouds-bg::after {
             content: ""; position: absolute; top: 0; left: -100%; width: 200%; height: 100%;
             background: radial-gradient(circle, #fff 10%, transparent 40%), radial-gradient(circle, #fff 5%, transparent 30%);
@@ -92,19 +86,14 @@
         }
         @keyframes drift { to { transform: translateX(50%); } }
 
-        /* Rain Animation */
         .rain-bg::after {
             content: ""; position: absolute; inset: 0;
             background-image: linear-gradient(transparent, #fff);
             background-size: 1px 20px;
             animation: rain 0.3s linear infinite;
         }
-        @keyframes rain { 
-            0% { background-position: 0 0; }
-            100% { background-position: 5px 100px; }
-        }
+        @keyframes rain { 0% { background-position: 0 0; } 100% { background-position: 5px 100px; } }
 
-        /* Sun/Clear Pulse */
         .clear-bg { 
             background: radial-gradient(circle at 80% 20%, rgba(255,200,0,0.15) 0%, transparent 60%); 
             animation: glow 4s ease-in-out infinite alternate;
@@ -133,7 +122,6 @@
         .media-controls { display: flex; gap: 15px; align-items: center; }
         .m-btn { background: none; border: none; color: #fff; cursor: pointer; padding: 5px; }
 
-        /* HUD Navigation */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: var(--sys-surface); border-top: 1px solid var(--sys-border);
@@ -146,7 +134,7 @@
         }
         .nav-item.active { color: var(--sys-accent); font-weight: bold; }
 
-        #yt-player { position: absolute; top: -999px; left: -999px; visibility: hidden; }
+        #yt-player { position: absolute; top: -9999px; left: -9999px; }
 
         #loader {
             position: fixed; inset: 0; background: var(--sys-bg); z-index: 9999;
@@ -165,14 +153,14 @@
 <body>
 
     <div id="loader"><div class="spin"></div></div>
-    <div id="yt-player"></div>
+    <div id="yt-player-container"><div id="yt-player"></div></div>
 
     <!-- LOGIN -->
     <div id="view-login" class="view auth-container">
         <div style="width: 100%;">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h1 class="mono" style="font-size: 20px; margin: 0; color: var(--sys-accent);">drs.one</h1>
-                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.4.0-stable</p>
+                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.4.1-audio-fix</p>
             </div>
             <div class="sys-card">
                 <span class="label">ssh_identity</span>
@@ -212,9 +200,10 @@
             </div>
         </div>
 
-        <div class="sys-card">
+        <div class="sys-card" id="audio-card">
             <span class="label">system.audio_service</span>
-            <div id="audio-status" class="mono" style="font-size: 11px;">Waiting for playlist id...</div>
+            <div id="audio-status" class="mono" style="font-size: 11px;">Tap any button to initialize audio.</div>
+            <button class="btn btn-ghost mono" style="margin-top:10px; font-size:10px;" onclick="togglePlay()">WAKE AUDIO ENGINE</button>
         </div>
     </div>
 
@@ -224,11 +213,6 @@
         <div class="sys-card" style="text-align: center; padding: 30px 20px;">
             <button class="btn btn-primary" id="gps-trigger">Push GPS Burst</button>
             <p id="ping-ts" class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 20px;">link.state: READY</p>
-        </div>
-        <div class="sys-card">
-            <span class="label">uplink.manual_log</span>
-            <input type="text" id="log-in" placeholder="Entry data...">
-            <button class="btn btn-ghost" id="log-trigger">Commit Log</button>
         </div>
     </div>
 
@@ -288,10 +272,11 @@
 
         let db, player;
         let isPlaying = false;
+        let audioPrimed = false;
 
         document.addEventListener('DOMContentLoaded', () => {
             try {
-                const app = firebase.initializeApp(config);
+                firebase.initializeApp(config);
                 db = firebase.database();
             } catch (e) { console.error(e); }
 
@@ -301,31 +286,23 @@
             if (role) { startSession(role); } 
             else { document.getElementById('view-login').style.display = 'flex'; }
 
-            if ("Notification" in window && Notification.permission !== "granted") {
-                Notification.requestPermission();
-            }
-
-            // Global Media Listeners
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.setActionHandler('play', () => togglePlay());
-                navigator.mediaSession.setActionHandler('pause', () => togglePlay());
-                navigator.mediaSession.setActionHandler('nexttrack', () => player && player.nextVideo());
-                navigator.mediaSession.setActionHandler('previoustrack', () => player && player.previousVideo());
-            }
-
             document.getElementById('login-trigger').onclick = handleLogin;
             document.getElementById('config-save').onclick = saveConfig;
             document.getElementById('gps-trigger').onclick = pushGps;
-            document.getElementById('log-trigger').onclick = pushLog;
             document.getElementById('m-play').onclick = togglePlay;
             document.getElementById('m-next').onclick = () => player && player.nextVideo();
         });
 
-        // --- YT AUDIO INTEGRATION ---
+        // --- MEDIA SESSION & YOUTUBE ---
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('yt-player', {
                 height: '0', width: '0',
-                playerVars: { 'listType': 'playlist', 'autoplay': 0 },
+                playerVars: { 
+                    'listType': 'playlist', 
+                    'autoplay': 0, 
+                    'enablejsapi': 1,
+                    'origin': window.location.origin 
+                },
                 events: {
                     'onReady': onPlayerReady,
                     'onStateChange': onPlayerStateChange
@@ -336,31 +313,48 @@
         function onPlayerReady(event) {
             const savedYt = localStorage.getItem('drs_yt');
             if (savedYt) {
+                // We use cue first, we will load on first interaction
                 event.target.cuePlaylist({ list: savedYt });
                 document.getElementById('media-bar').style.display = 'flex';
+                initMediaSession();
             }
+        }
+
+        function initMediaSession() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.setActionHandler('play', () => togglePlay());
+                navigator.mediaSession.setActionHandler('pause', () => togglePlay());
+                navigator.mediaSession.setActionHandler('nexttrack', () => player.nextVideo());
+                navigator.mediaSession.setActionHandler('previoustrack', () => player.previousVideo());
+            }
+        }
+
+        function updateMediaMetadata() {
+            if (!('mediaSession' in navigator) || !player) return;
+            
+            const data = player.getVideoData();
+            const trackTitle = data.title || "DRS-ONE Service";
+            
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: trackTitle,
+                artist: 'DRS-ONE System',
+                album: 'Node Audio',
+                artwork: [
+                    { src: 'https://via.placeholder.com/96/58a6ff/000000?text=DRS', sizes: '96x96', type: 'image/png' },
+                    { src: 'https://via.placeholder.com/512/58a6ff/000000?text=DRS', sizes: '512x512', type: 'image/png' }
+                ]
+            });
+            document.getElementById('track-title').innerText = trackTitle;
         }
 
         function onPlayerStateChange(event) {
             const btn = document.getElementById('m-play');
-            const data = player.getVideoData();
-            const trackTitle = data.title || "DRS-ONE Audio";
             
             if (event.data == YT.PlayerState.PLAYING) {
                 isPlaying = true;
                 btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-                document.getElementById('track-title').innerText = trackTitle;
-                
-                // Update System Media Center
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.playbackState = "playing";
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: trackTitle,
-                        artist: 'DRS-ONE System',
-                        album: 'Audio Service',
-                        artwork: [{ src: 'https://via.placeholder.com/512/58a6ff/000000?text=DRS', sizes: '512x512', type: 'image/png' }]
-                    });
-                }
+                updateMediaMetadata();
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
             } else {
                 isPlaying = false;
                 btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -372,9 +366,23 @@
 
         function togglePlay() {
             if (!player) return;
-            isPlaying ? player.pauseVideo() : player.playVideo();
+            
+            // Critical: Prime the audio on first tap
+            if (!audioPrimed) {
+                const savedYt = localStorage.getItem('drs_yt');
+                player.loadPlaylist({ list: savedYt });
+                audioPrimed = true;
+                return;
+            }
+
+            if (isPlaying) {
+                player.pauseVideo();
+            } else {
+                player.playVideo();
+            }
         }
 
+        // --- CORE LOGIC ---
         function handleLogin() {
             const u = document.getElementById('user-in').value.toLowerCase().trim();
             const p = document.getElementById('pass-in').value.trim();
@@ -407,16 +415,15 @@
             document.getElementById(`view-${v}`).style.display = 'block';
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             const map = {'home': 0, 'uplink': 1, 'config': 2};
-            document.querySelectorAll('.nav-item')[map[v]].classList.add('active');
+            if(map[v] !== undefined) document.querySelectorAll('.nav-item')[map[v]].classList.add('active');
         };
 
-        // --- TRAVELER ---
         function initTraveler() {
             fetchWeather();
             const savedYt = localStorage.getItem('drs_yt');
             if (savedYt) {
                 document.getElementById('yt-in').value = savedYt;
-                document.getElementById('audio-status').innerText = `Service mapped to: ${savedYt}`;
+                document.getElementById('audio-status').innerText = `READY: ${savedYt}`;
             }
 
             db.ref('trip/alerts').on('value', snap => {
@@ -426,9 +433,6 @@
                 if (data) {
                     Object.keys(data).forEach(id => {
                         const msg = data[id].text;
-                        if (document.hidden && Notification.permission === "granted") {
-                            new Notification("DRS-ONE: Priority Alert", { body: msg });
-                        }
                         const div = document.createElement('div');
                         div.className = 'sys-card';
                         div.style.borderLeft = '3px solid var(--sys-accent)';
@@ -449,42 +453,33 @@
                 try {
                     const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,weathercode&forecast_days=1`);
                     const data = await res.json();
-                    
                     const code = data.current_weather.weathercode;
-                    const temp = Math.round(data.current_weather.temperature);
-                    const desc = interpretWeatherCode(code);
-                    
-                    document.getElementById('temp-display').innerText = `${temp}°C`;
-                    document.getElementById('weather-display').innerText = desc.toUpperCase();
+                    document.getElementById('temp-display').innerText = `${Math.round(data.current_weather.temperature)}°C`;
+                    document.getElementById('weather-display').innerText = interpretWeatherCode(code).toUpperCase();
                     applyWeatherEffect(code);
 
                     const strip = document.getElementById('forecast-strip');
                     strip.innerHTML = '';
-                    const next3 = data.hourly.temperature_2m.slice(0, 6);
-                    next3.forEach((t, i) => {
+                    data.hourly.temperature_2m.slice(0, 6).forEach((t, i) => {
                         const div = document.createElement('div');
-                        div.style.textAlign = 'center';
-                        div.style.minWidth = '50px';
+                        div.style.textAlign = 'center'; div.style.minWidth = '50px';
                         div.innerHTML = `<div style="font-size:9px; color:var(--sys-dim)">+${i+1}h</div><div style="font-size:12px">${Math.round(t)}°</div>`;
                         strip.appendChild(div);
                     });
-
-                } catch(e) { console.error("Weather Error", e); }
+                } catch(e) {}
 
                 try {
                     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
                     const data = await res.json();
-                    document.getElementById('loc-display').innerText = (data.address.city || data.address.town || data.address.village || "REMOTE").toUpperCase();
+                    document.getElementById('loc-display').innerText = (data.address.city || data.address.town || "REMOTE").toUpperCase();
                 } catch(e) {}
             });
         }
 
         function interpretWeatherCode(code) {
-            if (code === 0) return "Clear Sky";
+            if (code === 0) return "Clear";
             if (code <= 3) return "Cloudy";
             if (code >= 51 && code <= 67) return "Rainy";
-            if (code >= 71 && code <= 77) return "Snow";
-            if (code >= 80) return "Stormy";
             return "Stable";
         }
 
@@ -509,19 +504,10 @@
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const ts = new Date().toISOString();
                 await db.ref('trip/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts });
-                await db.ref('trip/logs').push({ text: "GPS_UPLINK_SUCCESS", ts });
                 document.getElementById('ping-ts').innerText = "link.last_sync: " + new Date().toLocaleTimeString();
                 btn.innerHTML = "Push GPS Burst";
                 showToast("SYNC COMPLETE");
             });
-        }
-
-        async function pushLog() {
-            const val = document.getElementById('log-in').value.trim();
-            if (!val) return;
-            await db.ref('trip/logs').push({ text: val, ts: new Date().toISOString() });
-            document.getElementById('log-in').value = '';
-            showToast("LOG_ACK");
         }
 
         window.ackAlert = async (id) => { await db.ref(`trip/alerts/${id}`).remove(); };
@@ -532,43 +518,14 @@
                 if (!data) return;
                 const loc = data.location;
                 const logs = data.logs ? Object.values(data.logs).reverse().slice(0, 5) : [];
-
-                let html = `
-                    <div class="sys-card">
-                        <span class="label">node.coords</span>
-                        <h3 class="mono" style="margin:5px 0; font-size:16px;">${loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : 'OFFLINE'}</h3>
-                        <p class="mono" style="font-size:10px; color:var(--sys-dim);">ref: ${loc ? new Date(loc.ts).toLocaleTimeString() : '---'}</p>
-                        ${loc ? `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:15px; text-decoration:none;">TRACE MAP</a>` : ''}
-                    </div>
-                    <div class="sys-card">
-                        <span class="label">cmd.send</span>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                            <button class="btn btn-ghost mono" style="font-size:10px;" onclick="sendPing('REQ_VOICE_COMMS')">VOICE</button>
-                            <button class="btn btn-ghost mono" style="font-size:10px;" onclick="sendPing('REQ_GPS_REFRESH')">PING</button>
-                        </div>
-                    </div>
-                    <div class="sys-card"><span class="label">node.log_stream</span>
-                `;
-                logs.forEach(l => {
-                    html += `<div style="padding:8px 0; border-bottom:1px solid var(--sys-border);">
-                        <div class="mono" style="font-size:11px; color:#fff;">${l.text}</div>
-                        <div class="mono" style="font-size:9px; color:var(--sys-dim); margin-top:4px;">${new Date(l.ts).toLocaleTimeString()}</div>
-                    </div>`;
-                });
-                html += '</div>';
+                let html = `<div class="sys-card"><span class="label">node.coords</span><h3 class="mono" style="margin:5px 0; font-size:16px;">${loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : 'OFFLINE'}</h3><a href="https://www.google.com/maps?q=${loc?.lat},${loc?.lng}" target="_blank" class="btn btn-primary" style="margin-top:15px; text-decoration:none;">TRACE MAP</a></div>`;
                 document.getElementById('monitor-stream').innerHTML = html;
             });
         }
 
-        window.sendPing = async (txt) => {
-            await db.ref('trip/alerts').push({ text: txt, ts: new Date().toISOString() });
-            showToast("CMD_SENT");
-        };
-
         function showToast(m) {
             const t = document.getElementById('toast');
-            t.innerText = m;
-            t.style.display = 'block';
+            t.innerText = m; t.style.display = 'block';
             setTimeout(() => t.style.display = 'none', 2000);
         }
     </script>
