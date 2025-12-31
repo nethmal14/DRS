@@ -12,66 +12,76 @@
             --ubuntu-orange: #E95420;
             --ubuntu-dark: #1a0614;
             --ubuntu-bg: #0c0c0c;
-            --panel-bg: rgba(20, 20, 25, 0.85);
+            --panel-bg: rgba(25, 25, 30, 0.7);
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
             --text-main: #f0f0f0;
             --text-dim: #9b958f;
-            --radius: 16px;
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --radius: 20px;
+            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Ubuntu', -apple-system, sans-serif; background: var(--ubuntu-bg); color: var(--text-main); overflow: hidden; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Ubuntu', sans-serif; background: var(--ubuntu-bg); color: var(--text-main); overflow: hidden; }
 
-        /* --- BACKGROUND LAYER (Z-INDEX 0) --- */
-        #global-bg { position: fixed; inset: 0; z-index: 0; background: linear-gradient(to bottom, #030812, #0d1621); overflow: hidden; }
-        .moon { position: absolute; top: 40px; right: 40px; width: 60px; height: 60px; background: #fdfae5; border-radius: 50%; box-shadow: 0 0 50px 15px rgba(253, 250, 229, 0.2); z-index: 1; }
+        /* --- BACKGROUND LAYER --- */
+        #global-bg { position: fixed; inset: 0; z-index: 0; background: linear-gradient(to bottom, #02040a, #0d121d); overflow: hidden; }
+        .moon { position: absolute; top: 40px; right: 40px; width: 60px; height: 60px; background: #fffdf2; border-radius: 50%; box-shadow: 0 0 60px 20px rgba(255, 253, 242, 0.15); z-index: 1; }
         .forest { position: absolute; bottom: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
-        .tree { position: absolute; bottom: 0; width: 2px; background: #05080a; transform-origin: bottom; }
-        .tree::before { content: ''; position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 100px solid #05080a; }
-        canvas#fireflies { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0.5; }
+        .tree { position: absolute; bottom: 0; width: 2px; background: #040608; transform-origin: bottom; }
+        .tree::before { content: ''; position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 90px solid #040608; }
+        canvas#fireflies { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0.6; }
 
-        /* --- AUTH & UI SHELL --- */
-        #auth-overlay { position: fixed; inset: 0; z-index: 1000; background: radial-gradient(circle at center, var(--ubuntu-dark), black); display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .auth-card { background: var(--panel-bg); padding: 40px 30px; border-radius: 24px; width: 100%; max-width: 360px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); text-align: center; }
-        input { width: 100%; padding: 16px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; font-size: 16px; outline: none; margin-bottom: 20px; }
-        button { width: 100%; padding: 16px; background: var(--ubuntu-orange); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); }
+        /* --- AUTH --- */
+        #auth-overlay { position: fixed; inset: 0; z-index: 2000; background: #000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .auth-card { background: var(--panel-bg); padding: 40px 30px; border-radius: 24px; width: 100%; max-width: 340px; backdrop-filter: blur(25px); border: 1px solid var(--glass-border); text-align: center; }
         
-        #app-shell { display: none; height: 100dvh; flex-direction: column; position: relative; z-index: 10; }
-        header { padding: 15px 20px; background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        main { flex: 1; overflow-y: auto; padding: 20px; position: relative; }
-        .view { display: none; animation: fadeIn 0.4s ease; }
-        .view.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* --- UI ELEMENTS --- */
+        input { width: 100%; padding: 14px 18px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 12px; color: white; font-size: 16px; margin-bottom: 15px; }
+        button { width: 100%; padding: 14px; background: var(--ubuntu-orange); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); }
+        button:active { transform: scale(0.97); opacity: 0.9; }
 
-        /* --- CARDS & LISTS --- */
-        .card { background: var(--panel-bg); backdrop-filter: blur(15px); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
-        .list-item { padding: 14px; background: rgba(255,255,255,0.03); margin-bottom: 8px; border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; transition: var(--transition); }
-        .list-item:active { background: rgba(233, 84, 32, 0.1); }
+        #app-shell { display: none; height: 100dvh; flex-direction: column; position: relative; z-index: 10; }
+        header { padding: 18px 24px; background: rgba(0,0,0,0.3); backdrop-filter: blur(15px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); }
+        main { flex: 1; overflow-y: auto; padding: 20px; position: relative; scroll-behavior: smooth; }
+        
+        .view { display: none; animation: viewIn 0.5s ease-out; }
+        .view.active { display: block; }
+        @keyframes viewIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- CARDS (GLASSMORPISM) --- */
+        .card { background: var(--panel-bg); backdrop-filter: blur(20px); border-radius: var(--radius); padding: 22px; margin-bottom: 20px; border: 1px solid var(--glass-border); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .card-label { font-size: 10px; font-weight: 700; color: var(--ubuntu-orange); letter-spacing: 1.5px; margin-bottom: 12px; text-transform: uppercase; }
+
+        .list-item { padding: 15px; background: rgba(255,255,255,0.03); margin-bottom: 10px; border-radius: 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; transition: var(--transition); }
+        .list-item:active { transform: scale(0.98); background: rgba(255,255,255,0.07); }
+        .list-item.selected { border-color: var(--ubuntu-orange); background: rgba(233, 84, 32, 0.1); }
 
         /* --- NAVIGATION --- */
-        nav { height: 70px; background: rgba(10, 10, 12, 0.95); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); z-index: 100; }
-        .nav-item { color: var(--text-dim); text-decoration: none; font-size: 10px; display: flex; flex-direction: column; align-items: center; }
-        .nav-item.active { color: var(--ubuntu-orange); }
+        nav { height: 75px; background: rgba(10, 10, 15, 0.9); backdrop-filter: blur(20px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--glass-border); z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { color: var(--text-dim); text-decoration: none; font-size: 10px; display: flex; flex-direction: column; align-items: center; font-weight: 500; transition: var(--transition); gap: 4px; }
+        .nav-item span { font-size: 20px; }
+        .nav-item.active { color: var(--ubuntu-orange); transform: translateY(-2px); }
 
-        /* --- MEDIA CONTROLS (EXPANDABLE) --- */
-        #media-container { position: fixed; bottom: 85px; left: 20px; right: 20px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; }
+        /* --- MEDIA CONTROLS --- */
+        #media-container { position: fixed; bottom: 95px; left: 20px; right: 20px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; }
         
-        #music-fab { width: 56px; height: 56px; background: var(--ubuntu-orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.4); cursor: pointer; transition: var(--transition); }
-        #music-fab.open { transform: rotate(45deg); background: #333; }
+        #music-fab { width: 60px; height: 60px; background: var(--ubuntu-orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); cursor: pointer; transition: var(--transition); z-index: 60; }
+        #music-fab.open { transform: rotate(45deg); background: #222; }
 
-        #player-panel { width: 100%; background: var(--panel-bg); backdrop-filter: blur(25px); border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 12px; overflow: hidden; max-height: 0; opacity: 0; transition: var(--transition); pointer-events: none; }
-        #player-panel.visible { max-height: 400px; opacity: 1; pointer-events: auto; transform: translateY(0); }
+        #player-panel { width: 100%; background: var(--panel-bg); backdrop-filter: blur(30px); border-radius: 24px; border: 1px solid var(--glass-border); margin-bottom: 15px; overflow: hidden; max-height: 0; opacity: 0; transform: translateY(20px); transition: var(--transition); pointer-events: none; }
+        #player-panel.visible { max-height: 420px; opacity: 1; pointer-events: auto; transform: translateY(0); }
 
-        .player-header { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
-        .track-title { font-size: 14px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-header { padding: 20px; border-bottom: 1px solid var(--glass-border); }
+        .track-title { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        .controls-row { display: flex; justify-content: center; gap: 20px; padding: 15px; }
-        .btn-ctrl { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .btn-ctrl svg { width: 20px; height: 20px; fill: white; }
+        .controls-row { display: flex; justify-content: center; gap: 25px; padding: 20px; }
+        .btn-ctrl { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 50%; background: rgba(255,255,255,0.05); }
+        .btn-ctrl svg { width: 22px; height: 22px; fill: white; }
 
-        .queue-list { max-height: 180px; overflow-y: auto; padding: 0 10px 15px 10px; font-size: 12px; }
-        .queue-item { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-dim); display: flex; gap: 10px; }
-        .queue-item.active { color: var(--ubuntu-orange); font-weight: bold; }
+        .queue-list { max-height: 180px; overflow-y: auto; padding: 0 15px 20px 15px; }
+        .queue-item { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-dim); display: flex; gap: 12px; font-size: 12px; align-items: center; }
+        .queue-item.active { color: var(--ubuntu-orange); background: rgba(233, 84, 32, 0.05); border-radius: 8px; }
 
         #yt-player-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
         .hidden { display: none !important; }
@@ -85,67 +95,81 @@
         <canvas id="fireflies"></canvas>
     </div>
 
-    <!-- YOUTUBE PLAYER HIDDEN -->
     <div id="yt-player-hidden"></div>
 
+    <!-- AUTH SECTION -->
     <div id="auth-overlay">
         <div class="auth-card">
-            <h2 style="margin: 0 0 30px 0; font-weight: 300; letter-spacing: 1px;">TripTracker</h2>
+            <h2 style="margin: 0 0 30px 0; font-weight: 300; letter-spacing: 2px;">TripTracker</h2>
             <input type="text" id="login-user" placeholder="watched / watcher">
             <input type="password" id="login-pass" placeholder="••••">
-            <button onclick="app.login()">Connect</button>
-            <div id="login-error" style="color: #ff6b6b; font-size: 12px; margin-top: 15px; display: none;">Invalid credentials</div>
+            <button onclick="app.login()">Initialize System</button>
+            <div id="login-error" style="color: #ff6b6b; font-size: 12px; margin-top: 15px; display: none;">Access Denied: Invalid Credentials</div>
         </div>
     </div>
 
+    <!-- MAIN APP SHELL -->
     <div id="app-shell">
         <header>
-            <span style="font-weight: 800; font-size: 12px; letter-spacing: 1px;">SYSTEM // MEDIA</span>
-            <div onclick="app.logout()" style="color: var(--ubuntu-orange); font-size: 11px; cursor: pointer;">LOGOUT</div>
+            <span style="font-weight: 800; font-size: 11px; letter-spacing: 2px; color: var(--ubuntu-orange);">CORE // CONNECTED</span>
+            <div onclick="app.logout()" style="color: var(--text-dim); font-size: 11px; cursor: pointer; font-weight: 700;">EXIT</div>
         </header>
 
-        <main>
-            <!-- DASHBOARD (TRAVELER) -->
+        <main id="view-container">
+            <!-- WATCHED DASHBOARD -->
             <div id="view-dash" class="view active">
                 <div class="card">
-                    <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 10px;">TELEMETRY</div>
-                    <div id="loc-status" style="font-size: 24px;">Syncing...</div>
-                    <div id="loc-coords" style="font-size: 12px; color: var(--text-dim); margin-top: 5px;">---</div>
+                    <div class="card-label">Real-time Telemetry</div>
+                    <div id="loc-status" style="font-size: 28px; font-weight: 600; margin-bottom: 5px;">Awaiting GPS...</div>
+                    <div id="loc-ts" style="font-size: 11px; color: var(--text-dim);">Last Update: ---</div>
+                    <button onclick="app.updateLocationManual()" style="margin-top: 20px; background: rgba(255,255,255,0.1);">Force Update</button>
                 </div>
-            </div>
 
-            <!-- MEDIA VIEW -->
-            <div id="view-media" class="view">
                 <div class="card">
-                    <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">SELECT STREAM</div>
-                    <div id="media-playlist-selector"></div>
+                    <div class="card-label">Watcher Comms</div>
+                    <div id="msg-stream" style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;">
+                        <div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px;">No messages from watchers yet.</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- DATA VIEW -->
+            <!-- MEDIA VIEW (IMMERSIVE) -->
+            <div id="view-media" class="view">
+                <div style="text-align: center; margin-top: 50px;">
+                    <div style="font-size: 12px; color: var(--ubuntu-orange); letter-spacing: 2px; margin-bottom: 10px;">IMMERSIVE MODE</div>
+                    <h2 id="active-stream-title" style="font-weight: 300;">No Stream Active</h2>
+                    <p id="active-stream-desc" style="font-size: 13px; color: var(--text-dim); max-width: 240px; margin: 0 auto;">Select a playlist from the Data page to begin playback.</p>
+                </div>
+            </div>
+
+            <!-- DATA VIEW (PLAYLIST SELECTOR) -->
             <div id="view-data" class="view">
                 <div class="card">
-                    <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">ADD YOUTUBE PLAYLIST ID</div>
-                    <input type="text" id="pl-name" placeholder="Playlist Title" style="margin-bottom:10px;">
-                    <input type="text" id="pl-id" placeholder="YouTube Playlist ID (e.g. PL...)" style="margin-bottom:15px;">
-                    <button onclick="app.addPlaylist()">Save to Cloud</button>
+                    <div class="card-label">Stream Configuration</div>
+                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px;">Select a global playlist to sync across the trip.</p>
+                    <div id="playlist-library"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-label">Register New Source</div>
+                    <input type="text" id="pl-name" placeholder="Friendly Name">
+                    <input type="text" id="pl-id" placeholder="YouTube Playlist ID">
+                    <button onclick="app.addPlaylist()">Commit to Cloud</button>
                 </div>
             </div>
         </main>
 
-        <!-- FLOATING MEDIA CONTROLS -->
+        <!-- FLOATING CONTROLS -->
         <div id="media-container" class="hidden">
             <div id="player-panel">
                 <div class="player-header">
-                    <div class="track-info">
-                        <div class="track-title" id="current-track-name">Loading Stream...</div>
-                        <div style="font-size: 10px; color: var(--text-dim);">UP NEXT</div>
-                    </div>
+                    <div class="track-title" id="current-track-name">Stream Initializing...</div>
+                    <div style="font-size: 9px; color: var(--ubuntu-orange); font-weight: 700; letter-spacing: 1px;">QUEUE PROTOCOL</div>
                 </div>
                 <div class="queue-list" id="upcoming-queue"></div>
                 <div class="controls-row">
                     <div class="btn-ctrl" onclick="app.yt.prev()"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6L18 18V6z"/></svg></div>
-                    <div class="btn-ctrl" onclick="app.yt.toggle()">
+                    <div class="btn-ctrl" onclick="app.yt.toggle()" style="background: var(--ubuntu-orange);">
                         <svg id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                         <svg id="pause-icon" class="hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                     </div>
@@ -182,13 +206,18 @@
             role: null,
             player: null,
             isPanelOpen: false,
+            activePlaylistId: null,
 
             login: function() {
                 const u = document.getElementById('login-user').value.trim();
                 const p = document.getElementById('login-pass').value.trim();
                 if (u === 'watched' && p === '1122') this.init('watched');
                 else if (u === 'watcher' && p === '1212') this.init('watcher');
-                else document.getElementById('login-error').style.display = 'block';
+                else {
+                    const err = document.getElementById('login-error');
+                    err.style.display = 'block';
+                    setTimeout(() => err.style.display = 'none', 3000);
+                }
             },
 
             init: function(role) {
@@ -197,8 +226,8 @@
                 document.getElementById('app-shell').style.display = 'flex';
                 this.buildForest();
                 this.initFireflies();
-                this.bindData();
-                if (role === 'watched') this.autoTrack();
+                this.syncCloud();
+                if (role === 'watched') this.startTracking();
             },
 
             logout: function() { location.reload(); },
@@ -216,6 +245,50 @@
                 document.getElementById('music-fab').classList.toggle('open', this.isPanelOpen);
             },
 
+            syncCloud: function() {
+                // Listen for global playlists
+                db.ref('trip/playlists').on('value', snap => {
+                    const data = snap.val();
+                    const container = document.getElementById('playlist-library');
+                    if (!data) return container.innerHTML = "<div style='color:var(--text-dim); font-size:12px;'>No sources registered.</div>";
+                    container.innerHTML = Object.keys(data).map(k => `
+                        <div class="list-item ${this.activePlaylistId === data[k].pid ? 'selected' : ''}" 
+                             onclick="app.setActivePlaylist('${data[k].pid}', '${data[k].name}')">
+                            <div style="font-weight:600;">${data[k].name}</div>
+                            <div style="font-size:10px; color:var(--text-dim);">ID: ${data[k].pid.substring(0,6)}...</div>
+                        </div>
+                    `).join('');
+                });
+
+                // Listen for active selection
+                db.ref('trip/activePlaylist').on('value', snap => {
+                    const active = snap.val();
+                    if (active && active.pid !== this.activePlaylistId) {
+                        this.activePlaylistId = active.pid;
+                        document.getElementById('active-stream-title').innerText = active.name;
+                        document.getElementById('active-stream-desc').innerText = "Synchronized stream ready for playback.";
+                        this.yt.load(active.pid, false); // Load but don't force immediate UI expansion unless playing
+                    }
+                });
+
+                // Listen for messages
+                db.ref('trip/messages').limitToLast(10).on('value', snap => {
+                    const msgs = snap.val();
+                    const container = document.getElementById('msg-stream');
+                    if (!msgs) return;
+                    container.innerHTML = Object.keys(msgs).map(k => `
+                        <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:12px; margin-bottom:8px; border-left:3px solid var(--ubuntu-orange);">
+                            <div style="font-size:10px; color:var(--ubuntu-orange); margin-bottom:4px;">${msgs[k].user}</div>
+                            <div style="font-size:14px;">${msgs[k].text}</div>
+                        </div>
+                    `).reverse().join('');
+                });
+            },
+
+            setActivePlaylist: function(pid, name) {
+                db.ref('trip/activePlaylist').set({ pid, name, ts: Date.now() });
+            },
+
             addPlaylist: function() {
                 const name = document.getElementById('pl-name').value;
                 const pid = document.getElementById('pl-id').value;
@@ -225,50 +298,49 @@
                 document.getElementById('pl-id').value = '';
             },
 
-            bindData: function() {
-                db.ref('trip/playlists').on('value', snap => {
-                    const data = snap.val();
-                    const container = document.getElementById('media-playlist-selector');
-                    if (!data) return container.innerHTML = "No playlists.";
-                    container.innerHTML = Object.keys(data).map(k => `
-                        <div class="list-item" onclick="app.yt.load('${data[k].pid}')">
-                            <span>${data[k].name}</span>
-                            <span style="color:var(--ubuntu-orange)">▶</span>
-                        </div>
-                    `).join('');
-                });
+            startTracking: function() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.watchPosition(this.updateLoc, null, { enableHighAccuracy: true });
+                }
             },
 
-            autoTrack: function() {
+            updateLoc: function(p) {
+                const data = { lat: p.coords.latitude, lng: p.coords.longitude, ts: Date.now() };
+                db.ref('trip/location').set(data);
+                document.getElementById('loc-status').innerText = data.lat.toFixed(5) + ", " + data.lng.toFixed(5);
+                document.getElementById('loc-ts').innerText = "Last Update: " + new Date(data.ts).toLocaleTimeString();
+            },
+
+            updateLocationManual: function() {
                 if (navigator.geolocation) {
-                    navigator.geolocation.watchPosition(p => {
-                        const data = { lat: p.coords.latitude, lng: p.coords.longitude, ts: Date.now() };
-                        db.ref('trip/location').set(data);
-                        document.getElementById('loc-status').innerText = "Signal Active";
-                        document.getElementById('loc-coords').innerText = data.lat.toFixed(5) + ", " + data.lng.toFixed(5);
-                    });
+                    navigator.geolocation.getCurrentPosition(this.updateLoc);
                 }
             },
 
             yt: {
-                load: function(pid) {
+                load: function(pid, forceOpen = true) {
                     document.getElementById('media-container').classList.remove('hidden');
                     if (app.player) {
                         app.player.loadPlaylist({ list: pid, listType: 'playlist' });
                     } else {
                         app.player = new YT.Player('yt-player-hidden', {
                             height: '1', width: '1',
-                            playerVars: { list: pid, listType: 'playlist', autoplay: 1 },
+                            playerVars: { list: pid, listType: 'playlist', autoplay: 0 },
                             events: {
                                 onStateChange: app.yt.onStateChange,
-                                onReady: (e) => e.target.playVideo()
+                                onReady: (e) => {
+                                    // Player ready
+                                }
                             }
                         });
                     }
-                    app.isPanelOpen = false;
-                    app.togglePanel();
+                    if (forceOpen) {
+                        app.isPanelOpen = false;
+                        app.togglePanel();
+                    }
                 },
                 toggle: function() {
+                    if (!app.player) return;
                     const state = app.player.getPlayerState();
                     if (state === 1) app.player.pauseVideo(); else app.player.playVideo();
                 },
@@ -279,28 +351,35 @@
                     document.getElementById('play-icon').classList.toggle('hidden', isPlaying);
                     document.getElementById('pause-icon').classList.toggle('hidden', !isPlaying);
                     
-                    const data = e.target.getPlaylist();
-                    const idx = e.target.getPlaylistIndex();
-                    const videoData = e.target.getVideoData();
-                    
-                    document.getElementById('current-track-name').innerText = videoData.title || "Unknown Stream";
-                    
-                    const queue = document.getElementById('upcoming-queue');
-                    queue.innerHTML = data.slice(idx + 1, idx + 6).map((id, i) => `
-                        <div class="queue-item"><span>${i+1}</span> <span>Track ID: ${id}</span></div>
-                    `).join('');
+                    if (e.data === 1 || e.data === 0 || e.data === 2) {
+                        const playlist = e.target.getPlaylist();
+                        const idx = e.target.getPlaylistIndex();
+                        const videoData = e.target.getVideoData();
+                        
+                        document.getElementById('current-track-name').innerText = videoData.title || "Unknown Audio Stream";
+                        
+                        const queue = document.getElementById('upcoming-queue');
+                        if (playlist) {
+                            queue.innerHTML = playlist.slice(idx + 1, idx + 6).map((id, i) => `
+                                <div class="queue-item">
+                                    <div style="width:20px; font-weight:700; color:var(--ubuntu-orange);">${i+1}</div>
+                                    <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Syncing Track Data...</div>
+                                </div>
+                            `).join('');
+                        }
+                    }
                 }
             },
 
             buildForest: function() {
                 const scene = document.getElementById('forest-scene');
-                for (let i = 0; i < 15; i++) {
+                for (let i = 0; i < 20; i++) {
                     const t = document.createElement('div');
                     t.className = 'tree';
                     t.style.left = (Math.random() * 100) + '%';
-                    t.style.height = (60 + Math.random() * 80) + 'px';
-                    t.style.opacity = 0.4 + Math.random() * 0.6;
-                    t.style.transform = `skewX(${(Math.random() * 6) - 10}deg)`;
+                    t.style.height = (80 + Math.random() * 120) + 'px';
+                    t.style.opacity = 0.3 + Math.random() * 0.5;
+                    t.style.transform = `skewX(${(Math.random() * 10) - 15}deg)`;
                     scene.appendChild(t);
                 }
             },
@@ -311,14 +390,14 @@
                 let w, h, flies = [];
                 const resize = () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; };
                 window.addEventListener('resize', resize); resize();
-                for (let i = 0; i < 30; i++) flies.push({ x: Math.random()*w, y: Math.random()*h, a: Math.random()*Math.PI*2 });
+                for (let i = 0; i < 40; i++) flies.push({ x: Math.random()*w, y: Math.random()*h, a: Math.random()*Math.PI*2, s: 0.2 + Math.random()*0.4 });
                 const anim = () => {
                     ctx.clearRect(0,0,w,h);
                     flies.forEach(f => {
-                        f.a += 0.02; f.x += Math.cos(f.a)*0.3; f.y += Math.sin(f.a)*0.3;
+                        f.a += 0.01; f.x += Math.cos(f.a)*f.s; f.y += Math.sin(f.a)*f.s;
                         if (f.x<0) f.x=w; if (f.x>w) f.x=0; if (f.y<0) f.y=h; if (f.y>h) f.y=0;
-                        ctx.fillStyle = `rgba(220, 255, 100, ${(Math.sin(f.a)+1)*0.3})`;
-                        ctx.beginPath(); ctx.arc(f.x, f.y, 1, 0, Math.PI*2); ctx.fill();
+                        ctx.fillStyle = `rgba(233, 84, 32, ${(Math.sin(f.a)+1)*0.4})`;
+                        ctx.beginPath(); ctx.arc(f.x, f.y, 1.2, 0, Math.PI*2); ctx.fill();
                     });
                     requestAnimationFrame(anim);
                 };
@@ -326,7 +405,7 @@
             }
         };
 
-        function onYouTubeIframeAPIReady() { /* Ready to load via app.yt.load */ }
+        function onYouTubeIframeAPIReady() { /* Ready */ }
     </script>
 </body>
 </html>
