@@ -5,55 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trip Tracker</title>
 
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
-    authDomain: "trip-tracker-57ce0.firebaseapp.com",
-    databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
-    projectId: "trip-tracker-57ce0",
-    storageBucket: "trip-tracker-57ce0.firebasestorage.app",
-    messagingSenderId: "236146303848",
-    appId: "1:236146303848:web:933f1e79e8a97687db6cdd",
-    measurementId: "G-ZBPCS6QPR5"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
 <style>
 :root {
-  --bg: #0f172a;
-  --card: #111827;
+  --bg: #020617;
+  --card: #020617;
+  --border: #1f2937;
   --accent: #38bdf8;
-  --accent-soft: #0ea5e9;
+  --accent2: #0ea5e9;
   --text: #e5e7eb;
   --muted: #9ca3af;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, #020617, #020617);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  color: var(--text);
   min-height: 100vh;
+  background: radial-gradient(circle at top, #020617, #020617);
+  font-family: system-ui, sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text);
 }
 
 .container {
@@ -64,93 +41,92 @@ body {
 
 .card {
   background: linear-gradient(180deg, #020617, #020617);
-  border: 1px solid #1f2933;
-  border-radius: 20px;
-  padding: 22px;
-  box-shadow: 0 20px 40px rgba(0,0,0,.4);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow: 0 30px 60px rgba(0,0,0,.45);
 }
 
 h1 {
   text-align: center;
-  margin-bottom: 24px;
   font-size: 1.6rem;
-  letter-spacing: .3px;
+  margin-bottom: 24px;
 }
 
 h2 {
-  margin: 0 0 12px;
   font-size: 1.2rem;
+  margin-bottom: 8px;
 }
 
 p {
+  font-size: .95rem;
   color: var(--muted);
-  margin: 6px 0 12px;
 }
 
 input, textarea {
   width: 100%;
   padding: 14px;
   border-radius: 14px;
-  border: 1px solid #1f2937;
+  border: 1px solid var(--border);
   background: #020617;
   color: var(--text);
   font-size: 1rem;
+  margin-bottom: 12px;
 }
 
 textarea {
-  min-height: 90px;
   resize: none;
+  min-height: 90px;
 }
 
 button {
   width: 100%;
   padding: 14px;
-  margin-top: 10px;
   border-radius: 14px;
   border: none;
   font-size: 1rem;
   font-weight: 600;
-  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
   color: #020617;
   cursor: pointer;
 }
 
 button.secondary {
   background: transparent;
-  border: 1px solid #1f2937;
   color: var(--text);
+  border: 1px solid var(--border);
+  margin-top: 10px;
 }
 
-button:active {
-  transform: scale(0.98);
-}
-
-.status {
-  margin-top: 8px;
-  font-size: .9rem;
-  color: #22c55e;
-}
+button:active { transform: scale(.98); }
 
 .value-box {
   background: #020617;
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 14px;
-  margin-top: 6px;
+  margin-bottom: 12px;
   font-size: .95rem;
 }
+
+.status {
+  font-size: .9rem;
+  color: #22c55e;
+  margin-top: 6px;
+}
+
+.error {
+  text-align: center;
+  color: #ef4444;
+  margin-top: 10px;
+}
+
+.hidden { display: none; }
 
 a {
   color: var(--accent);
   text-decoration: none;
   font-weight: 500;
-}
-
-.hidden { display: none; }
-
-.error {
-  color: #ef4444;
-  text-align: center;
-  margin-top: 10px;
 }
 </style>
 </head>
@@ -163,29 +139,29 @@ a {
     <h1>Trip Tracker</h1>
 
     <!-- LOGIN -->
-    <div id="login">
+    <div id="loginCard">
       <input id="user" placeholder="Username">
       <input id="pass" type="password" placeholder="Password">
-      <button onclick="login()">Continue</button>
+      <button onclick="doLogin()">Continue</button>
       <div id="err" class="error"></div>
     </div>
 
     <!-- WATCHED -->
-    <div id="watched" class="hidden">
+    <div id="watchedUI" class="hidden">
       <h2>You’re Traveling</h2>
       <p>Send updates to mum</p>
 
-      <textarea id="msg" placeholder="E.g. Reached hotel safely"></textarea>
+      <textarea id="msg" placeholder="Reached hotel safely"></textarea>
       <button onclick="sendMsg()">Send Message</button>
 
-      <button onclick="sendLocation()">Share Current Location</button>
+      <button onclick="sendLocation()">Share Location</button>
       <div id="status" class="status"></div>
 
       <button class="secondary" onclick="logout()">Logout</button>
     </div>
 
     <!-- WATCHER -->
-    <div id="watcher" class="hidden">
+    <div id="watcherUI" class="hidden">
       <h2>Mum’s View</h2>
 
       <p>Latest message</p>
@@ -201,42 +177,46 @@ a {
 </div>
 
 <script>
-// 🔥 FIREBASE CONFIG (KEEP YOUR VALUES)
-firebase.initializeApp({
-  apiKey: "YOUR_KEY",
-  authDomain: "YOUR_DOMAIN",
-  databaseURL: "YOUR_DB_URL",
-  projectId: "YOUR_ID",
-  storageBucket: "YOUR_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-});
+/* 🔥 FIREBASE CONFIG – PASTE YOUR OWN */
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
+  authDomain: "trip-tracker-57ce0.firebaseapp.com",
+  databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
+  projectId: "trip-tracker-57ce0",
+  storageBucket: "trip-tracker-57ce0.firebasestorage.app",
+  messagingSenderId: "236146303848",
+  appId: "1:236146303848:web:933f1e79e8a97687db6cdd",
+  measurementId: "G-ZBPCS6QPR5"
+};
 
 const db = firebase.database();
 
-// LOGIN
-function login() {
+/* LOGIN */
+function doLogin() {
+  err.textContent = "";
+
   if (user.value === "watched" && pass.value === "1122") {
-    show(false, true);
-  } else if (pass.value === "1212") {
-    show(false, false);
-  } else {
+    loginCard.classList.add("hidden");
+    watchedUI.classList.remove("hidden");
+  }
+  else if (pass.value === "1212") {
+    loginCard.classList.add("hidden");
+    watcherUI.classList.remove("hidden");
+  }
+  else {
     err.textContent = "Incorrect login details";
   }
 }
 
-function show(_, watchedUser) {
-  login.classList.add("hidden");
-  watchedUser ? watched.classList.remove("hidden") : watcher.classList.remove("hidden");
-}
-
-// SEND MESSAGE
+/* SEND MESSAGE */
 function sendMsg() {
+  if (!msg.value.trim()) return;
   db.ref("trip/message").set(msg.value);
   msg.value = "";
 }
 
-// SEND LOCATION
+/* SEND LOCATION */
 function sendLocation() {
   navigator.geolocation.getCurrentPosition(p => {
     const link = `https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`;
@@ -245,7 +225,7 @@ function sendLocation() {
   });
 }
 
-// REAL-TIME UPDATES
+/* REAL-TIME LISTENERS */
 db.ref("trip/message").on("value", s => {
   if (s.exists()) msgBox.textContent = s.val();
 });
@@ -254,6 +234,7 @@ db.ref("trip/location").on("value", s => {
   if (s.exists()) locBox.innerHTML = `<a href="${s.val()}" target="_blank">Open in Google Maps</a>`;
 });
 
+/* LOGOUT */
 function logout() {
   location.reload();
 }
