@@ -9,7 +9,7 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root {
-            --sys-bg: #0d1117;
+            --sys-bg: #05070a;
             --sys-surface: #161b22;
             --sys-border: #30363d;
             --sys-accent: #58a6ff;
@@ -32,7 +32,7 @@
             overflow: hidden;
         }
 
-        #particle-canvas {
+        #bg-canvas {
             position: fixed;
             inset: 0;
             pointer-events: none;
@@ -51,14 +51,14 @@
         .auth-container { height: 100vh; display: flex; align-items: center; justify-content: center; }
         
         .sys-card {
-            background: rgba(22, 27, 34, 0.8);
+            background: rgba(13, 17, 23, 0.7);
             border: 1px solid var(--sys-border);
             border-radius: 6px;
             padding: 1.25rem;
             margin-bottom: 1rem;
             position: relative;
             overflow: hidden;
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(20px);
         }
 
         .alert-card {
@@ -201,7 +201,7 @@
 </head>
 <body>
 
-    <canvas id="particle-canvas"></canvas>
+    <canvas id="bg-canvas"></canvas>
     <div id="loader"><div class="spin"></div></div>
 
     <div id="watcher-eye" title="System Monitor Active">
@@ -214,7 +214,7 @@
         <div style="width: 100%;">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h1 class="mono" style="font-size: 20px; margin: 0; color: var(--sys-accent);">drs.one</h1>
-                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.7.5-reactive-comm</p>
+                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.8.0-persistent-node</p>
             </div>
             <div class="sys-card">
                 <span class="label">ssh_identity</span>
@@ -301,11 +301,11 @@
         <div class="sys-card">
             <span class="label">uplink.commands</span>
             <button class="btn btn-alert" onclick="requestCall()">REQUEST_VOICE_UPLINK</button>
-            <p class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 10px; text-align: center;">Signal will alert traveler dashboard</p>
+            <p class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 10px; text-align: center;">Signal persists until traveler dismisses</p>
         </div>
     </div>
 
-    <!-- Media UI etc... (Keeping same as before) -->
+    <!-- Media UI -->
     <div id="media-expanded">
         <div style="width: 40px; height: 4px; background: var(--sys-border); border-radius: 2px; margin: 0 auto 1.5rem auto;"></div>
         <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
@@ -348,62 +348,76 @@
             authDomain: "trip-tracker-57ce0.firebaseapp.com",
             databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
             projectId: "trip-tracker-57ce0",
-            storageBucket: "trip-tracker-57ce0.firebasestorage.app",
-            messagingSenderId: "236146303848",
             appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
         };
 
         let db, player, isPlaying = false, audioPrimed = false;
         let playlists = JSON.parse(localStorage.getItem('drs_playlists') || '[]');
         let currentPlaylistId = localStorage.getItem('drs_current_pl');
-
-        // Particle System (Previous Logic)
-        const canvas = document.getElementById('particle-canvas');
-        const ctx = canvas.getContext('2d');
-        let particles = [];
         let musicIntensity = 0;
 
-        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        window.addEventListener('resize', resizeCanvas); resizeCanvas();
+        // --- REACTIVE STARFIELD BACKGROUND ---
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
 
-        class Particle {
-            constructor() { this.reset(); }
-            reset() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 2 + 1;
-                this.speedX = (Math.random() - 0.5) * 0.5;
-                this.speedY = (Math.random() - 0.5) * 0.5;
-                this.life = Math.random() * 0.5 + 0.5;
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        class Star {
+            constructor() { this.init(); }
+            init() {
+                this.x = (Math.random() - 0.5) * canvas.width;
+                this.y = (Math.random() - 0.5) * canvas.height;
+                this.z = Math.random() * canvas.width;
+                this.pz = this.z;
             }
             update() {
-                const boost = isPlaying ? (musicIntensity * 5) : 1;
-                this.x += this.speedX * boost; this.y += this.speedY * boost;
-                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+                const speed = isPlaying ? (15 + musicIntensity * 45) : 1.5;
+                this.z -= speed;
+                if (this.z < 1) { this.init(); this.pz = this.z; }
             }
             draw() {
-                ctx.fillStyle = isPlaying ? `rgba(88, 166, 255, ${this.life * musicIntensity})` : `rgba(139, 148, 158, 0.1)`;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.size * (isPlaying ? musicIntensity * 2 : 1), 0, Math.PI * 2); ctx.fill();
+                const sx = (this.x / this.z) * canvas.width + canvas.width/2;
+                const sy = (this.y / this.z) * canvas.height + canvas.height/2;
+                const r = (1 - this.z / canvas.width) * 2.5;
+                const px = (this.x / this.pz) * canvas.width + canvas.width/2;
+                const py = (this.y / this.pz) * canvas.height + canvas.height/2;
+                
+                ctx.beginPath();
+                ctx.strokeStyle = isPlaying ? `rgba(88, 166, 255, ${0.1 + musicIntensity})` : `rgba(139, 148, 158, 0.2)`;
+                ctx.lineWidth = r;
+                ctx.moveTo(px, py);
+                ctx.lineTo(sx, sy);
+                ctx.stroke();
+                this.pz = this.z;
             }
         }
 
-        function initParticles() { particles = []; for (let i = 0; i < 100; i++) particles.push(new Particle()); }
+        for(let i=0; i<350; i++) stars.push(new Star());
         function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            particles.forEach(p => { p.update(); p.draw(); });
+            ctx.fillStyle = '#05070a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(s => { s.update(); s.draw(); });
             requestAnimationFrame(animate);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             firebase.initializeApp(config);
             db = firebase.database();
+            
+            // Notification Permission
+            if ("Notification" in window && Notification.permission === "default") {
+                Notification.requestPermission();
+            }
+
             setTimeout(() => document.getElementById('loader').style.display='none', 800);
             const role = localStorage.getItem('drs_v3_role');
             if (role) startSession(role);
             else document.getElementById('view-login').style.display = 'flex';
             document.getElementById('login-trigger').onclick = handleLogin;
             document.getElementById('gps-trigger').onclick = pushGps;
-            initParticles(); animate();
+            animate();
         });
 
         function startSession(role) {
@@ -426,39 +440,49 @@
                 db.ref('trip/presence/watcher').on('value', snap => {
                     document.getElementById('watcher-eye').style.display = snap.val() ? 'block' : 'none';
                 });
+
+                // PERSISTENT CALL LISTENER
                 db.ref('trip/call_request').on('value', snap => {
-                    const req = snap.val(); const zone = document.getElementById('comms-alert-zone');
-                    if (req && req.active) {
+                    const req = snap.val(); 
+                    const zone = document.getElementById('comms-alert-zone');
+                    
+                    // Logic: Must be active AND within the last 30 minutes to prevent ancient alerts
+                    const isRecent = req && (Date.now() - req.ts < 1800000);
+
+                    if (req && req.active && isRecent) {
                         const phone = localStorage.getItem('drs_phone');
+                        
+                        // Native Push Simulation
+                        if (Notification.permission === "granted" && document.hidden) {
+                            new Notification("DRS_ONE: CALL REQUEST", { body: "Watcher is requesting urgent voice uplink." });
+                        }
+
                         zone.innerHTML = `
                             <div class="sys-card alert-card">
                                 <span class="label" style="color:var(--sys-alert)">CRITICAL_COMMS_REQUEST</span>
-                                <p class="mono" style="font-size:12px; margin-bottom:15px;">Watcher is requesting voice uplink.</p>
+                                <p class="mono" style="font-size:12px; margin-bottom:15px;">Watcher requested uplink at ${new Date(req.ts).toLocaleTimeString()}.</p>
                                 <div style="display:flex; gap:10px;">
                                     <a href="tel:${phone}" class="btn btn-alert" style="flex:2" onclick="clearCallRequest()">INITIATE_CALL</a>
                                     <button class="btn btn-ghost" style="flex:1" onclick="clearCallRequest()">DISMISS</button>
                                 </div>
                             </div>`;
-                    } else zone.innerHTML = '';
+                    } else {
+                        zone.innerHTML = '';
+                    }
                 });
             }
         }
 
-        // --- STATUS SIGNAL LOGIC ---
         function broadcastStatus() {
             const input = document.getElementById('status-msg-in');
             const msg = input.value.trim();
             if (!msg) return;
-            db.ref('trip/status_feed').push({
-                text: msg,
-                ts: Date.now()
-            });
+            db.ref('trip/status_feed').push({ text: msg, ts: Date.now() });
             input.value = '';
             showToast("SIGNAL_TX_OK");
         }
 
         function initWatcher() {
-            // Location Monitor
             db.ref('trip/location').on('value', snap => {
                 const loc = snap.val(); if (!loc) return;
                 document.getElementById('monitor-stream').innerHTML = `
@@ -468,7 +492,6 @@
                         <a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:10px; text-decoration:none;">TRACE MAP</a>
                     </div>`;
             });
-            // Status Feed Monitor
             const feedContainer = document.getElementById('status-feed');
             db.ref('trip/status_feed').limitToLast(10).on('child_added', snap => {
                 const data = snap.val();
@@ -481,10 +504,19 @@
             });
         }
 
-        // --- Remaining System Helpers ---
-        function requestCall() { db.ref('trip/call_request').set({ active: true, ts: Date.now() }); showToast("UPLINK REQUESTED"); }
-        function clearCallRequest() { db.ref('trip/call_request').set({ active: false }); }
-        function savePhone() { localStorage.setItem('drs_phone', document.getElementById('user-phone-in').value); showToast("PHONE UPDATED"); }
+        function requestCall() { 
+            db.ref('trip/call_request').set({ 
+                active: true, 
+                ts: Date.now() 
+            }); 
+            showToast("UPLINK REQUESTED"); 
+        }
+
+        function clearCallRequest() { 
+            db.ref('trip/call_request').update({ active: false }); 
+        }
+
+        // --- YT AUDIO ENGINE ---
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('yt-player', {
                 playerVars: { 'listType': 'playlist', 'autoplay': 0, 'enablejsapi': 1, 'controls': 0, 'playsinline': 1 },
@@ -502,7 +534,7 @@
         function onPlayerStateChange(event) {
             const btnMini = document.getElementById('m-play'), btnExp = document.getElementById('exp-play');
             if (event.data == YT.PlayerState.PLAYING) {
-                isPlaying = true; simulateMusicIntensity();
+                isPlaying = true; pulseMusic();
                 const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
                 btnMini.innerHTML = icon; btnExp.innerHTML = icon; updateMediaMetadata();
             } else {
@@ -511,15 +543,16 @@
                 btnMini.innerHTML = icon; btnExp.innerHTML = icon;
             }
         }
+        function pulseMusic() {
+            if (!isPlaying) { musicIntensity = 0; return; }
+            musicIntensity = 0.2 + Math.random() * 0.8; 
+            setTimeout(pulseMusic, 80);
+        }
         function updateMediaMetadata() {
             const data = player.getVideoData();
             document.getElementById('track-title').innerText = data.title;
             document.getElementById('exp-title').innerText = data.title;
             document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/maxresdefault.jpg`;
-        }
-        function simulateMusicIntensity() {
-            if (!isPlaying) { musicIntensity = 0; return; }
-            musicIntensity = 0.3 + Math.random() * 0.7; setTimeout(simulateMusicIntensity, 100);
         }
         function primeAudio() {
             if (!currentPlaylistId) return showToast("SELECT PLAYLIST");
@@ -529,14 +562,15 @@
         function togglePlay() { if (!audioPrimed) return primeAudio(); isPlaying ? player.pauseVideo() : player.playVideo(); }
         function openExpanded() { document.getElementById('media-expanded').style.display = 'flex'; }
         function closeExpanded() { document.getElementById('media-expanded').style.display = 'none'; }
+        
         function handleLogin() {
-            const u = document.getElementById('user-in').value.toLowerCase();
             const p = document.getElementById('pass-in').value;
             if (p === '1122' || p === '1212') {
                 const role = p === '1122' ? 'traveler' : 'watcher';
                 localStorage.setItem('drs_v3_role', role); startSession(role);
             }
         }
+        function savePhone() { localStorage.setItem('drs_phone', document.getElementById('user-phone-in').value); showToast("PHONE UPDATED"); }
         function logout() { localStorage.clear(); location.reload(); }
         window.nav = (v) => {
             document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
@@ -561,8 +595,7 @@
         function deletePlaylist(idx) { playlists.splice(idx, 1); localStorage.setItem('drs_playlists', JSON.stringify(playlists)); renderPlaylists(); }
         function initTraveler() {
             navigator.geolocation.getCurrentPosition(pos => {
-                const { latitude: lat, longitude: lon } = pos.coords;
-                document.getElementById('loc-display').innerText = `${lat.toFixed(2)}N, ${lon.toFixed(2)}E`;
+                document.getElementById('loc-display').innerText = `${pos.coords.latitude.toFixed(3)}N, ${pos.coords.longitude.toFixed(3)}E`;
             });
         }
         async function pushGps() {
