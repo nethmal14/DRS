@@ -29,14 +29,21 @@
             min-height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
+            transition: background 0.2s ease;
+        }
+
+        /* Reactive Pulse Background */
+        body.music-reactive {
+            background: radial-gradient(circle at center, #161b22 0%, #0d1117 100%);
         }
 
         .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
 
         .view {
             display: none; width: 100%; max-width: 540px; margin: 0 auto;
-            padding: 2rem 1.5rem calc(8rem + var(--safe-bottom));
+            padding: 1rem 1.5rem calc(8rem + var(--safe-bottom));
             flex: 1; overflow-y: auto;
+            position: relative; z-index: 10;
         }
 
         .auth-container { height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -49,6 +56,7 @@
             margin-bottom: 1rem;
             position: relative;
             overflow: hidden;
+            backdrop-filter: blur(4px);
         }
 
         .label {
@@ -76,6 +84,15 @@
         .btn-primary { background: var(--sys-accent); color: #0d1117; }
         .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
 
+        /* Watcher Eye Indicator */
+        #watcher-eye {
+            position: fixed; top: 1.5rem; right: 1.5rem;
+            color: #f85149; display: none; z-index: 1000;
+            filter: drop-shadow(0 0 8px rgba(248, 81, 73, 0.4));
+            animation: blink 2s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.9); } }
+
         /* Weather Animations */
         .weather-anim { position: absolute; inset: 0; opacity: 0.15; pointer-events: none; z-index: 1; }
         .clouds-bg::after {
@@ -85,20 +102,6 @@
             animation: drift 10s linear infinite;
         }
         @keyframes drift { to { transform: translateX(50%); } }
-
-        .rain-bg::after {
-            content: ""; position: absolute; inset: 0;
-            background-image: linear-gradient(transparent, #fff);
-            background-size: 1px 20px;
-            animation: rain 0.3s linear infinite;
-        }
-        @keyframes rain { 0% { background-position: 0 0; } 100% { background-position: 5px 100px; } }
-
-        .clear-bg { 
-            background: radial-gradient(circle at 80% 20%, rgba(255,200,0,0.15) 0%, transparent 60%); 
-            animation: glow 4s ease-in-out infinite alternate;
-        }
-        @keyframes glow { from { opacity: 0.1; } to { opacity: 0.25; } }
 
         /* Media Player Bar */
         #media-bar {
@@ -115,12 +118,34 @@
             justify-content: space-between;
             z-index: 1001;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            cursor: pointer;
         }
 
         .media-info { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         .media-title { font-size: 12px; font-weight: 600; color: #fff; }
-        .media-controls { display: flex; gap: 15px; align-items: center; }
+        .media-controls { display: flex; gap: 12px; align-items: center; }
         .m-btn { background: none; border: none; color: #fff; cursor: pointer; padding: 5px; }
+
+        /* Expanded Media View */
+        #media-expanded {
+            position: fixed; inset: 0; background: var(--sys-bg); z-index: 2000;
+            display: none; flex-direction: column; padding: 2rem;
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .visualizer {
+            flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 4px;
+            padding-bottom: 2rem; height: 150px;
+        }
+        .v-bar { width: 6px; background: var(--sys-accent); border-radius: 3px 3px 0 0; transition: height 0.1s; }
+
+        .art-box {
+            width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px;
+            margin-bottom: 2rem; overflow: hidden; border: 1px solid var(--sys-border);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .art-box img { width: 100%; height: 100%; object-fit: cover; }
 
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
@@ -134,7 +159,6 @@
         }
         .nav-item.active { color: var(--sys-accent); font-weight: bold; }
 
-        /* HIDDEN BUT INTERSECTING: Fixed 1px container so browser doesn't kill it */
         #yt-wrapper {
             position: fixed; top: 0; left: 0; width: 1px; height: 1px;
             opacity: 0.001; overflow: hidden; pointer-events: none; z-index: -100;
@@ -152,13 +176,25 @@
             background: var(--sys-accent); color: #000; padding: 8px 16px; border-radius: 20px;
             font-size: 12px; font-weight: 600; z-index: 10001; display: none;
         }
+
+        .playlist-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; border-bottom: 1px solid var(--sys-border);
+        }
+        .playlist-name { font-size: 12px; color: #fff; cursor: pointer; flex: 1; }
+        .playlist-name.active { color: var(--sys-accent); font-weight: bold; }
+        .playlist-del { color: #f85149; cursor: pointer; padding-left: 10px; font-size: 10px; }
     </style>
 </head>
-<body>
+<body class="music-reactive">
 
     <div id="loader"><div class="spin"></div></div>
+
+    <!-- Active Watcher Icon -->
+    <div id="watcher-eye" title="System Monitor Active">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    </div>
     
-    <!-- Player Wrapper -->
     <div id="yt-wrapper"><div id="yt-player"></div></div>
 
     <!-- LOGIN -->
@@ -166,19 +202,18 @@
         <div style="width: 100%;">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h1 class="mono" style="font-size: 20px; margin: 0; color: var(--sys-accent);">drs.one</h1>
-                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.4.4-audio-only</p>
+                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.6.0-eye-active</p>
             </div>
             <div class="sys-card">
                 <span class="label">ssh_identity</span>
                 <input type="text" id="user-in" placeholder="user_id">
                 <input type="password" id="pass-in" placeholder="passphrase">
                 <button class="btn btn-primary" id="login-trigger">Execute Login</button>
-                <div id="auth-err" style="color:#f85149; font-size:11px; text-align:center; margin-top:15px; display:none;" class="mono">err: access_denied</div>
             </div>
         </div>
     </div>
 
-    <!-- TRAVELER HOME -->
+    <!-- HOME -->
     <div id="view-home" class="view">
         <div style="margin-bottom: 2rem;">
             <span class="label">system.current_node</span>
@@ -190,19 +225,12 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="sys-card">
                 <span class="label">env.thermal</span>
-                <div id="temp-display" style="font-size: 24px; font-weight: 300; position:relative; z-index:2;" class="mono">--</div>
+                <div id="temp-display" style="font-size: 24px; font-weight: 300;" class="mono">--</div>
             </div>
             <div class="sys-card" id="weather-card">
                 <div id="weather-effect" class="weather-anim"></div>
                 <span class="label">env.condition</span>
-                <div id="weather-display" style="font-size: 12px; font-weight: 600; position:relative; z-index:2;" class="mono">SYNCING</div>
-            </div>
-        </div>
-
-        <div class="sys-card">
-            <span class="label">env.forecast_3h</span>
-            <div id="forecast-strip" style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 5px;" class="mono">
-                <span style="font-size: 10px; color: var(--sys-dim);">Retrieving meteorological data...</span>
+                <div id="weather-display" style="font-size: 12px; font-weight: 600;" class="mono">SYNCING</div>
             </div>
         </div>
 
@@ -213,47 +241,65 @@
         </div>
     </div>
 
-    <!-- TRAVELER UPLINK -->
+    <!-- CONFIG / PLAYLISTS -->
+    <div id="view-config" class="view">
+        <span class="label">system.kernel_config</span>
+        <div class="sys-card">
+            <span class="label">add_new_playlist</span>
+            <input type="text" id="pl-name-in" placeholder="Library Name">
+            <input type="text" id="pl-url-in" placeholder="YouTube Playlist URL">
+            <button class="btn btn-primary" onclick="addPlaylist()">Save to Storage</button>
+        </div>
+
+        <div class="sys-card">
+            <span class="label">local_repositories</span>
+            <div id="playlist-list" class="mono"></div>
+        </div>
+        
+        <button class="btn btn-ghost" onclick="logout()" style="color:#f85149; margin-top:1rem;">kill -9 session</button>
+    </div>
+
+    <!-- UPLINK -->
     <div id="view-uplink" class="view">
         <span class="label">uplink.telemetry</span>
         <div class="sys-card" style="text-align: center; padding: 30px 20px;">
             <button class="btn btn-primary" id="gps-trigger">Push GPS Burst</button>
-            <p id="ping-ts" class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 20px;">link.state: READY</p>
+            <p id="ping-ts" class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 20px;">READY</p>
         </div>
     </div>
 
-    <!-- SYSTEM CONFIG -->
-    <div id="view-config" class="view">
-        <span class="label">system.kernel_config</span>
-        <div class="sys-card">
-            <span class="label">playlist_url_or_id</span>
-            <input type="text" id="yt-in" placeholder="https://youtube.com/playlist?list=...">
-            <button class="btn btn-primary" id="config-save">Apply Config</button>
-        </div>
-        <button class="btn" style="color:#f85149; font-size:11px; border:1px solid #3e1e1e;" onclick="logout()" class="mono">kill -9 session</button>
-    </div>
-
-    <!-- WATCHER MONITOR -->
+    <!-- MONITOR -->
     <div id="view-monitor" class="view">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h2 class="mono" style="font-size: 14px; color: var(--sys-accent);">drs.monitor</h2>
-            <button class="btn btn-ghost" style="width:auto; padding: 4px 10px; font-size: 10px;" onclick="logout()">EXIT</button>
-        </div>
+        <h2 class="mono" style="font-size: 14px; color: var(--sys-accent); margin-bottom: 2rem;">drs.monitor</h2>
         <div id="monitor-stream"></div>
     </div>
 
     <!-- Media UI -->
-    <div id="media-bar">
-        <div class="media-info">
-            <div class="media-title" id="track-title">DRS Audio Service</div>
+    <div id="media-expanded">
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <span class="label" style="margin:0;">media.expanded_node</span>
+            <button class="m-btn" onclick="closeExpanded()" style="color:var(--sys-dim)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+            </button>
         </div>
-        <div class="media-controls">
-            <button class="m-btn" id="m-play">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-            </button>
-            <button class="m-btn" id="m-next">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-            </button>
+        <div class="art-box"><img id="exp-thumb" src=""></div>
+        <div style="text-align: center; margin-bottom: 1rem;">
+            <h3 id="exp-title" style="margin:0 0 8px 0; color:#fff; font-size:16px;">---</h3>
+        </div>
+        <div class="visualizer" id="visualizer"></div>
+        <div style="display: flex; justify-content: center; gap: 30px; align-items: center;">
+            <button class="m-btn" onclick="player.previousVideo()"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+            <button class="m-btn" id="exp-play" onclick="togglePlay()" style="background: var(--sys-accent); color:#000; border-radius:50%; width:64px; height:64px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+            <button class="m-btn" onclick="player.nextVideo()"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+        </div>
+    </div>
+
+    <div id="media-bar" onclick="openExpanded(event)">
+        <div class="media-info"><div class="media-title" id="track-title">DRS Audio</div></div>
+        <div class="media-controls" onclick="event.stopPropagation()">
+            <button class="m-btn" onclick="player.previousVideo()"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+            <button class="m-btn" id="m-play" onclick="togglePlay()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+            <button class="m-btn" onclick="player.nextVideo()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
         </div>
     </div>
 
@@ -276,279 +322,226 @@
             appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
         };
 
-        let db, player;
-        let isPlaying = false;
-        let audioPrimed = false;
+        let db, player, isPlaying = false, audioPrimed = false;
+        let playlists = JSON.parse(localStorage.getItem('drs_playlists') || '[]');
+        let currentPlaylistId = localStorage.getItem('drs_current_pl');
 
         document.addEventListener('DOMContentLoaded', () => {
-            try {
-                firebase.initializeApp(config);
-                db = firebase.database();
-            } catch (e) { console.error(e); }
-
-            setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 1000);
-
+            firebase.initializeApp(config);
+            db = firebase.database();
+            
+            setTimeout(() => document.getElementById('loader').style.display='none', 800);
+            
             const role = localStorage.getItem('drs_v3_role');
-            if (role) { startSession(role); } 
-            else { document.getElementById('view-login').style.display = 'flex'; }
+            if (role) startSession(role);
+            else document.getElementById('view-login').style.display = 'flex';
 
             document.getElementById('login-trigger').onclick = handleLogin;
-            document.getElementById('config-save').onclick = saveConfig;
             document.getElementById('gps-trigger').onclick = pushGps;
-            document.getElementById('m-play').onclick = togglePlay;
-            document.getElementById('m-next').onclick = () => player && player.nextVideo();
+            initVisualizer();
         });
 
-        // --- NEW AUDIO-ONLY PROXY ENGINE ---
+        // --- WATCHER DETECTION (THE EYE) ---
+        function setupPresence(role) {
+            const presenceRef = db.ref('trip/presence/' + role);
+            presenceRef.set(true);
+            presenceRef.onDisconnect().remove();
+
+            // Traveler listens to Watcher presence
+            if (role === 'traveler') {
+                db.ref('trip/presence/watcher').on('value', snap => {
+                    const eye = document.getElementById('watcher-eye');
+                    eye.style.display = snap.val() ? 'block' : 'none';
+                    if (snap.val()) showToast("NODE UNDER OBSERVATION");
+                });
+            }
+        }
+
+        // --- VISUALIZER & REACTIVE BG ---
+        function initVisualizer() {
+            const viz = document.getElementById('visualizer');
+            for(let i=0; i<18; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'v-bar';
+                bar.style.height = '10%';
+                viz.appendChild(bar);
+            }
+        }
+
+        function updateVisualizer() {
+            if(!isPlaying) {
+                document.body.style.background = '#0d1117';
+                return;
+            }
+            
+            const bars = document.querySelectorAll('.v-bar');
+            let sum = 0;
+            bars.forEach(bar => {
+                const h = 10 + Math.random() * 85;
+                bar.style.height = `${h}%`;
+                sum += h;
+            });
+
+            // Cool BG Pulse based on "intensity"
+            const avg = sum / bars.length;
+            const glow = Math.floor(avg / 4);
+            document.body.style.background = `radial-gradient(circle at center, #161b22 0%, #0d1117 ${100 - glow}%, #000 100%)`;
+            
+            if(isPlaying) requestAnimationFrame(() => setTimeout(updateVisualizer, 80));
+        }
+
+        // --- AUDIO ENGINE ---
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('yt-player', {
-                height: '200', width: '200', // Small but not 0 to satisfy mobile policy
-                playerVars: { 
-                    'listType': 'playlist', 
-                    'autoplay': 0, 
-                    'enablejsapi': 1,
-                    'controls': 0, // No native controls, we use our bar
-                    'playsinline': 1, // Crucial for mobile background play
-                    'rel': 0,
-                    'modestbranding': 1,
-                    'iv_load_policy': 3
-                },
-                events: {
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange,
-                    'onError': (e) => {
-                        console.error("YT ERROR", e.data);
-                        document.getElementById('audio-status').innerText = "ENGINE ERROR: " + e.data;
-                    }
-                }
+                playerVars: { 'listType': 'playlist', 'autoplay': 0, 'enablejsapi': 1, 'controls': 0, 'playsinline': 1 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
             });
         }
 
         function onPlayerReady(e) {
-            const savedYt = localStorage.getItem('drs_yt');
-            if (savedYt) {
-                // We use cuePlaylist so it doesn't auto-trigger audio until user hits Prime/Play
-                e.target.cuePlaylist({ list: parsePlaylistId(savedYt) });
+            if (currentPlaylistId) {
+                e.target.cuePlaylist({ list: parsePlaylistId(currentPlaylistId) });
                 document.getElementById('media-bar').style.display = 'flex';
                 document.getElementById('audio-status').innerText = "ENGINE READY";
             }
         }
 
-        function parsePlaylistId(input) {
-            if (input.includes('list=')) {
-                const urlParams = new URLSearchParams(input.split('?')[1]);
-                return urlParams.get('list');
-            }
-            return input; // Return as-is if it looks like a direct ID
+        function parsePlaylistId(url) {
+            if (!url.includes('list=')) return url;
+            return new URLSearchParams(url.split('?')[1]).get('list');
         }
 
         function onPlayerStateChange(event) {
-            const btn = document.getElementById('m-play');
-            
+            const btnMini = document.getElementById('m-play');
+            const btnExp = document.getElementById('exp-play');
             if (event.data == YT.PlayerState.PLAYING) {
                 isPlaying = true;
-                btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+                const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+                btnMini.innerHTML = icon; btnExp.innerHTML = icon;
                 updateMediaMetadata();
-                document.getElementById('audio-status').innerText = "FEED ACTIVE";
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
-            } else if (event.data == YT.PlayerState.PAUSED || event.data == YT.PlayerState.ENDED) {
+                updateVisualizer();
+            } else {
                 isPlaying = false;
-                btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
-                document.getElementById('audio-status').innerText = event.data == YT.PlayerState.ENDED ? "FEED ENDED" : "FEED PAUSED";
-            } else if (event.data == YT.PlayerState.BUFFERING) {
-                document.getElementById('audio-status').innerText = "SYNCING BUFFER...";
+                const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+                btnMini.innerHTML = icon; btnExp.innerHTML = icon;
             }
         }
 
         function updateMediaMetadata() {
-            if (!player || !('mediaSession' in navigator)) return;
-            
             const data = player.getVideoData();
-            const title = data.title || "DRS Audio Node";
-            document.getElementById('track-title').innerText = title;
-
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: title,
-                artist: "DRS-ONE System",
-                album: "Satellite Feed",
-                artwork: [{ src: 'https://via.placeholder.com/512/58a6ff/000000?text=DRS-ONE', sizes: '512x512', type: 'image/png' }]
-            });
-
-            const actions = {
-                'play': () => player.playVideo(),
-                'pause': () => player.pauseVideo(),
-                'nexttrack': () => player.nextVideo(),
-                'previoustrack': () => player.previousVideo()
-            };
-
-            Object.keys(actions).forEach(action => {
-                try { navigator.mediaSession.setActionHandler(action, actions[action]); } catch(e) {}
-            });
+            document.getElementById('track-title').innerText = data.title;
+            document.getElementById('exp-title').innerText = data.title;
+            document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/maxresdefault.jpg`;
         }
 
         function primeAudio() {
-            if (!player) return;
-            const savedYt = localStorage.getItem('drs_yt');
-            if (!savedYt) {
-                showToast("SET PLAYLIST IN CONFIG");
-                return;
-            }
-
-            // user interaction context
-            player.loadPlaylist({ list: parsePlaylistId(savedYt) });
+            if (!currentPlaylistId) return showToast("SELECT PLAYLIST");
+            player.loadPlaylist({ list: parsePlaylistId(currentPlaylistId) });
             audioPrimed = true;
             document.getElementById('prime-btn').style.display = 'none';
-            document.getElementById('audio-status').innerText = "ENGINE ONLINE";
             showToast("ENGINE START");
         }
 
         function togglePlay() {
-            if (!player) return;
-            if (!audioPrimed) {
-                primeAudio();
-                return;
-            }
-            if (isPlaying) player.pauseVideo();
-            else player.playVideo();
+            if (!audioPrimed) return primeAudio();
+            if (isPlaying) player.pauseVideo(); else player.playVideo();
         }
 
-        // --- CORE SYSTEM ---
-        function handleLogin() {
-            const u = document.getElementById('user-in').value.toLowerCase().trim();
-            const p = document.getElementById('pass-in').value.trim();
-            if ((u === 'watched' && p === '1122') || (u !== '' && p === '1212')) {
-                const role = p === '1122' ? 'traveler' : 'watcher';
-                localStorage.setItem('drs_v3_role', role);
-                startSession(role);
-            } else {
-                document.getElementById('auth-err').style.display = 'block';
-            }
-        }
+        function openExpanded() { document.getElementById('media-expanded').style.display = 'flex'; }
+        function closeExpanded() { document.getElementById('media-expanded').style.display = 'none'; }
 
+        // --- NAVIGATION & SESSIONS ---
         function startSession(role) {
             document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+            setupPresence(role);
             if (role === 'traveler') {
                 nav('home');
                 document.getElementById('hud').style.display = 'grid';
                 initTraveler();
             } else {
                 document.getElementById('view-monitor').style.display = 'block';
-                document.getElementById('hud').style.display = 'none';
                 initWatcher();
             }
         }
 
-        window.logout = () => { localStorage.clear(); location.reload(); };
+        function handleLogin() {
+            const u = document.getElementById('user-in').value.toLowerCase();
+            const p = document.getElementById('pass-in').value;
+            if (p === '1122' || p === '1212') {
+                const role = p === '1122' ? 'traveler' : 'watcher';
+                localStorage.setItem('drs_v3_role', role);
+                startSession(role);
+            }
+        }
+
+        function logout() { localStorage.clear(); location.reload(); }
 
         window.nav = (v) => {
             document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
             document.getElementById(`view-${v}`).style.display = 'block';
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            const map = {'home': 0, 'uplink': 1, 'config': 2};
-            if(map[v] !== undefined) document.querySelectorAll('.nav-item')[map[v]].classList.add('active');
+            if(v === 'config') renderPlaylists();
         };
 
+        // --- PLAYLISTS ---
+        function renderPlaylists() {
+            const list = document.getElementById('playlist-list');
+            list.innerHTML = playlists.map((pl, idx) => `
+                <div class="playlist-item">
+                    <div class="playlist-name ${pl.url === currentPlaylistId ? 'active' : ''}" onclick="selectPlaylist('${pl.url}')">${pl.name}</div>
+                    <div class="playlist-del" onclick="deletePlaylist(${idx})">DEL</div>
+                </div>
+            `).join('');
+        }
+
+        function addPlaylist() {
+            const name = document.getElementById('pl-name-in').value;
+            const url = document.getElementById('pl-url-in').value;
+            if(!name || !url) return;
+            playlists.push({ name, url });
+            localStorage.setItem('drs_playlists', JSON.stringify(playlists));
+            renderPlaylists();
+        }
+
+        function selectPlaylist(url) {
+            currentPlaylistId = url;
+            localStorage.setItem('drs_current_pl', url);
+            location.reload();
+        }
+
+        function deletePlaylist(idx) {
+            playlists.splice(idx, 1);
+            localStorage.setItem('drs_playlists', JSON.stringify(playlists));
+            renderPlaylists();
+        }
+
+        // --- DATA SYNC ---
         function initTraveler() {
-            fetchWeather();
-            const savedYt = localStorage.getItem('drs_yt');
-            if (savedYt) {
-                document.getElementById('yt-in').value = savedYt;
-            }
-
-            db.ref('trip/alerts').on('value', snap => {
-                const zone = document.getElementById('alert-zone');
-                zone.innerHTML = '';
-                const data = snap.val();
-                if (data) {
-                    Object.keys(data).forEach(id => {
-                        const msg = data[id].text;
-                        const div = document.createElement('div');
-                        div.className = 'sys-card';
-                        div.style.borderLeft = '3px solid var(--sys-accent)';
-                        div.innerHTML = `
-                            <span class="label" style="color:var(--sys-accent)">msg.priority_incoming</span>
-                            <div class="mono" style="font-size:13px; margin:10px 0;">${msg}</div>
-                            <button class="btn btn-ghost" style="padding:6px; font-size:10px;" onclick="ackAlert('${id}')">ACKNOWLEDGE</button>
-                        `;
-                        zone.appendChild(div);
-                    });
-                }
-            });
-        }
-
-        function fetchWeather() {
-            navigator.geolocation.getCurrentPosition(async (pos) => {
+            navigator.geolocation.getCurrentPosition(pos => {
                 const { latitude: lat, longitude: lon } = pos.coords;
-                try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,weathercode&forecast_days=1`);
-                    const data = await res.json();
-                    const code = data.current_weather.weathercode;
-                    document.getElementById('temp-display').innerText = `${Math.round(data.current_weather.temperature)}°C`;
-                    document.getElementById('weather-display').innerText = interpretWeatherCode(code).toUpperCase();
-                    applyWeatherEffect(code);
-
-                    const strip = document.getElementById('forecast-strip');
-                    strip.innerHTML = '';
-                    data.hourly.temperature_2m.slice(0, 6).forEach((t, i) => {
-                        const div = document.createElement('div');
-                        div.style.textAlign = 'center'; div.style.minWidth = '50px';
-                        div.innerHTML = `<div style="font-size:9px; color:var(--sys-dim)">+${i+1}h</div><div style="font-size:12px">${Math.round(t)}°</div>`;
-                        strip.appendChild(div);
-                    });
-                } catch(e) {}
-
-                try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                    const data = await res.json();
-                    document.getElementById('loc-display').innerText = (data.address.city || data.address.town || "REMOTE").toUpperCase();
-                } catch(e) {}
+                document.getElementById('loc-display').innerText = `${lat.toFixed(2)}N, ${lon.toFixed(2)}E`;
             });
-        }
-
-        function interpretWeatherCode(code) {
-            if (code === 0) return "Clear";
-            if (code <= 3) return "Cloudy";
-            if (code >= 51 && code <= 67) return "Rainy";
-            return "Stable";
-        }
-
-        function applyWeatherEffect(code) {
-            const effect = document.getElementById('weather-effect');
-            effect.className = 'weather-anim';
-            if (code === 0) effect.classList.add('clear-bg');
-            else if (code <= 3) effect.classList.add('clouds-bg');
-            else if (code >= 51) effect.classList.add('rain-bg');
-        }
-
-        function saveConfig() {
-            const input = document.getElementById('yt-in').value.trim();
-            localStorage.setItem('drs_yt', input);
-            showToast("CONFIG UPDATED");
-            setTimeout(() => location.reload(), 1000);
         }
 
         async function pushGps() {
-            const btn = document.getElementById('gps-trigger');
-            btn.innerHTML = "UPLOADING...";
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const ts = new Date().toISOString();
-                await db.ref('trip/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts });
-                document.getElementById('ping-ts').innerText = "link.last_sync: " + new Date().toLocaleTimeString();
-                btn.innerHTML = "Push GPS Burst";
+            navigator.geolocation.getCurrentPosition(async pos => {
+                await db.ref('trip/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts: new Date().toISOString() });
+                document.getElementById('ping-ts').innerText = "SYNC: " + new Date().toLocaleTimeString();
                 showToast("SYNC COMPLETE");
             });
         }
 
-        window.ackAlert = async (id) => { await db.ref(`trip/alerts/${id}`).remove(); };
-
         function initWatcher() {
-            db.ref('trip').on('value', snap => {
-                const data = snap.val();
-                if (!data) return;
-                const loc = data.location;
-                let html = `<div class="sys-card"><span class="label">node.coords</span><h3 class="mono" style="margin:5px 0; font-size:16px;">${loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : 'OFFLINE'}</h3><a href="https://www.google.com/maps?q=${loc?.lat},${loc?.lng}" target="_blank" class="btn btn-primary" style="margin-top:15px; text-decoration:none;">TRACE MAP</a></div>`;
-                document.getElementById('monitor-stream').innerHTML = html;
+            db.ref('trip/location').on('value', snap => {
+                const loc = snap.val();
+                if (!loc) return;
+                document.getElementById('monitor-stream').innerHTML = `
+                    <div class="sys-card">
+                        <span class="label">node.coords</span>
+                        <h3 class="mono">${loc.lat}, ${loc.lng}</h3>
+                        <a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:10px; text-decoration:none;">TRACE MAP</a>
+                    </div>
+                `;
             });
         }
 
