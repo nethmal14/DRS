@@ -3,398 +3,280 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DRS-ONE | Tactical Sync</title>
+    <title>DRS-ONE</title>
+    <!-- Using Compat version for maximum reliability in iframe/preview environments -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         :root {
-            --drs-black: #000000;
-            --drs-obsidian: #0a0a0c;
-            --drs-glass: rgba(18, 18, 22, 0.8);
-            --drs-accent: #007AFF;
+            --drs-bg: #000000;
+            --drs-card: #0a0a0b;
+            --drs-accent: #0070f3;
             --drs-text: #ffffff;
-            --drs-text-dim: #636366;
-            --drs-border: rgba(255, 255, 255, 0.08);
+            --drs-text-dim: #666666;
+            --drs-border: #1a1a1a;
             --safe-top: env(safe-area-inset-top);
             --safe-bottom: env(safe-area-inset-bottom);
         }
 
-        * { 
-            box-sizing: border-box; 
-            -webkit-tap-highlight-color: transparent;
-            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             margin: 0; padding: 0;
-            background: var(--drs-black);
+            background: var(--drs-bg);
             color: var(--drs-text);
+            font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
             min-height: 100vh;
+            display: flex; flex-direction: column;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
         }
 
-        /* Tactical Views */
+        /* Views */
         .view {
-            display: none;
-            width: 100%;
-            max-width: 480px;
-            margin: 0 auto;
-            padding: calc(2rem + var(--safe-top)) 1.5rem calc(7rem + var(--safe-bottom));
-            flex: 1;
-            overflow-y: auto;
-            scrollbar-width: none;
+            display: none; width: 100%; max-width: 480px; margin: 0 auto;
+            padding: calc(2rem + var(--safe-top)) 1.5rem calc(6rem + var(--safe-bottom));
+            flex: 1; overflow-y: auto;
         }
 
-        /* Precision Components */
+        /* Auth Screen */
+        .auth-container { height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .auth-box { width: 100%; text-align: center; padding: 2rem; }
+
+        /* UI Elements */
         .drs-card {
-            background: var(--drs-glass);
-            backdrop-filter: blur(40px) saturate(150%);
-            -webkit-backdrop-filter: blur(40px) saturate(150%);
-            border: 1px solid var(--drs-border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
+            background: var(--drs-card); border: 1px solid var(--drs-border);
+            border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;
         }
-
-        .drs-label {
-            font-size: 0.6rem;
-            font-weight: 800;
-            color: var(--drs-text-dim);
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            margin-bottom: 0.75rem;
-            display: block;
-        }
-
-        .drs-value {
-            font-size: 1.4rem;
-            font-weight: 200;
-            letter-spacing: -0.02em;
-        }
-
-        /* Technical Inputs */
+        .label { font-size: 10px; font-weight: 800; color: var(--drs-text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; display: block; }
+        
         input {
-            width: 100%;
-            padding: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--drs-border);
-            background: rgba(255, 255, 255, 0.03);
-            color: white;
-            font-size: 0.95rem;
-            margin-bottom: 1rem;
-            transition: border-color 0.3s;
+            width: 100%; padding: 12px; border-radius: 4px; border: 1px solid var(--drs-border);
+            background: #000; color: #fff; font-size: 14px; margin-bottom: 12px;
         }
+        input:focus { border-color: var(--drs-accent); outline: none; }
 
-        input:focus {
-            border-color: var(--drs-accent);
-            outline: none;
-        }
-
-        /* Command Buttons */
         .btn {
-            width: 100%;
-            padding: 1.1rem;
-            border-radius: 8px;
-            border: none;
-            font-size: 0.85rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 100%; padding: 14px; border-radius: 4px; border: none; font-size: 12px;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 1px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: opacity 0.2s;
         }
+        .btn-primary { background: var(--drs-accent); color: #fff; }
+        .btn-ghost { background: transparent; color: #fff; border: 1px solid var(--drs-border); }
+        .btn:active { opacity: 0.7; }
 
-        .btn-primary {
-            background: var(--drs-accent);
-            color: #fff;
-        }
-
-        .btn-primary:active { opacity: 0.8; transform: translateY(1px); }
-
-        .btn-ghost {
-            background: rgba(255, 255, 255, 0.05);
-            color: #fff;
-            border: 1px solid var(--drs-border);
-        }
-
-        /* Navigation HUD */
+        /* HUD Navigation */
         .bottom-nav {
-            position: fixed;
-            bottom: calc(1.5rem + var(--safe-bottom));
-            left: 50%;
-            transform: translateX(-50%);
-            width: 92%;
-            max-width: 400px;
-            background: rgba(10, 10, 12, 0.95);
-            border: 1px solid var(--drs-border);
-            border-radius: 12px;
-            display: none;
-            grid-template-columns: repeat(3, 1fr);
-            padding: 0.5rem;
-            z-index: 1000;
+            position: fixed; bottom: calc(1rem + var(--safe-bottom)); left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 400px; background: rgba(10,10,11,0.9);
+            border: 1px solid var(--drs-border); border-radius: 12px;
+            display: none; grid-template-columns: repeat(3, 1fr); padding: 6px; z-index: 1000;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         }
-
         .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 0.8rem;
-            border-radius: 8px;
-            font-size: 0.6rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--drs-text-dim);
-            transition: color 0.3s;
+            text-align: center; padding: 12px 0; font-size: 10px; font-weight: 800;
+            text-transform: uppercase; color: var(--drs-text-dim); cursor: pointer;
         }
+        .nav-item.active { color: var(--drs-accent); }
 
-        .nav-item.active {
-            color: var(--drs-accent);
-            background: rgba(0, 122, 255, 0.05);
-        }
-
-        /* Media Frame */
-        .media-frame { 
-            position: relative; 
-            padding-bottom: 56.25%; 
-            height: 0; 
-            border-radius: 4px; 
-            overflow: hidden; 
-            background: #000; 
-            margin-top: 1rem; 
-            border: 1px solid var(--drs-border);
-        }
-        .media-frame iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; filter: grayscale(0.2); }
-
-        #app-loader {
-            position: fixed; inset: 0; background: var(--drs-black); z-index: 9999;
+        /* Loader Overlay */
+        #loader {
+            position: fixed; inset: 0; background: #000; z-index: 9999;
             display: flex; align-items: center; justify-content: center;
         }
+        .spin { width: 24px; height: 24px; border: 2px solid #333; border-top-color: var(--drs-accent); border-radius: 50%; animation: s 0.6s linear infinite; }
+        @keyframes s { to { transform: rotate(360deg); } }
 
-        .spinner {
-            width: 20px; height: 20px;
-            border: 2px solid rgba(255,255,255,0.1);
-            border-top: 2px solid var(--drs-accent);
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
+        .media-box { position: relative; padding-bottom: 56.25%; height: 0; border: 1px solid var(--drs-border); margin-top: 10px; }
+        .media-box iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+        
         .toast {
-            position: fixed; top: calc(1rem + var(--safe-top)); left: 50%; transform: translateX(-50%);
-            background: var(--drs-accent); color: white; padding: 0.7rem 1.4rem;
-            border-radius: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;
-            display: none; z-index: 10001;
+            position: fixed; top: 2rem; left: 50%; transform: translateX(-50%);
+            background: #fff; color: #000; padding: 8px 20px; border-radius: 4px;
+            font-size: 11px; font-weight: 900; text-transform: uppercase; z-index: 10001; display: none;
         }
     </style>
 </head>
 <body>
 
-    <div id="app-loader">
-        <div class="spinner"></div>
-    </div>
+    <div id="loader"><div class="spin"></div></div>
 
-    <!-- Auth View -->
-    <div id="view-login" class="view" style="display: flex; align-items: center; justify-content: center; height: 100vh; padding-top: 0;">
-        <div style="width: 100%;">
-            <header style="text-align: center; margin-bottom: 3rem;">
-                <h1 style="font-size: 1.8rem; font-weight: 900; letter-spacing: 0.3em; margin: 0; text-indent: 0.3em;">DRS-ONE</h1>
-                <div style="height: 1px; width: 40px; background: var(--drs-accent); margin: 1rem auto;"></div>
-                <p style="color: var(--drs-text-dim); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;">Terminal Access</p>
-            </header>
-            
-            <div class="drs-card">
-                <span class="drs-label">Identity Verify</span>
-                <input type="text" id="user-field" placeholder="USER_ID">
-                <input type="password" id="pass-field" placeholder="SECURE_PASSCODE">
-                <button class="btn btn-primary" id="login-btn">Initialize Connection</button>
-                <p id="login-error" style="color: #FF3B30; font-size: 0.7rem; font-weight: 700; margin-top: 1rem; display: none; text-align: center; text-transform: uppercase;">Auth Failure</p>
+    <!-- LOGIN -->
+    <div id="view-login" class="view auth-container">
+        <div class="auth-box">
+            <h1 style="letter-spacing: 12px; font-weight: 900; margin: 0;">DRS-ONE</h1>
+            <p style="color: var(--drs-text-dim); font-size: 10px; letter-spacing: 4px; margin-top: 10px; margin-bottom: 40px;">COMMAND SYSTEM</p>
+            <div class="drs-card" style="text-align: left;">
+                <span class="label">Access Key</span>
+                <input type="text" id="user-in" placeholder="ID">
+                <input type="password" id="pass-in" placeholder="PASS">
+                <button class="btn btn-primary" id="login-trigger">Initialize</button>
+                <div id="auth-err" style="color:red; font-size:10px; text-align:center; margin-top:15px; display:none;">ACCESS DENIED</div>
             </div>
         </div>
     </div>
 
-    <!-- Traveler Home -->
+    <!-- TRAVELER HOME -->
     <div id="view-home" class="view">
-        <header style="margin-bottom: 2.5rem;">
-            <span class="drs-label">Active Deployment</span>
-            <h2 id="home-city" style="font-size: 2rem; font-weight: 300; margin: 0; letter-spacing: -0.02em;">AWAITING GPS...</h2>
+        <header style="margin-bottom: 2rem;">
+            <span class="label">Primary Node Location</span>
+            <h2 id="loc-display" style="font-weight: 300; margin: 0;">SYNCHRONIZING...</h2>
         </header>
-
-        <div id="traveler-alerts-area"></div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-            <div class="drs-card" style="margin-bottom: 0;">
-                <span class="drs-label">Ambient</span>
-                <div id="home-weather" style="font-weight: 700; font-size: 0.9rem; text-transform: uppercase;">SYNCING...</div>
+        <div id="alert-zone"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="drs-card">
+                <span class="label">Thermal</span>
+                <div id="temp-display" style="font-size: 24px; font-weight: 200;">--</div>
             </div>
-            <div class="drs-card" style="margin-bottom: 0;">
-                <span class="drs-label">Thermal</span>
-                <div id="home-temp" class="drs-value">--</div>
+            <div class="drs-card">
+                <span class="label">Status</span>
+                <div id="weather-display" style="font-size: 11px; font-weight: 800; padding-top: 8px;">ACTIVE</div>
             </div>
         </div>
-
         <div class="drs-card">
-            <span class="drs-label">Communication Stream</span>
-            <div id="media-player-container">
-                <div style="text-align: center; padding: 2rem; border: 1px dashed var(--drs-border); border-radius: 4px;">
-                    <p style="font-size: 0.7rem; font-weight: 700; color: var(--drs-text-dim); text-transform: uppercase;">Media Node Inactive</p>
-                </div>
-            </div>
+            <span class="label">External Intel Stream</span>
+            <div id="media-wrap"><p style="font-size:10px; color:#444; text-align:center; padding: 20px;">NODE IDLE</p></div>
         </div>
     </div>
 
-    <!-- Traveler Status -->
-    <div id="view-status" class="view">
-        <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 2rem; text-transform: uppercase; letter-spacing: 0.1em;">Logistics Node</h2>
-        
-        <div class="drs-card" style="text-align: center; padding: 3rem 1.5rem;">
-            <button class="btn btn-primary" id="share-gps-btn" style="height: 60px; font-size: 0.9rem;">
-                Push GPS Coordinates
-            </button>
-            <p id="last-ping-label" style="font-size: 0.6rem; color: var(--drs-text-dim); margin-top: 1.5rem; font-weight: 800; text-transform: uppercase;">Satellite Link Standby</p>
+    <!-- TRAVELER UPLINK -->
+    <div id="view-uplink" class="view">
+        <span class="label">Data Logistics</span>
+        <div class="drs-card" style="text-align: center; padding: 40px 20px;">
+            <button class="btn btn-primary" id="gps-trigger">Push Coordinates</button>
+            <p id="ping-ts" style="font-size: 9px; color: var(--drs-text-dim); margin-top: 20px; font-weight: 800;">LINK READY</p>
         </div>
-
         <div class="drs-card">
-            <span class="drs-label">Encrypted Update</span>
-            <input type="text" id="status-text" placeholder="Entry data...">
-            <button class="btn btn-ghost" id="send-status-btn">Commit to Log</button>
+            <span class="label">Manual Log Entry</span>
+            <input type="text" id="log-in" placeholder="Message content...">
+            <button class="btn btn-ghost" id="log-trigger">Commit</button>
         </div>
     </div>
 
-    <!-- Settings -->
-    <div id="view-settings" class="view">
-        <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 2rem; text-transform: uppercase; letter-spacing: 0.1em;">System Core</h2>
-        
+    <!-- SYSTEM CONFIG -->
+    <div id="view-config" class="view">
+        <span class="label">Core Config</span>
         <div class="drs-card">
-            <span class="drs-label">API Configuration</span>
-            <input type="text" id="playlist-id-field" placeholder="YOUTUBE_PLAYLIST_ID">
-            <button class="btn btn-primary" id="save-playlist-btn">Sync Node</button>
+            <span class="label">Playlist Integration</span>
+            <input type="text" id="yt-in" placeholder="YOUTUBE_ID">
+            <button class="btn btn-primary" id="config-save">Save Config</button>
         </div>
-
-        <button class="btn" style="color: #FF3B30; background: transparent; font-size: 0.7rem; border: 1px solid rgba(255,59,48,0.2);" onclick="appLogout()">Disconnect Session</button>
+        <button class="btn" style="color:red; font-size:10px; border:1px solid #300;" onclick="logout()">Terminate Session</button>
     </div>
 
-    <!-- Watcher View -->
-    <div id="view-watcher" class="view">
-        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
-            <div>
-                <span class="drs-label">Tactical Monitor</span>
-                <h2 style="font-size: 1.6rem; font-weight: 300; margin: 0;">Remote Stream</h2>
-            </div>
-            <button class="btn btn-ghost" style="width: auto; padding: 0.5rem 1rem; font-size: 0.6rem; border-radius: 4px;" onclick="appLogout()">Close</button>
-        </header>
-
-        <div id="watcher-content">
-            <div class="drs-card" style="text-align: center; color: var(--drs-text-dim); padding: 4rem 1rem;">
-                Awaiting Remote Handshake...
-            </div>
+    <!-- WATCHER MONITOR -->
+    <div id="view-monitor" class="view">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h2 style="font-size: 14px; font-weight: 900; letter-spacing: 2px;">DRS-MONITOR</h2>
+            <button class="btn btn-ghost" style="width:auto; padding: 5px 12px; font-size: 9px;" onclick="logout()">EXIT</button>
         </div>
+        <div id="monitor-stream"></div>
     </div>
 
-    <nav class="bottom-nav" id="main-nav">
-        <div class="nav-item active" onclick="navTo('home')">Monitor</div>
-        <div class="nav-item" onclick="navTo('status')">Uplink</div>
-        <div class="nav-item" onclick="navTo('settings')">Config</div>
+    <nav class="bottom-nav" id="hud">
+        <div class="nav-item active" onclick="nav('home')">Focus</div>
+        <div class="nav-item" onclick="nav('uplink')">Uplink</div>
+        <div class="nav-item" onclick="nav('config')">Sys</div>
     </nav>
 
-    <div id="toast" class="toast">Operation Successful</div>
+    <div id="toast" class="toast">ACKNOWLEDGED</div>
 
     <script>
-        const firebaseConfig = {
+        const config = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
             authDomain: "trip-tracker-57ce0.firebaseapp.com",
             databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
             projectId: "trip-tracker-57ce0",
             storageBucket: "trip-tracker-57ce0.firebasestorage.app",
             messagingSenderId: "236146303848",
-            appId: "1:236146303848:web:933f1e79e8a97687db6cdd",
-            measurementId: "G-ZBPCS6QPR5"
+            appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
         };
 
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        let db;
 
         document.addEventListener('DOMContentLoaded', () => {
-            const loginBtn = document.getElementById('login-btn');
-            const savedRole = localStorage.getItem('drs_role');
+            // Initialize Firebase
+            try {
+                const app = firebase.initializeApp(config);
+                db = firebase.database();
+            } catch (e) {
+                console.error("Firebase Init Error", e);
+            }
 
-            if (savedRole) {
-                initApp(savedRole);
+            // Safety timeout for loader
+            setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 1500);
+
+            const role = localStorage.getItem('drs_v3_role');
+            if (role) {
+                startSession(role);
             } else {
                 document.getElementById('view-login').style.display = 'flex';
             }
 
-            document.getElementById('app-loader').style.display = 'none';
-
-            loginBtn.addEventListener('click', () => {
-                const u = document.getElementById('user-field').value.toLowerCase().trim();
-                const p = document.getElementById('pass-field').value.trim();
-                const err = document.getElementById('login-error');
-
-                loginBtn.disabled = true;
-                loginBtn.innerHTML = '<div class="spinner"></div>';
-
-                setTimeout(() => {
-                    if (u === 'watched' && p === '1122') {
-                        localStorage.setItem('drs_role', 'traveler');
-                        initApp('traveler');
-                    } else if (u !== '' && p === '1212') {
-                        localStorage.setItem('drs_role', 'watcher');
-                        initApp('watcher');
-                    } else {
-                        err.style.display = 'block';
-                        loginBtn.disabled = false;
-                        loginBtn.innerHTML = 'Initialize Connection';
-                    }
-                }, 800);
-            });
+            // Bind Events
+            document.getElementById('login-trigger').onclick = handleLogin;
+            document.getElementById('config-save').onclick = saveConfig;
+            document.getElementById('gps-trigger').onclick = pushGps;
+            document.getElementById('log-trigger').onclick = pushLog;
         });
 
-        function initApp(role) {
+        function handleLogin() {
+            const u = document.getElementById('user-in').value.toLowerCase().trim();
+            const p = document.getElementById('pass-in').value.trim();
+            const btn = document.getElementById('login-trigger');
+            
+            btn.innerHTML = "Processing...";
+            btn.disabled = true;
+
+            setTimeout(() => {
+                if (u === 'watched' && p === '1122') {
+                    localStorage.setItem('drs_v3_role', 'traveler');
+                    startSession('traveler');
+                } else if (u !== '' && p === '1212') {
+                    localStorage.setItem('drs_v3_role', 'watcher');
+                    startSession('watcher');
+                } else {
+                    document.getElementById('auth-err').style.display = 'block';
+                    btn.innerHTML = "Initialize";
+                    btn.disabled = false;
+                }
+            }, 600);
+        }
+
+        function startSession(role) {
             document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
             if (role === 'traveler') {
-                navTo('home');
-                document.getElementById('main-nav').style.display = 'grid';
-                loadTraveler();
+                nav('home');
+                document.getElementById('hud').style.display = 'grid';
+                initTraveler();
             } else {
-                document.getElementById('view-watcher').style.display = 'block';
-                document.getElementById('main-nav').style.display = 'none';
-                loadWatcher();
+                document.getElementById('view-monitor').style.display = 'block';
+                document.getElementById('hud').style.display = 'none';
+                initWatcher();
             }
         }
 
-        window.appLogout = () => {
-            localStorage.removeItem('drs_role');
-            location.reload();
-        };
+        window.logout = () => { localStorage.clear(); location.reload(); };
 
-        window.navTo = (v) => {
+        window.nav = (v) => {
             document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
-            const target = document.getElementById(`view-${v}`);
-            target.style.display = 'block';
-            
-            const items = document.querySelectorAll('.nav-item');
-            items.forEach(i => i.classList.remove('active'));
-            const map = { 'home': 0, 'status': 1, 'settings': 2 };
-            if (map[v] !== undefined) items[map[v]].classList.add('active');
+            document.getElementById(`view-${v}`).style.display = 'block';
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            const map = {'home': 0, 'uplink': 1, 'config': 2};
+            document.querySelectorAll('.nav-item')[map[v]].classList.add('active');
         };
 
-        function loadTraveler() {
-            refreshEnv();
-            syncMedia();
-            
-            const savedId = localStorage.getItem('drs_yt');
-            if (savedId) document.getElementById('playlist-id-field').value = savedId;
+        // --- TRAVELER LOGIC ---
+        function initTraveler() {
+            fetchEnv();
+            const savedYt = localStorage.getItem('drs_yt');
+            if (savedYt) {
+                document.getElementById('yt-in').value = savedYt;
+                document.getElementById('media-wrap').innerHTML = `<div class="media-box"><iframe src="https://www.youtube.com/embed/videoseries?list=${savedYt}"></iframe></div>`;
+            }
 
             db.ref('trip/alerts').on('value', snap => {
-                const area = document.getElementById('traveler-alerts-area');
-                area.innerHTML = '';
+                const zone = document.getElementById('alert-zone');
+                zone.innerHTML = '';
                 const data = snap.val();
                 if (data) {
                     Object.keys(data).forEach(id => {
@@ -402,92 +284,108 @@
                         div.className = 'drs-card';
                         div.style.borderColor = 'var(--drs-accent)';
                         div.innerHTML = `
-                            <span class="drs-label" style="color:var(--drs-accent)">Incoming Priority</span>
-                            <div style="font-weight:700; font-size:1rem; margin:0.5rem 0;">${data[id].text}</div>
-                            <button class="btn btn-primary" style="height:34px; font-size:0.7rem;" onclick="dismissAlert('${id}')">Acknowledge</button>
+                            <span class="label" style="color:var(--drs-accent)">Incoming Priority</span>
+                            <div style="font-weight:700; font-size:14px; margin:10px 0;">${data[id].text}</div>
+                            <button class="btn btn-primary" style="padding:8px; font-size:9px;" onclick="ackAlert('${id}')">Acknowledge</button>
                         `;
-                        area.appendChild(div);
+                        zone.appendChild(div);
                     });
                 }
             });
         }
 
-        async function refreshEnv() {
+        function fetchEnv() {
             navigator.geolocation.getCurrentPosition(async (pos) => {
-                const { latitude, longitude } = pos.coords;
                 try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`);
                     const data = await res.json();
-                    document.getElementById('home-temp').innerText = `${Math.round(data.current_weather.temperature)}°C`;
-                    document.getElementById('home-weather').innerText = "Vantage Stable";
+                    document.getElementById('temp-display').innerText = `${Math.round(data.current_weather.temperature)}°C`;
                 } catch(e) {}
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
                     const data = await res.json();
-                    document.getElementById('home-city').innerText = (data.address.city || data.address.town || data.address.village || "TRANSMITTING").toUpperCase();
+                    document.getElementById('loc-display').innerText = (data.address.city || data.address.town || data.address.village || "TRANSMITTING").toUpperCase();
                 } catch(e) {}
             });
         }
 
-        function syncMedia() {
-            const id = localStorage.getItem('drs_yt');
-            const container = document.getElementById('media-player-container');
-            if (id) {
-                container.innerHTML = `<div class="media-frame"><iframe src="https://www.youtube.com/embed/videoseries?list=${id}" frameborder="0"></iframe></div>`;
-            }
+        function saveConfig() {
+            const id = document.getElementById('yt-in').value.trim();
+            localStorage.setItem('drs_yt', id);
+            location.reload();
         }
 
-        document.getElementById('save-playlist-btn').addEventListener('click', () => {
-            const id = document.getElementById('playlist-id-field').value.trim();
-            localStorage.setItem('drs_yt', id);
-            syncMedia();
-            showToast("System Synced");
-        });
-
-        document.getElementById('share-gps-btn').addEventListener('click', function() {
-            this.innerHTML = '<div class="spinner"></div>';
+        async function pushGps() {
+            const btn = document.getElementById('gps-trigger');
+            btn.innerHTML = "READING SAT...";
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const ts = new Date().toISOString();
-                await db.ref('trip/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: ts });
-                await db.ref('trip/log').push({ text: "SAT_PING_INITIALIZED", timestamp: ts });
-                document.getElementById('last-ping-label').innerText = "LAST UPLINK: " + new Date().toLocaleTimeString();
-                this.innerHTML = "Push GPS Coordinates";
-                showToast("Data Sent");
+                await db.ref('trip/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts });
+                await db.ref('trip/logs').push({ text: "SATELLITE_UPLINK_SUCCESS", ts });
+                document.getElementById('ping-ts').innerText = "LAST SYNC: " + new Date().toLocaleTimeString();
+                btn.innerHTML = "Push Coordinates";
+                showToast("COORDINATES SENT");
             });
-        });
+        }
 
-        document.getElementById('send-status-btn').addEventListener('click', async () => {
-            const inp = document.getElementById('status-text');
-            if (!inp.value.trim()) return;
-            await db.ref('trip/log').push({ text: inp.value, timestamp: new Date().toISOString() });
-            inp.value = '';
-            showToast("Log Committed");
-        });
+        async function pushLog() {
+            const val = document.getElementById('log-in').value.trim();
+            if (!val) return;
+            await db.ref('trip/logs').push({ text: val, ts: new Date().toISOString() });
+            document.getElementById('log-in').value = '';
+            showToast("LOG COMMITTED");
+        }
 
-        window.dismissAlert = async (id) => { await db.ref(`trip/alerts/${id}`).remove(); };
+        window.ackAlert = async (id) => { await db.ref(`trip/alerts/${id}`).remove(); };
 
-        function loadWatcher() {
+        // --- WATCHER LOGIC ---
+        function initWatcher() {
             db.ref('trip').on('value', snap => {
                 const data = snap.val();
                 if (!data) return;
-
                 const loc = data.location;
-                const logs = data.log ? Object.values(data.log).reverse().slice(0, 6) : [];
+                const logs = data.logs ? Object.values(data.logs).reverse().slice(0, 5) : [];
 
                 let html = `
                     <div class="drs-card">
-                        <span class="drs-label">Global Position</span>
-                        <h3 style="margin:0.2rem 0; font-size:1.4rem;">${loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : 'SIGNAL LOST'}</h3>
-                        <p style="font-size:0.6rem; color:var(--drs-text-dim); margin-top:0.5rem; font-weight:800            showToast("Alert Broadcasted");
+                        <span class="label">Target Position</span>
+                        <h3 style="margin:5px 0; font-size:18px; font-weight:300;">${loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : 'SIGNAL_LOST'}</h3>
+                        <p style="font-size:9px; color:var(--drs-text-dim); font-weight:800;">SYNC_REF: ${loc ? new Date(loc.ts).toLocaleTimeString() : '---'}</p>
+                        ${loc ? `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:20px; text-decoration:none;">Launch Map Trace</a>` : ''}
+                    </div>
+                    <div class="drs-card">
+                        <span class="label">Command Options</span>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <button class="btn btn-ghost" style="font-size:9px;" onclick="sendPing('REQUEST_VOICE_CONTACT')">Call Req</button>
+                            <button class="btn btn-ghost" style="font-size:9px;" onclick="sendPing('REQUEST_GPS_UPLINK')">Ping Req</button>
+                        </div>
+                    </div>
+                    <div class="drs-card"><span class="label">Log History</span>
+                `;
+                logs.forEach(l => {
+                    html += `<div style="padding:10px 0; border-bottom:1px solid #1a1a1a;">
+                        <div style="font-size:11px; font-weight:800; text-transform:uppercase;">${l.text}</div>
+                        <div style="font-size:9px; color:#444; margin-top:4px;">${new Date(l.ts).toLocaleTimeString()}</div>
+                    </div>`;
+                });
+                html += '</div>';
+                document.getElementById('monitor-stream').innerHTML = html;
+            });
         }
 
-        function showToast(txt) {
+        window.sendPing = async (txt) => {
+            await db.ref('trip/alerts').push({ text: txt, ts: new Date().toISOString() });
+            showToast("CMD SENT");
+        };
+
+        function showToast(m) {
             const t = document.getElementById('toast');
-            t.innerText = txt;
-            t.style.display = "block";
-            setTimeout(() => t.style.display = "none", 2500);
+            t.innerText = m;
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 2000);
         }
     </script>
 </body>
 </html>
 
+                
