@@ -15,6 +15,7 @@
             --sys-accent: #58a6ff;
             --sys-text: #c9d1d9;
             --sys-dim: #8b949e;
+            --sys-alert: #f85149;
             --safe-bottom: env(safe-area-inset-bottom);
         }
 
@@ -60,6 +61,18 @@
             backdrop-filter: blur(12px);
         }
 
+        .alert-card {
+            border: 1px solid var(--sys-alert);
+            background: rgba(248, 81, 73, 0.1);
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { border-color: var(--sys-alert); box-shadow: 0 0 0 0 rgba(248, 81, 73, 0.4); }
+            70% { border-color: transparent; box-shadow: 0 0 0 10px rgba(248, 81, 73, 0); }
+            100% { border-color: var(--sys-alert); box-shadow: 0 0 0 0 rgba(248, 81, 73, 0); }
+        }
+
         .label {
             font-family: "SFMono-Regular", monospace;
             font-size: 11px;
@@ -81,8 +94,10 @@
             width: 100%; padding: 12px; border-radius: 4px; border: none; font-size: 13px;
             font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center;
             transition: background 0.2s;
+            text-decoration: none;
         }
         .btn-primary { background: var(--sys-accent); color: #0d1117; }
+        .btn-alert { background: var(--sys-alert); color: #fff; }
         .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
 
         #watcher-eye {
@@ -116,11 +131,10 @@
         .media-controls { display: flex; gap: 12px; align-items: center; }
         .m-btn { background: none; border: none; color: #fff; cursor: pointer; padding: 5px; }
 
-        /* Modified Expanded Media View: Partial Height Sheet */
         #media-expanded {
             position: fixed; 
             bottom: 0; left: 0; right: 0;
-            height: 65vh; /* Partial height */
+            height: 65vh;
             background: #161b22; 
             z-index: 2000;
             display: none; flex-direction: column; 
@@ -176,6 +190,13 @@
         .playlist-name { font-size: 12px; color: #fff; cursor: pointer; flex: 1; }
         .playlist-name.active { color: var(--sys-accent); font-weight: bold; }
         .playlist-del { color: #f85149; cursor: pointer; padding-left: 10px; font-size: 10px; }
+
+        .feed-container {
+            max-height: 150px; overflow-y: auto; padding: 5px;
+            border: 1px solid var(--sys-border); background: #0d1117;
+            border-radius: 4px; font-size: 11px; line-height: 1.4;
+        }
+        .feed-item { margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px; }
     </style>
 </head>
 <body>
@@ -193,7 +214,7 @@
         <div style="width: 100%;">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h1 class="mono" style="font-size: 20px; margin: 0; color: var(--sys-accent);">drs.one</h1>
-                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.7.0-reactive-net</p>
+                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.7.5-reactive-comm</p>
             </div>
             <div class="sys-card">
                 <span class="label">ssh_identity</span>
@@ -204,14 +225,21 @@
         </div>
     </div>
 
+    <!-- Traveler View -->
     <div id="view-home" class="view">
+        <div id="comms-alert-zone"></div>
+        
         <div style="margin-bottom: 2rem;">
             <span class="label">system.current_node</span>
             <h2 id="loc-display" style="font-size: 24px; font-weight: 600; margin: 0; color: #fff;">LOCATING...</h2>
         </div>
-        
-        <div id="alert-zone"></div>
 
+        <div class="sys-card">
+            <span class="label">signal.broadcast_status</span>
+            <input type="text" id="status-msg-in" placeholder="Type short signal..." maxlength="50" style="margin-bottom: 10px;">
+            <button class="btn btn-ghost mono" style="font-size: 11px;" onclick="broadcastStatus()">TRANSMIT_SIGNAL</button>
+        </div>
+        
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="sys-card">
                 <span class="label">env.thermal</span>
@@ -233,6 +261,11 @@
     <div id="view-config" class="view">
         <span class="label">system.kernel_config</span>
         <div class="sys-card">
+            <span class="label">identity.phone_uplink</span>
+            <input type="tel" id="user-phone-in" placeholder="+1234567890">
+            <button class="btn btn-ghost" onclick="savePhone()">Sync Phone Node</button>
+        </div>
+        <div class="sys-card">
             <span class="label">add_new_playlist</span>
             <input type="text" id="pl-name-in" placeholder="Library Name">
             <input type="text" id="pl-url-in" placeholder="YouTube Playlist URL">
@@ -253,11 +286,26 @@
         </div>
     </div>
 
+    <!-- Watcher View -->
     <div id="view-monitor" class="view">
         <h2 class="mono" style="font-size: 14px; color: var(--sys-accent); margin-bottom: 2rem;">drs.monitor</h2>
         <div id="monitor-stream"></div>
+        
+        <div class="sys-card">
+            <span class="label">signal.decode_feed</span>
+            <div id="status-feed" class="feed-container mono">
+                <div style="color:var(--sys-dim)">Listening for signals...</div>
+            </div>
+        </div>
+
+        <div class="sys-card">
+            <span class="label">uplink.commands</span>
+            <button class="btn btn-alert" onclick="requestCall()">REQUEST_VOICE_UPLINK</button>
+            <p class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 10px; text-align: center;">Signal will alert traveler dashboard</p>
+        </div>
     </div>
 
+    <!-- Media UI etc... (Keeping same as before) -->
     <div id="media-expanded">
         <div style="width: 40px; height: 4px; background: var(--sys-border); border-radius: 2px; margin: 0 auto 1.5rem auto;"></div>
         <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
@@ -309,23 +357,17 @@
         let playlists = JSON.parse(localStorage.getItem('drs_playlists') || '[]');
         let currentPlaylistId = localStorage.getItem('drs_current_pl');
 
-        // Particle System
+        // Particle System (Previous Logic)
         const canvas = document.getElementById('particle-canvas');
         const ctx = canvas.getContext('2d');
         let particles = [];
         let musicIntensity = 0;
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
         class Particle {
-            constructor() {
-                this.reset();
-            }
+            constructor() { this.reset(); }
             reset() {
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
@@ -336,46 +378,19 @@
             }
             update() {
                 const boost = isPlaying ? (musicIntensity * 5) : 1;
-                this.x += this.speedX * boost;
-                this.y += this.speedY * boost;
-                
-                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
-                    this.reset();
-                }
+                this.x += this.speedX * boost; this.y += this.speedY * boost;
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
             }
             draw() {
                 ctx.fillStyle = isPlaying ? `rgba(88, 166, 255, ${this.life * musicIntensity})` : `rgba(139, 148, 158, 0.1)`;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size * (isPlaying ? musicIntensity * 2 : 1), 0, Math.PI * 2);
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size * (isPlaying ? musicIntensity * 2 : 1), 0, Math.PI * 2); ctx.fill();
             }
         }
 
-        function initParticles() {
-            particles = [];
-            for (let i = 0; i < 100; i++) particles.push(new Particle());
-        }
-
+        function initParticles() { particles = []; for (let i = 0; i < 100; i++) particles.push(new Particle()); }
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Background pulse based on intensity
-            if (isPlaying) {
-                const glow = musicIntensity * 30;
-                const gradient = ctx.createRadialGradient(
-                    canvas.width/2, canvas.height/2, 0,
-                    canvas.width/2, canvas.height/2, canvas.width/2
-                );
-                gradient.addColorStop(0, `rgba(22, 27, 34, 1)`);
-                gradient.addColorStop(1, `rgba(13, 17, 23, 1)`);
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-
-            particles.forEach(p => {
-                p.update();
-                p.draw();
-            });
+            particles.forEach(p => { p.update(); p.draw(); });
             requestAnimationFrame(animate);
         }
 
@@ -388,99 +403,14 @@
             else document.getElementById('view-login').style.display = 'flex';
             document.getElementById('login-trigger').onclick = handleLogin;
             document.getElementById('gps-trigger').onclick = pushGps;
-            initParticles();
-            animate();
+            initParticles(); animate();
         });
-
-        function setupPresence(role) {
-            const presenceRef = db.ref('trip/presence/' + role);
-            presenceRef.set(true);
-            presenceRef.onDisconnect().remove();
-            if (role === 'traveler') {
-                db.ref('trip/presence/watcher').on('value', snap => {
-                    const eye = document.getElementById('watcher-eye');
-                    eye.style.display = snap.val() ? 'block' : 'none';
-                    if (snap.val()) showToast("WATCHER DETECTED");
-                });
-            }
-        }
-
-        function simulateMusicIntensity() {
-            if (!isPlaying) {
-                musicIntensity = 0;
-                return;
-            }
-            // Real-time music is hard without Web Audio API on YT, so we simulate jitter
-            musicIntensity = 0.3 + Math.random() * 0.7;
-            setTimeout(simulateMusicIntensity, 100);
-        }
-
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('yt-player', {
-                playerVars: { 'listType': 'playlist', 'autoplay': 0, 'enablejsapi': 1, 'controls': 0, 'playsinline': 1 },
-                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
-            });
-        }
-
-        function onPlayerReady(e) {
-            if (currentPlaylistId) {
-                e.target.cuePlaylist({ list: parsePlaylistId(currentPlaylistId) });
-                document.getElementById('media-bar').style.display = 'flex';
-                document.getElementById('audio-status').innerText = "ENGINE READY";
-            }
-        }
-
-        function parsePlaylistId(url) {
-            if (!url.includes('list=')) return url;
-            return new URLSearchParams(url.split('?')[1]).get('list');
-        }
-
-        function onPlayerStateChange(event) {
-            const btnMini = document.getElementById('m-play');
-            const btnExp = document.getElementById('exp-play');
-            if (event.data == YT.PlayerState.PLAYING) {
-                isPlaying = true;
-                simulateMusicIntensity();
-                const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-                btnMini.innerHTML = icon; btnExp.innerHTML = icon;
-                updateMediaMetadata();
-            } else {
-                isPlaying = false;
-                musicIntensity = 0;
-                const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-                btnMini.innerHTML = icon; btnExp.innerHTML = icon;
-            }
-        }
-
-        function updateMediaMetadata() {
-            const data = player.getVideoData();
-            document.getElementById('track-title').innerText = data.title;
-            document.getElementById('exp-title').innerText = data.title;
-            document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/maxresdefault.jpg`;
-        }
-
-        function primeAudio() {
-            if (!currentPlaylistId) return showToast("SELECT PLAYLIST");
-            player.loadPlaylist({ list: parsePlaylistId(currentPlaylistId) });
-            audioPrimed = true;
-            document.getElementById('prime-btn').style.display = 'none';
-            showToast("ENGINE START");
-        }
-
-        function togglePlay() {
-            if (!audioPrimed) return primeAudio();
-            if (isPlaying) player.pauseVideo(); else player.playVideo();
-        }
-
-        function openExpanded() { document.getElementById('media-expanded').style.display = 'flex'; }
-        function closeExpanded() { document.getElementById('media-expanded').style.display = 'none'; }
 
         function startSession(role) {
             document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
             setupPresence(role);
             if (role === 'traveler') {
-                nav('home');
-                document.getElementById('hud').style.display = 'grid';
+                nav('home'); document.getElementById('hud').style.display = 'grid';
                 initTraveler();
             } else {
                 document.getElementById('view-monitor').style.display = 'block';
@@ -488,63 +418,153 @@
             }
         }
 
+        function setupPresence(role) {
+            const presenceRef = db.ref('trip/presence/' + role);
+            presenceRef.set(true); presenceRef.onDisconnect().remove();
+            
+            if (role === 'traveler') {
+                db.ref('trip/presence/watcher').on('value', snap => {
+                    document.getElementById('watcher-eye').style.display = snap.val() ? 'block' : 'none';
+                });
+                db.ref('trip/call_request').on('value', snap => {
+                    const req = snap.val(); const zone = document.getElementById('comms-alert-zone');
+                    if (req && req.active) {
+                        const phone = localStorage.getItem('drs_phone');
+                        zone.innerHTML = `
+                            <div class="sys-card alert-card">
+                                <span class="label" style="color:var(--sys-alert)">CRITICAL_COMMS_REQUEST</span>
+                                <p class="mono" style="font-size:12px; margin-bottom:15px;">Watcher is requesting voice uplink.</p>
+                                <div style="display:flex; gap:10px;">
+                                    <a href="tel:${phone}" class="btn btn-alert" style="flex:2" onclick="clearCallRequest()">INITIATE_CALL</a>
+                                    <button class="btn btn-ghost" style="flex:1" onclick="clearCallRequest()">DISMISS</button>
+                                </div>
+                            </div>`;
+                    } else zone.innerHTML = '';
+                });
+            }
+        }
+
+        // --- STATUS SIGNAL LOGIC ---
+        function broadcastStatus() {
+            const input = document.getElementById('status-msg-in');
+            const msg = input.value.trim();
+            if (!msg) return;
+            db.ref('trip/status_feed').push({
+                text: msg,
+                ts: Date.now()
+            });
+            input.value = '';
+            showToast("SIGNAL_TX_OK");
+        }
+
+        function initWatcher() {
+            // Location Monitor
+            db.ref('trip/location').on('value', snap => {
+                const loc = snap.val(); if (!loc) return;
+                document.getElementById('monitor-stream').innerHTML = `
+                    <div class="sys-card">
+                        <span class="label">node.coords</span>
+                        <h3 class="mono">${loc.lat}, ${loc.lng}</h3>
+                        <a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:10px; text-decoration:none;">TRACE MAP</a>
+                    </div>`;
+            });
+            // Status Feed Monitor
+            const feedContainer = document.getElementById('status-feed');
+            db.ref('trip/status_feed').limitToLast(10).on('child_added', snap => {
+                const data = snap.val();
+                if (feedContainer.innerHTML.includes('Listening')) feedContainer.innerHTML = '';
+                const time = new Date(data.ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const entry = document.createElement('div');
+                entry.className = 'feed-item';
+                entry.innerHTML = `<span style="color:var(--sys-accent)">[${time}]</span> ${data.text}`;
+                feedContainer.prepend(entry);
+            });
+        }
+
+        // --- Remaining System Helpers ---
+        function requestCall() { db.ref('trip/call_request').set({ active: true, ts: Date.now() }); showToast("UPLINK REQUESTED"); }
+        function clearCallRequest() { db.ref('trip/call_request').set({ active: false }); }
+        function savePhone() { localStorage.setItem('drs_phone', document.getElementById('user-phone-in').value); showToast("PHONE UPDATED"); }
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('yt-player', {
+                playerVars: { 'listType': 'playlist', 'autoplay': 0, 'enablejsapi': 1, 'controls': 0, 'playsinline': 1 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
+            });
+        }
+        function onPlayerReady(e) {
+            if (currentPlaylistId) {
+                e.target.cuePlaylist({ list: parsePlaylistId(currentPlaylistId) });
+                document.getElementById('media-bar').style.display = 'flex';
+                document.getElementById('audio-status').innerText = "ENGINE READY";
+            }
+        }
+        function parsePlaylistId(url) { return url.includes('list=') ? new URLSearchParams(url.split('?')[1]).get('list') : url; }
+        function onPlayerStateChange(event) {
+            const btnMini = document.getElementById('m-play'), btnExp = document.getElementById('exp-play');
+            if (event.data == YT.PlayerState.PLAYING) {
+                isPlaying = true; simulateMusicIntensity();
+                const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+                btnMini.innerHTML = icon; btnExp.innerHTML = icon; updateMediaMetadata();
+            } else {
+                isPlaying = false; musicIntensity = 0;
+                const icon = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+                btnMini.innerHTML = icon; btnExp.innerHTML = icon;
+            }
+        }
+        function updateMediaMetadata() {
+            const data = player.getVideoData();
+            document.getElementById('track-title').innerText = data.title;
+            document.getElementById('exp-title').innerText = data.title;
+            document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/maxresdefault.jpg`;
+        }
+        function simulateMusicIntensity() {
+            if (!isPlaying) { musicIntensity = 0; return; }
+            musicIntensity = 0.3 + Math.random() * 0.7; setTimeout(simulateMusicIntensity, 100);
+        }
+        function primeAudio() {
+            if (!currentPlaylistId) return showToast("SELECT PLAYLIST");
+            player.loadPlaylist({ list: parsePlaylistId(currentPlaylistId) });
+            audioPrimed = true; document.getElementById('prime-btn').style.display = 'none';
+        }
+        function togglePlay() { if (!audioPrimed) return primeAudio(); isPlaying ? player.pauseVideo() : player.playVideo(); }
+        function openExpanded() { document.getElementById('media-expanded').style.display = 'flex'; }
+        function closeExpanded() { document.getElementById('media-expanded').style.display = 'none'; }
         function handleLogin() {
             const u = document.getElementById('user-in').value.toLowerCase();
             const p = document.getElementById('pass-in').value;
             if (p === '1122' || p === '1212') {
                 const role = p === '1122' ? 'traveler' : 'watcher';
-                localStorage.setItem('drs_v3_role', role);
-                startSession(role);
+                localStorage.setItem('drs_v3_role', role); startSession(role);
             }
         }
-
         function logout() { localStorage.clear(); location.reload(); }
-
         window.nav = (v) => {
             document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
             document.getElementById(`view-${v}`).style.display = 'block';
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             if(v === 'config') renderPlaylists();
         };
-
         function renderPlaylists() {
             const list = document.getElementById('playlist-list');
             list.innerHTML = playlists.map((pl, idx) => `
                 <div class="playlist-item">
                     <div class="playlist-name ${pl.url === currentPlaylistId ? 'active' : ''}" onclick="selectPlaylist('${pl.url}')">${pl.name}</div>
                     <div class="playlist-del" onclick="deletePlaylist(${idx})">DEL</div>
-                </div>
-            `).join('');
+                </div>`).join('');
         }
-
         function addPlaylist() {
-            const name = document.getElementById('pl-name-in').value;
-            const url = document.getElementById('pl-url-in').value;
+            const name = document.getElementById('pl-name-in').value, url = document.getElementById('pl-url-in').value;
             if(!name || !url) return;
-            playlists.push({ name, url });
-            localStorage.setItem('drs_playlists', JSON.stringify(playlists));
-            renderPlaylists();
+            playlists.push({ name, url }); localStorage.setItem('drs_playlists', JSON.stringify(playlists)); renderPlaylists();
         }
-
-        function selectPlaylist(url) {
-            currentPlaylistId = url;
-            localStorage.setItem('drs_current_pl', url);
-            location.reload();
-        }
-
-        function deletePlaylist(idx) {
-            playlists.splice(idx, 1);
-            localStorage.setItem('drs_playlists', JSON.stringify(playlists));
-            renderPlaylists();
-        }
-
+        function selectPlaylist(url) { currentPlaylistId = url; localStorage.setItem('drs_current_pl', url); location.reload(); }
+        function deletePlaylist(idx) { playlists.splice(idx, 1); localStorage.setItem('drs_playlists', JSON.stringify(playlists)); renderPlaylists(); }
         function initTraveler() {
             navigator.geolocation.getCurrentPosition(pos => {
                 const { latitude: lat, longitude: lon } = pos.coords;
                 document.getElementById('loc-display').innerText = `${lat.toFixed(2)}N, ${lon.toFixed(2)}E`;
             });
         }
-
         async function pushGps() {
             navigator.geolocation.getCurrentPosition(async pos => {
                 await db.ref('trip/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts: new Date().toISOString() });
@@ -552,24 +572,8 @@
                 showToast("SYNC COMPLETE");
             });
         }
-
-        function initWatcher() {
-            db.ref('trip/location').on('value', snap => {
-                const loc = snap.val();
-                if (!loc) return;
-                document.getElementById('monitor-stream').innerHTML = `
-                    <div class="sys-card">
-                        <span class="label">node.coords</span>
-                        <h3 class="mono">${loc.lat}, ${loc.lng}</h3>
-                        <a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:10px; text-decoration:none;">TRACE MAP</a>
-                    </div>
-                `;
-            });
-        }
-
         function showToast(m) {
-            const t = document.getElementById('toast');
-            t.innerText = m; t.style.display = 'block';
+            const t = document.getElementById('toast'); t.innerText = m; t.style.display = 'block';
             setTimeout(() => t.style.display = 'none', 2000);
         }
     </script>
