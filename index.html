@@ -53,9 +53,11 @@
         .card { background: var(--panel-bg); backdrop-filter: blur(20px); border-radius: var(--radius); padding: 22px; margin-bottom: 20px; border: 1px solid var(--glass-border); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
         .card-label { font-size: 10px; font-weight: 700; color: var(--ubuntu-orange); letter-spacing: 1.5px; margin-bottom: 12px; text-transform: uppercase; }
 
-        .list-item { padding: 15px; background: rgba(255,255,255,0.03); margin-bottom: 10px; border-radius: 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; transition: var(--transition); }
+        .list-item { padding: 15px; background: rgba(255,255,255,0.03); margin-bottom: 10px; border-radius: 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; transition: var(--transition); animation: fadeIn 0.4s ease-out forwards; }
         .list-item:active { transform: scale(0.98); background: rgba(255,255,255,0.07); }
         .list-item.selected { border-color: var(--ubuntu-orange); background: rgba(233, 84, 32, 0.1); }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
         /* --- NAVIGATION --- */
         nav { height: 75px; background: rgba(10, 10, 15, 0.9); backdrop-filter: blur(20px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--glass-border); z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
@@ -145,14 +147,16 @@
             <!-- DATA VIEW (PLAYLIST SELECTOR) -->
             <div id="view-data" class="view">
                 <div class="card">
-                    <div class="card-label">Stream Configuration</div>
-                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px;">Select a global playlist to sync across the trip.</p>
-                    <div id="playlist-library"></div>
+                    <div class="card-label">Active Playlist Selection</div>
+                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px;">Choose a global source for current playback.</p>
+                    <div id="playlist-library" style="display: flex; flex-direction: column; gap: 4px;">
+                        <!-- Real-time List -->
+                    </div>
                 </div>
 
                 <div class="card">
                     <div class="card-label">Register New Source</div>
-                    <input type="text" id="pl-name" placeholder="Friendly Name">
+                    <input type="text" id="pl-name" placeholder="Friendly Name (e.g. Road Trip Mix)">
                     <input type="text" id="pl-id" placeholder="YouTube Playlist ID">
                     <button onclick="app.addPlaylist()">Commit to Cloud</button>
                 </div>
@@ -269,14 +273,24 @@
                 db.ref('trip/playlists').on('value', snap => {
                     const data = snap.val();
                     const container = document.getElementById('playlist-library');
-                    if (!data) return container.innerHTML = "<div style='color:var(--text-dim); font-size:12px;'>No sources registered.</div>";
-                    container.innerHTML = Object.keys(data).map(k => `
-                        <div class="list-item ${this.activePlaylistId === data[k].pid ? 'selected' : ''}" 
-                             onclick="app.setActivePlaylist('${data[k].pid}', '${data[k].name}')">
-                            <div style="font-weight:600;">${data[k].name}</div>
-                            <div style="font-size:10px; color:var(--text-dim);">ID: ${data[k].pid.substring(0,6)}...</div>
-                        </div>
-                    `).join('');
+                    if (!data) {
+                        container.innerHTML = "<div style='color:var(--text-dim); font-size:12px; padding: 20px; text-align: center;'>No sources registered in cloud.</div>";
+                        return;
+                    }
+                    
+                    container.innerHTML = Object.keys(data).map(k => {
+                        const isSelected = this.activePlaylistId === data[k].pid;
+                        return `
+                            <div class="list-item ${isSelected ? 'selected' : ''}" 
+                                 onclick="app.setActivePlaylist('${data[k].pid}', '${data[k].name}')">
+                                <div>
+                                    <div style="font-weight:600; color:${isSelected ? 'var(--ubuntu-orange)' : 'white'};">${data[k].name}</div>
+                                    <div style="font-size:10px; color:var(--text-dim);">Source ID: ${data[k].pid.substring(0,8)}...</div>
+                                </div>
+                                ${isSelected ? '<span style="font-size:18px;">✅</span>' : '<span style="font-size:18px; opacity:0.3;">📻</span>'}
+                            </div>
+                        `;
+                    }).join('');
                 });
 
                 // Listen for active selection
@@ -285,12 +299,12 @@
                     if (active && active.pid !== this.activePlaylistId) {
                         this.activePlaylistId = active.pid;
                         document.getElementById('active-stream-title').innerText = active.name;
-                        document.getElementById('active-stream-desc').innerText = "Synchronized stream ready for playback.";
+                        document.getElementById('active-stream-desc').innerText = "Stream synchronized. Tap the player to listen.";
                         this.yt.load(active.pid, false);
                     }
                 });
 
-                // Listen for location (Watcher view update)
+                // Listen for location
                 db.ref('trip/location').on('value', snap => {
                     const data = snap.val();
                     if (data) {
@@ -388,14 +402,14 @@
                         const idx = e.target.getPlaylistIndex();
                         const videoData = e.target.getVideoData();
                         
-                        document.getElementById('current-track-name').innerText = videoData.title || "Unknown Audio Stream";
+                        document.getElementById('current-track-name').innerText = videoData.title || "Stream Initializing...";
                         
                         const queue = document.getElementById('upcoming-queue');
                         if (playlist) {
                             queue.innerHTML = playlist.slice(idx + 1, idx + 6).map((id, i) => `
                                 <div class="queue-item">
                                     <div style="width:20px; font-weight:700; color:var(--ubuntu-orange);">${i+1}</div>
-                                    <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Syncing Track Data...</div>
+                                    <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Queued Sync Item</div>
                                 </div>
                             `).join('');
                         }
