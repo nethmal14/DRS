@@ -239,6 +239,11 @@
                 this.ui.initFireflies();
                 this.sync();
                 if (this.role === 'watched') this.gps.track();
+                
+                // Pre-warm the YouTube API Ready function
+                window.onYouTubeIframeAPIReady = () => {
+                   this.audio.initPlayer();
+                };
             },
 
             sync: function() {
@@ -277,6 +282,9 @@
                     if (stream && stream.id !== this.activePlId) {
                         this.activePlId = stream.id;
                         this.audio.playNew(stream.id);
+                        
+                        // Force UI refresh for library items
+                        db.ref('trip/playlists').once('value', () => {}); 
                     }
                 });
 
@@ -301,6 +309,9 @@
                         listId = rawUrl.split('list=')[1].split('&')[0];
                     } else if (rawUrl.includes('/playlist/')) {
                         listId = rawUrl.split('/playlist/')[1].split('?')[0];
+                    } else if (rawUrl.includes('youtu.be/')) {
+                        // In case they paste a single video that happens to be a list
+                        listId = rawUrl.split('youtu.be/')[1].split('?')[0];
                     }
 
                     db.ref('trip/playlists').push({ name, id: listId });
@@ -316,26 +327,43 @@
             },
 
             audio: {
+                initPlayer: function(id = null) {
+                    if (this.player) return;
+                    this.player = new YT.Player('yt-iframe', {
+                        height: '1', width: '1',
+                        playerVars: { 
+                            listType: id ? 'playlist' : undefined, 
+                            list: id || undefined, 
+                            autoplay: 1, 
+                            controls: 0 
+                        },
+                        events: {
+                            onReady: (e) => {
+                                if (id) e.target.loadPlaylist({ list: id, listType: 'playlist', index: 0, play: true });
+                            },
+                            onStateChange: (e) => this.updateUI(e),
+                            onError: (e) => console.error("YT Error", e)
+                        }
+                    });
+                },
                 playNew: function(id) {
-                    if (this.player && this.player.loadPlaylist) {
-                        this.player.loadPlaylist({ list: id, listType: 'playlist', index: 0, play: true });
+                    if (this.player && typeof this.player.loadPlaylist === 'function') {
+                        try {
+                            this.player.loadPlaylist({ list: id, listType: 'playlist', index: 0, play: true });
+                        } catch(e) {
+                            console.warn("Re-init player");
+                            this.player = null;
+                            this.initPlayer(id);
+                        }
                     } else {
-                        window.onYouTubeIframeAPIReady = () => {
-                            this.player = new YT.Player('yt-iframe', {
-                                height: '1', width: '1',
-                                playerVars: { list: id, listType: 'playlist', autoplay: 1, controls: 0 },
-                                events: {
-                                    onReady: (e) => e.target.playVideo(),
-                                    onStateChange: (e) => this.updateUI(e)
-                                }
-                            });
-                        };
-                        // If API already loaded
-                        if (window.YT && window.YT.Player) window.onYouTubeIframeAPIReady();
+                        // If API is already loaded but player isn't, or player is broken
+                        if (window.YT && window.YT.Player) {
+                            this.initPlayer(id);
+                        }
                     }
                 },
                 toggle: function() {
-                    if (!this.player) return;
+                    if (!this.player || !this.player.getPlayerState) return;
                     const s = this.player.getPlayerState();
                     s === 1 ? this.player.pauseVideo() : this.player.playVideo();
                 },
@@ -343,18 +371,24 @@
                 prev: () => app.player?.previousVideo(),
                 updateUI: function(e) {
                     const isPlaying = e.data === 1;
-                    document.getElementById('svg-play').classList.toggle('hidden', isPlaying);
-                    document.getElementById('svg-pause').classList.toggle('hidden', !isPlaying);
+                    const playBtn = document.getElementById('svg-play');
+                    const pauseBtn = document.getElementById('svg-pause');
+                    if(playBtn && pauseBtn) {
+                        playBtn.classList.toggle('hidden', isPlaying);
+                        pauseBtn.classList.toggle('hidden', !isPlaying);
+                    }
                     
                     const data = e.target.getVideoData();
                     if (data && data.title) {
                         document.getElementById('track-title').innerText = data.title;
                     }
 
-                    const playlist = e.target.getPlaylist();
-                    const currentIdx = e.target.getPlaylistIndex();
-                    if (playlist) {
-                        document.getElementById('queue-list').innerText = `Track ${currentIdx + 1} of ${playlist.length}`;
+                    if (typeof e.target.getPlaylist === 'function') {
+                        const playlist = e.target.getPlaylist();
+                        const currentIdx = e.target.getPlaylistIndex();
+                        if (playlist) {
+                            document.getElementById('queue-list').innerText = `Track ${currentIdx + 1} of ${playlist.length}`;
+                        }
                     }
                 }
             },
@@ -387,6 +421,7 @@
                 },
                 renderTrees: function() {
                     const forest = document.getElementById('forest-scene');
+                    forest.innerHTML = ''; // Clear old ones
                     for (let i = 0; i < 12; i++) {
                         const t = document.createElement('div');
                         t.className = 'tree';
@@ -416,12 +451,21 @@
                     };
                     draw();
                 }
+            },
+            
+            logout: function() {
+                localStorage.removeItem('tt_role');
+                location.reload();
             }
         };
 
         window.onload = () => {
             const r = localStorage.getItem('tt_role');
             if (r) app.start(r);
+            // Handle if API already loaded
+            if (window.YT && window.YT.Player) {
+                app.audio.initPlayer();
+            }
         };
     </script>
 </body>
