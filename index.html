@@ -4,596 +4,163 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TripTracker | System</title>
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root {
             --ubuntu-orange: #E95420;
             --ubuntu-dark: #1a0614;
             --ubuntu-bg: #0c0c0c;
-            --panel-bg: rgba(20, 20, 25, 0.7);
-            --card-bg: rgba(255, 255, 255, 0.04);
+            --panel-bg: rgba(20, 20, 25, 0.85);
             --text-main: #f0f0f0;
             --text-dim: #9b958f;
             --radius: 16px;
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Ubuntu', -apple-system, sans-serif; background: var(--ubuntu-bg); color: var(--text-main); overflow: hidden; }
 
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            font-family: 'Ubuntu', -apple-system, sans-serif;
-            background: var(--ubuntu-bg);
-            color: var(--text-main);
-            overflow: hidden;
-        }
+        /* --- BACKGROUND LAYER (Z-INDEX 0) --- */
+        #global-bg { position: fixed; inset: 0; z-index: 0; background: linear-gradient(to bottom, #030812, #0d1621); overflow: hidden; }
+        .moon { position: absolute; top: 40px; right: 40px; width: 60px; height: 60px; background: #fdfae5; border-radius: 50%; box-shadow: 0 0 50px 15px rgba(253, 250, 229, 0.2); z-index: 1; }
+        .forest { position: absolute; bottom: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+        .tree { position: absolute; bottom: 0; width: 2px; background: #05080a; transform-origin: bottom; }
+        .tree::before { content: ''; position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 100px solid #05080a; }
+        canvas#fireflies { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0.5; }
 
-        /* --- Background / Forest --- */
-        #global-bg {
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            background: linear-gradient(to bottom, #020406, #0d1621);
-            transition: var(--transition);
-        }
-
-        .moon {
-            position: absolute;
-            top: 40px;
-            right: 40px;
-            width: 80px;
-            height: 80px;
-            background: #fdfae5;
-            border-radius: 50%;
-            box-shadow: 0 0 40px 10px rgba(253, 250, 229, 0.2);
-            z-index: 1;
-        }
-
-        .forest-container {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
-            pointer-events: none;
-        }
-
-        .tree {
-            position: absolute;
-            bottom: 0;
-            background: #05080a;
-            width: 4px;
-            height: 120px;
-        }
-
-        .tree::after {
-            content: '';
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            border-left: 20px solid transparent;
-            border-right: 20px solid transparent;
-            border-bottom: 60px solid #05080a;
-        }
-
-        /* --- Auth Overlay --- */
-        #auth-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 1000;
-            background: radial-gradient(circle at center, var(--ubuntu-dark), black);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .auth-card {
-            background: var(--panel-bg);
-            padding: 40px 30px;
-            border-radius: 24px;
-            width: 100%;
-            max-width: 360px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.08);
-            text-align: center;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        label {
-            display: block;
-            font-size: 10px;
-            color: var(--text-dim);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-weight: 600;
-        }
-
-        input {
-            width: 100%;
-            padding: 16px;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            color: white;
-            font-size: 16px;
-            outline: none;
-            transition: var(--transition);
-        }
-
-        input:focus { border-color: var(--ubuntu-orange); background: rgba(0,0,0,0.5); }
-
-        button {
-            width: 100%;
-            padding: 16px;
-            background: var(--ubuntu-orange);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 16px;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 4px 15px rgba(233, 84, 32, 0.3);
-        }
-
-        button:active { transform: scale(0.97); opacity: 0.9; }
-
-        /* --- App Structure --- */
-        #app-shell {
-            display: none;
-            height: 100dvh;
-            flex-direction: column;
-            position: relative;
-        }
-
-        header {
-            padding: 18px 24px;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(15px);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            z-index: 10;
-        }
-
-        .status-pill {
-            background: rgba(233, 84, 32, 0.15);
-            color: var(--ubuntu-orange);
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            border: 1px solid rgba(233, 84, 32, 0.2);
-        }
-
-        main {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            padding-bottom: 120px;
-            scroll-behavior: smooth;
-        }
-
-        .view {
-            display: none;
-            animation: fadeInScale 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .view.active { display: block; }
-
-        @keyframes fadeInScale {
-            from { opacity: 0; transform: scale(0.98); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .card {
-            background: var(--panel-bg);
-            backdrop-filter: blur(12px);
-            border-radius: var(--radius);
-            padding: 24px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(255,255,255,0.06);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-        }
-
-        .card-header {
-            font-size: 11px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            font-weight: 600;
-        }
-
-        .big-text { font-size: 28px; font-weight: 300; margin: 8px 0; color: #fff; }
-
-        /* --- Navigation --- */
-        nav {
-            height: 70px;
-            background: rgba(10, 10, 12, 0.95);
-            backdrop-filter: blur(25px);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            border-top: 1px solid rgba(255,255,255,0.08);
-            padding-bottom: env(safe-area-inset-bottom);
-            z-index: 20;
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: var(--text-dim);
-            text-decoration: none;
-            font-size: 10px;
-            transition: var(--transition);
-            flex: 1;
-        }
-
-        .nav-item.active { color: var(--ubuntu-orange); }
-        .nav-icon { font-size: 20px; margin-bottom: 4px; }
-
-        /* --- Floating Media Interaction --- */
-        #music-trigger {
-            position: fixed;
-            bottom: 90px;
-            right: 25px;
-            width: 56px;
-            height: 56px;
-            background: var(--ubuntu-orange);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-            z-index: 30;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        #music-trigger:active { transform: scale(0.9); }
-
-        .media-floating-container {
-            position: fixed;
-            bottom: 85px;
-            left: 20px;
-            right: 85px; /* Leave space for trigger if needed, or overlap */
-            background: rgba(25, 25, 30, 0.85);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-            z-index: 25;
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(20px);
-            transition: var(--transition);
-        }
-
-        .media-floating-container.visible {
-            opacity: 1;
-            pointer-events: auto;
-            transform: translateY(0);
-        }
-
-        .track-info {
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-right: 15px;
-        }
-
-        .track-title { font-size: 14px; font-weight: 500; color: #fff; }
-        .track-status { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
-
-        .compact-controls {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .btn-ctrl {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.05);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .btn-ctrl svg { width: 16px; height: 16px; fill: white; }
-
-        .playlist-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(10px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1001;
-            opacity: 0;
-            pointer-events: none;
-            transition: var(--transition);
-        }
-
-        .playlist-modal.active { opacity: 1; pointer-events: auto; }
-
-        .modal-card {
-            background: var(--ubuntu-dark);
-            width: 90%;
-            max-width: 320px;
-            border-radius: 24px;
-            padding: 24px;
-            border: 1px solid rgba(255,255,255,0.1);
-            max-height: 70vh;
-            overflow-y: auto;
-        }
-
-        .feed-container {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            max-height: 45vh;
-            overflow-y: auto;
-            margin-bottom: 20px;
-        }
-
-        .msg-bubble {
-            padding: 14px 18px;
-            border-radius: 18px;
-            max-width: 85%;
-            font-size: 14px;
-            line-height: 1.5;
-            position: relative;
-        }
-
-        .msg-bubble.watcher { align-self: flex-start; background: rgba(40, 40, 50, 0.8); border-bottom-left-radius: 4px; color: #ddd; }
-        .msg-bubble.watched { align-self: flex-end; background: var(--ubuntu-orange); border-bottom-right-radius: 4px; color: #fff; }
-
-        .msg-meta { font-size: 9px; opacity: 0.7; margin-top: 8px; display: block; font-weight: 600; }
-
-        .update-btn {
-            background: rgba(255,255,255,0.08);
-            width: auto;
-            padding: 10px 20px;
-            font-size: 12px;
-            margin-top: 15px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .alert-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-
-        .alert-btn {
-            padding: 16px 8px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px;
-            text-align: center;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-        }
+        /* --- AUTH & UI SHELL --- */
+        #auth-overlay { position: fixed; inset: 0; z-index: 1000; background: radial-gradient(circle at center, var(--ubuntu-dark), black); display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .auth-card { background: var(--panel-bg); padding: 40px 30px; border-radius: 24px; width: 100%; max-width: 360px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); text-align: center; }
+        input { width: 100%; padding: 16px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; font-size: 16px; outline: none; margin-bottom: 20px; }
+        button { width: 100%; padding: 16px; background: var(--ubuntu-orange); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); }
         
-        .alert-btn:active { background: rgba(255,255,255,0.1); }
-        .alert-btn.emergency { border-color: rgba(255, 68, 68, 0.4); color: #ff6b6b; background: rgba(255, 68, 68, 0.05); }
+        #app-shell { display: none; height: 100dvh; flex-direction: column; position: relative; z-index: 10; }
+        header { padding: 15px 20px; background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        main { flex: 1; overflow-y: auto; padding: 20px; position: relative; }
+        .view { display: none; animation: fadeIn 0.4s ease; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        .list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px;
-            background: rgba(255,255,255,0.03);
-            margin-bottom: 8px;
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.05);
-            cursor: pointer;
-            transition: var(--transition);
-        }
+        /* --- CARDS & LISTS --- */
+        .card { background: var(--panel-bg); backdrop-filter: blur(15px); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .list-item { padding: 14px; background: rgba(255,255,255,0.03); margin-bottom: 8px; border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; transition: var(--transition); }
+        .list-item:active { background: rgba(233, 84, 32, 0.1); }
 
-        .list-item:active { background: rgba(233, 84, 32, 0.1); border-color: var(--ubuntu-orange); }
+        /* --- NAVIGATION --- */
+        nav { height: 70px; background: rgba(10, 10, 12, 0.95); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); z-index: 100; }
+        .nav-item { color: var(--text-dim); text-decoration: none; font-size: 10px; display: flex; flex-direction: column; align-items: center; }
+        .nav-item.active { color: var(--ubuntu-orange); }
 
+        /* --- MEDIA CONTROLS (EXPANDABLE) --- */
+        #media-container { position: fixed; bottom: 85px; left: 20px; right: 20px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; }
+        
+        #music-fab { width: 56px; height: 56px; background: var(--ubuntu-orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(0,0,0,0.4); cursor: pointer; transition: var(--transition); }
+        #music-fab.open { transform: rotate(45deg); background: #333; }
+
+        #player-panel { width: 100%; background: var(--panel-bg); backdrop-filter: blur(25px); border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 12px; overflow: hidden; max-height: 0; opacity: 0; transition: var(--transition); pointer-events: none; }
+        #player-panel.visible { max-height: 400px; opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+        .player-header { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .track-title { font-size: 14px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .controls-row { display: flex; justify-content: center; gap: 20px; padding: 15px; }
+        .btn-ctrl { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .btn-ctrl svg { width: 20px; height: 20px; fill: white; }
+
+        .queue-list { max-height: 180px; overflow-y: auto; padding: 0 10px 15px 10px; font-size: 12px; }
+        .queue-item { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-dim); display: flex; gap: 10px; }
+        .queue-item.active { color: var(--ubuntu-orange); font-weight: bold; }
+
+        #yt-player-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
         .hidden { display: none !important; }
-
-        canvas#fireflies {
-            position: absolute;
-            inset: 0;
-            z-index: 3;
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
     </style>
 </head>
 <body>
 
     <div id="global-bg">
         <div class="moon"></div>
-        <div class="forest-container" id="forest-scene"></div>
+        <div class="forest" id="forest-scene"></div>
         <canvas id="fireflies"></canvas>
     </div>
 
-    <!-- PLAYLIST MODAL -->
-    <div id="playlist-modal" class="playlist-modal">
-        <div class="modal-card">
-            <h3 style="margin-top:0; font-weight: 300; letter-spacing: 1px;">Saved Playlists</h3>
-            <div id="modal-playlist-list"></div>
-            <button style="margin-top: 15px; background: transparent; border: 1px solid rgba(255,255,255,0.1);" onclick="app.closeModal()">Close</button>
-        </div>
-    </div>
+    <!-- YOUTUBE PLAYER HIDDEN -->
+    <div id="yt-player-hidden"></div>
 
-    <!-- AUTHENTICATION -->
     <div id="auth-overlay">
         <div class="auth-card">
-            <div style="font-size: 40px; margin-bottom: 15px;">🌲</div>
             <h2 style="margin: 0 0 30px 0; font-weight: 300; letter-spacing: 1px;">TripTracker</h2>
-            <div class="input-group">
-                <label>Username</label>
-                <input type="text" id="login-user" placeholder="Identity" autocomplete="off">
-            </div>
-            <div class="input-group">
-                <label>Security Key</label>
-                <input type="password" id="login-pass" placeholder="••••" autocomplete="off">
-            </div>
-            <button onclick="app.login()">Initialize Link</button>
-            <div id="login-error" style="color: #ff6b6b; font-size: 12px; margin-top: 20px; display: none; font-weight: 600;">Invalid System Credentials</div>
+            <input type="text" id="login-user" placeholder="watched / watcher">
+            <input type="password" id="login-pass" placeholder="••••">
+            <button onclick="app.login()">Connect</button>
+            <div id="login-error" style="color: #ff6b6b; font-size: 12px; margin-top: 15px; display: none;">Invalid credentials</div>
         </div>
     </div>
 
     <div id="app-shell">
         <header>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-weight: 600; letter-spacing: 1px; font-size: 13px;">LINUX // MOBILE</span>
-                <span class="status-pill" id="role-pill">OFFLINE</span>
-            </div>
-            <div onclick="app.logout()" style="color: var(--ubuntu-orange); font-size: 12px; font-weight: 800; cursor: pointer; letter-spacing: 1px;">DISCONNECT</div>
+            <span style="font-weight: 800; font-size: 12px; letter-spacing: 1px;">SYSTEM // MEDIA</span>
+            <div onclick="app.logout()" style="color: var(--ubuntu-orange); font-size: 11px; cursor: pointer;">LOGOUT</div>
         </header>
 
-        <main id="main-content">
+        <main>
+            <!-- DASHBOARD (TRAVELER) -->
             <div id="view-dash" class="view active">
                 <div class="card">
-                    <div class="card-header"><span>TELEMETRY</span> <span id="loc-timestamp">SYNCING...</span></div>
-                    <div class="big-text" id="loc-status">Locating Vector...</div>
-                    <div id="loc-coords" style="color: var(--text-dim); font-size: 14px; font-family: monospace; letter-spacing: 1px;">0.0000, 0.0000</div>
-                    <div style="margin-top: 15px; font-size: 13px; color: var(--text-dim);">Environment: <span id="weather-val" style="color: #60c5ff; font-weight: 600;">Scanning...</span></div>
-                    <button class="update-btn" onclick="app.manualLocationUpdate()">Refresh Signal</button>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">COMMS ENCRYPTED</div>
-                    <div class="feed-container" id="watched-feed"></div>
-                    <div style="display: flex; gap: 12px;">
-                        <input type="text" id="watched-msg-input" style="flex: 1; padding: 12px 16px; font-size: 14px;" placeholder="Message to watchers...">
-                        <button style="width: 70px; padding: 0; font-size: 12px;" onclick="app.sendMessage()">SEND</button>
-                    </div>
+                    <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 10px;">TELEMETRY</div>
+                    <div id="loc-status" style="font-size: 24px;">Syncing...</div>
+                    <div id="loc-coords" style="font-size: 12px; color: var(--text-dim); margin-top: 5px;">---</div>
                 </div>
             </div>
 
+            <!-- MEDIA VIEW -->
             <div id="view-media" class="view">
-                <!-- Content handled by background forest and floating UI -->
-            </div>
-
-            <div id="view-playlists" class="view">
                 <div class="card">
-                    <div class="card-header">REGISTER STREAM</div>
-                    <div class="input-group">
-                        <label>Playlist Identifier</label>
-                        <input type="text" id="pl-name-in" placeholder="Evening Drift">
-                    </div>
-                    <div class="input-group">
-                        <label>Resource URL</label>
-                        <input type="text" id="pl-url-in" placeholder="YouTube Playlist Link">
-                    </div>
-                    <button onclick="app.addPlaylist()">Add to Library</button>
-                </div>
-                <div class="card">
-                    <div class="card-header">LIBRARY REPOSITORY</div>
-                    <div id="playlist-list-container"></div>
+                    <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">SELECT STREAM</div>
+                    <div id="media-playlist-selector"></div>
                 </div>
             </div>
 
-            <div id="view-watcher" class="view">
+            <!-- DATA VIEW -->
+            <div id="view-data" class="view">
                 <div class="card">
-                    <div class="card-header">TARGET TELEMETRY</div>
-                    <div class="big-text" id="w-loc-display">--.----, --.----</div>
-                    <div id="w-loc-time" style="color: var(--text-dim); font-size: 12px; margin-bottom: 20px;">Establishing connection...</div>
-                    <button onclick="app.openMap()">View Global Map</button>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">QUICK ACTIONS</div>
-                    <div class="alert-grid">
-                        <div class="alert-btn" onclick="app.sendAlert('CALL_ME')">VOICE</div>
-                        <div class="alert-btn" onclick="app.sendAlert('MESSAGE_ME')">TEXT</div>
-                        <div class="alert-btn emergency" onclick="app.sendAlert('EMERGENCY')">SOS</div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">COMMS DECRYPTED</div>
-                    <div class="feed-container" id="watcher-feed"></div>
-                    <div style="display: flex; gap: 12px;">
-                        <input type="text" id="watcher-msg-input" style="flex: 1; padding: 12px 16px; font-size: 14px;" placeholder="Reply to traveler...">
-                        <button style="width: 70px; padding: 0; font-size: 12px;" onclick="app.sendMessage()">SEND</button>
-                    </div>
+                    <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 15px;">ADD YOUTUBE PLAYLIST ID</div>
+                    <input type="text" id="pl-name" placeholder="Playlist Title" style="margin-bottom:10px;">
+                    <input type="text" id="pl-id" placeholder="YouTube Playlist ID (e.g. PL...)" style="margin-bottom:15px;">
+                    <button onclick="app.addPlaylist()">Save to Cloud</button>
                 </div>
             </div>
         </main>
 
-        <!-- FLOATING MEDIA INTERACTION -->
-        <div id="music-trigger" class="hidden" onclick="app.openModal()">
-            <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: white;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-        </div>
-
-        <div id="media-bar" class="media-floating-container">
-            <div class="track-info">
-                <div class="track-title" id="bar-track-name">System Idle</div>
-                <div class="track-status" id="bar-track-status">Standby</div>
+        <!-- FLOATING MEDIA CONTROLS -->
+        <div id="media-container" class="hidden">
+            <div id="player-panel">
+                <div class="player-header">
+                    <div class="track-info">
+                        <div class="track-title" id="current-track-name">Loading Stream...</div>
+                        <div style="font-size: 10px; color: var(--text-dim);">UP NEXT</div>
+                    </div>
+                </div>
+                <div class="queue-list" id="upcoming-queue"></div>
+                <div class="controls-row">
+                    <div class="btn-ctrl" onclick="app.yt.prev()"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6L18 18V6z"/></svg></div>
+                    <div class="btn-ctrl" onclick="app.yt.toggle()">
+                        <svg id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg id="pause-icon" class="hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </div>
+                    <div class="btn-ctrl" onclick="app.yt.next()"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></div>
+                </div>
             </div>
-            <div class="compact-controls">
-                <div class="btn-ctrl" onclick="app.mediaCtrl('prev')">
-                    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6L18 18V6z"/></svg>
-                </div>
-                <div class="btn-ctrl" id="play-btn" onclick="app.mediaCtrl('toggle')">
-                    <svg id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    <svg id="pause-icon" class="hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                </div>
-                <div class="btn-ctrl" onclick="app.mediaCtrl('next')">
-                    <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-                </div>
+            <div id="music-fab" onclick="app.togglePanel()">
+                <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: white;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
             </div>
         </div>
 
         <nav id="bottom-nav">
-            <a href="javascript:void(0)" class="nav-item active" id="nav-dash" onclick="app.switchView('dash', this)">
-                <span class="nav-icon">🌍</span>
-                <span>DASH</span>
-            </a>
-            <a href="javascript:void(0)" class="nav-item" id="nav-media" onclick="app.switchView('media', this)">
-                <span class="nav-icon">🎧</span>
-                <span>MEDIA</span>
-            </a>
-            <a href="javascript:void(0)" class="nav-item" id="nav-data" onclick="app.switchView('playlists', this)">
-                <span class="nav-icon">📁</span>
-                <span>DATA</span>
-            </a>
+            <a href="javascript:void(0)" class="nav-item active" onclick="app.switchView('dash', this)"><span>🌍</span>DASH</a>
+            <a href="javascript:void(0)" class="nav-item" onclick="app.switchView('media', this)"><span>🎧</span>MEDIA</a>
+            <a href="javascript:void(0)" class="nav-item" onclick="app.switchView('data', this)"><span>📁</span>DATA</a>
         </nav>
     </div>
 
@@ -605,8 +172,7 @@
             projectId: "trip-tracker-57ce0",
             storageBucket: "trip-tracker-57ce0.firebasestorage.app",
             messagingSenderId: "236146303848",
-            appId: "1:236146303848:web:933f1e79e8a97687db6cdd",
-            measurementId: "G-ZBPCS6QPR5"
+            appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -614,250 +180,153 @@
 
         const app = {
             role: null,
-            userId: null,
-            lastPos: null,
-            isPlaying: false,
-            fireflyIntensity: 1,
+            player: null,
+            isPanelOpen: false,
 
             login: function() {
                 const u = document.getElementById('login-user').value.trim();
                 const p = document.getElementById('login-pass').value.trim();
-                const err = document.getElementById('login-error');
-                if (u === 'watched' && p === '1122') { this.init('watched', 'Traveler'); } 
-                else if (u !== '' && p === '1212') { this.init('watcher', u); } 
-                else { err.style.display = 'block'; }
+                if (u === 'watched' && p === '1122') this.init('watched');
+                else if (u === 'watcher' && p === '1212') this.init('watcher');
+                else document.getElementById('login-error').style.display = 'block';
             },
 
-            init: function(role, id) {
+            init: function(role) {
                 this.role = role;
-                this.userId = id;
                 document.getElementById('auth-overlay').style.display = 'none';
                 document.getElementById('app-shell').style.display = 'flex';
-                document.getElementById('role-pill').innerText = role.toUpperCase();
-                
-                if (role === 'watcher') {
-                    document.getElementById('bottom-nav').classList.add('hidden');
-                    this.switchView('watcher');
-                } else {
-                    this.autoTrack();
-                }
-                
                 this.buildForest();
-                this.bindData();
                 this.initFireflies();
+                this.bindData();
+                if (role === 'watched') this.autoTrack();
             },
 
             logout: function() { location.reload(); },
 
-            switchView: function(vId, el) {
+            switchView: function(id, el) {
                 document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-                const target = document.getElementById('view-' + vId);
-                if (target) target.classList.add('active');
-                
-                if (el) {
-                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                    el.classList.add('active');
-                }
-
-                // Interaction for Media View
-                const trigger = document.getElementById('music-trigger');
-                if (vId === 'media' && this.role === 'watched') {
-                    trigger.classList.remove('hidden');
-                } else {
-                    trigger.classList.add('hidden');
-                }
+                document.getElementById('view-' + id).classList.add('active');
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                if (el) el.classList.add('active');
             },
 
-            openModal: function() {
-                document.getElementById('playlist-modal').classList.add('active');
+            togglePanel: function() {
+                this.isPanelOpen = !this.isPanelOpen;
+                document.getElementById('player-panel').classList.toggle('visible', this.isPanelOpen);
+                document.getElementById('music-fab').classList.toggle('open', this.isPanelOpen);
             },
 
-            closeModal: function() {
-                document.getElementById('playlist-modal').classList.remove('active');
+            addPlaylist: function() {
+                const name = document.getElementById('pl-name').value;
+                const pid = document.getElementById('pl-id').value;
+                if (!name || !pid) return;
+                db.ref('trip/playlists').push({ name, pid });
+                document.getElementById('pl-name').value = '';
+                document.getElementById('pl-id').value = '';
+            },
+
+            bindData: function() {
+                db.ref('trip/playlists').on('value', snap => {
+                    const data = snap.val();
+                    const container = document.getElementById('media-playlist-selector');
+                    if (!data) return container.innerHTML = "No playlists.";
+                    container.innerHTML = Object.keys(data).map(k => `
+                        <div class="list-item" onclick="app.yt.load('${data[k].pid}')">
+                            <span>${data[k].name}</span>
+                            <span style="color:var(--ubuntu-orange)">▶</span>
+                        </div>
+                    `).join('');
+                });
             },
 
             autoTrack: function() {
                 if (navigator.geolocation) {
-                    navigator.geolocation.watchPosition(p => this.pushLocation(p), e => console.error(e), {enableHighAccuracy: true});
-                }
-            },
-
-            manualLocationUpdate: function() {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(p => {
-                        this.pushLocation(p);
-                        this.toast("Telemetery Re-synced");
+                    navigator.geolocation.watchPosition(p => {
+                        const data = { lat: p.coords.latitude, lng: p.coords.longitude, ts: Date.now() };
+                        db.ref('trip/location').set(data);
+                        document.getElementById('loc-status').innerText = "Signal Active";
+                        document.getElementById('loc-coords').innerText = data.lat.toFixed(5) + ", " + data.lng.toFixed(5);
                     });
                 }
             },
 
-            pushLocation: function(pos) {
-                const data = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
-                this.lastPos = data;
-                db.ref('trip/location').set(data);
-                document.getElementById('loc-status').innerText = "Signal Active";
-                document.getElementById('loc-coords').innerText = `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
-                document.getElementById('loc-timestamp').innerText = new Date(data.timestamp).toLocaleTimeString();
-                document.getElementById('weather-val').innerText = data.lat > 30 ? "Clear Atmosphere" : "Humid Surface";
-            },
-
-            sendMessage: function() {
-                const inputId = this.role === 'watched' ? 'watched-msg-input' : 'watcher-msg-input';
-                const input = document.getElementById(inputId);
-                const text = input.value.trim();
-                if (!text) return;
-                db.ref('trip/messages').push({ sender: this.userId, role: this.role, text: text, timestamp: Date.now() });
-                input.value = '';
-            },
-
-            sendAlert: function(type) {
-                db.ref('trip/alerts').push({ type: type, timestamp: Date.now() });
-                this.toast(`Signal Broadcasted: ${type}`);
-            },
-
-            openMap: function() {
-                if (this.lastPos) window.open(`https://www.google.com/maps?q=${this.lastPos.lat},${this.lastPos.lng}`, '_blank');
-            },
-
-            bindData: function() {
-                db.ref('trip/messages').on('value', snap => {
-                    const data = snap.val();
-                    const containerId = this.role === 'watched' ? 'watched-feed' : 'watcher-feed';
-                    const container = document.getElementById(containerId);
-                    if (!data || !container) return;
-                    container.innerHTML = Object.values(data).map(m => `
-                        <div class="msg-bubble ${m.role}">
-                            <div style="font-weight:800; font-size:9px; letter-spacing:1px; margin-bottom:4px;">${m.sender.toUpperCase()}</div>
-                            ${m.text}
-                            <span class="msg-meta">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                        </div>
+            yt: {
+                load: function(pid) {
+                    document.getElementById('media-container').classList.remove('hidden');
+                    if (app.player) {
+                        app.player.loadPlaylist({ list: pid, listType: 'playlist' });
+                    } else {
+                        app.player = new YT.Player('yt-player-hidden', {
+                            height: '1', width: '1',
+                            playerVars: { list: pid, listType: 'playlist', autoplay: 1 },
+                            events: {
+                                onStateChange: app.yt.onStateChange,
+                                onReady: (e) => e.target.playVideo()
+                            }
+                        });
+                    }
+                    app.isPanelOpen = false;
+                    app.togglePanel();
+                },
+                toggle: function() {
+                    const state = app.player.getPlayerState();
+                    if (state === 1) app.player.pauseVideo(); else app.player.playVideo();
+                },
+                next: () => app.player.nextVideo(),
+                prev: () => app.player.previousVideo(),
+                onStateChange: function(e) {
+                    const isPlaying = (e.data === 1);
+                    document.getElementById('play-icon').classList.toggle('hidden', isPlaying);
+                    document.getElementById('pause-icon').classList.toggle('hidden', !isPlaying);
+                    
+                    const data = e.target.getPlaylist();
+                    const idx = e.target.getPlaylistIndex();
+                    const videoData = e.target.getVideoData();
+                    
+                    document.getElementById('current-track-name').innerText = videoData.title || "Unknown Stream";
+                    
+                    const queue = document.getElementById('upcoming-queue');
+                    queue.innerHTML = data.slice(idx + 1, idx + 6).map((id, i) => `
+                        <div class="queue-item"><span>${i+1}</span> <span>Track ID: ${id}</span></div>
                     `).join('');
-                    container.scrollTop = container.scrollHeight;
-                });
-
-                if (this.role === 'watcher') {
-                    db.ref('trip/location').on('value', snap => {
-                        const l = snap.val();
-                        if (!l) return;
-                        this.lastPos = l;
-                        document.getElementById('w-loc-display').innerText = `${l.lat.toFixed(5)}, ${l.lng.toFixed(5)}`;
-                        document.getElementById('w-loc-time').innerText = "Telemetry update: " + new Date(l.timestamp).toLocaleTimeString();
-                    });
                 }
-
-                db.ref('trip/playlists').on('value', snap => {
-                    const data = snap.val();
-                    const list = document.getElementById('playlist-list-container');
-                    const modalList = document.getElementById('modal-playlist-list');
-                    if (!list || !modalList) return;
-                    const html = data ? Object.keys(data).map(k => `
-                        <div class="list-item" onclick="app.selectPlaylistFromModal('${k}')">
-                            <span style="font-size:14px;">${data[k].name}</span>
-                            <span style="font-size:10px; color:var(--text-dim);">SELECT</span>
-                        </div>
-                    `).join('') : '<div style="color:var(--text-dim); font-size:12px;">No playlists found.</div>';
-                    list.innerHTML = html;
-                    modalList.innerHTML = html;
-                });
-            },
-
-            selectPlaylistFromModal: function(id) {
-                this.setActivePlaylist(id);
-                this.closeModal();
-                document.getElementById('media-bar').classList.add('visible');
-                this.mediaCtrl('toggle'); // Auto play
-            },
-
-            addPlaylist: function() {
-                const n = document.getElementById('pl-name-in').value;
-                const u = document.getElementById('pl-url-in').value;
-                if (!n || !u) return;
-                db.ref('trip/playlists').push({ name: n, url: u, createdAt: Date.now() });
-                document.getElementById('pl-name-in').value = '';
-                document.getElementById('pl-url-in').value = '';
-                this.toast("Library Updated");
-            },
-
-            setActivePlaylist: function(id) {
-                db.ref('trip/activePlaylist').set(id);
-                db.ref('trip/playlists/' + id).once('value', snap => {
-                    const pl = snap.val();
-                    document.getElementById('bar-track-name').innerText = pl.name;
-                    this.toast("Stream Route Connected");
-                });
-            },
-
-            mediaCtrl: function(action) {
-                if (action === 'toggle') {
-                    this.isPlaying = !this.isPlaying;
-                    document.getElementById('play-icon').classList.toggle('hidden', this.isPlaying);
-                    document.getElementById('pause-icon').classList.toggle('hidden', !this.isPlaying);
-                    document.getElementById('bar-track-status').innerText = this.isPlaying ? 'Active Stream' : 'Paused';
-                    this.fireflyIntensity = this.isPlaying ? 2.5 : 1;
-                } else {
-                    this.toast("Skip logic initiated");
-                }
-            },
-
-            toast: function(msg) {
-                const t = document.createElement('div');
-                t.style.cssText = `position:fixed; top:30px; left:50%; transform:translateX(-50%); 
-                    background:var(--ubuntu-orange); color:white; padding:12px 24px; border-radius:30px; 
-                    z-index:9999; font-size:12px; font-weight:800; box-shadow:0 8px 25px rgba(0,0,0,0.4);
-                    letter-spacing:1px; animation: slideDown 0.3s ease;`;
-                t.innerText = msg.toUpperCase();
-                document.body.appendChild(t);
-                setTimeout(() => {
-                    t.style.opacity = '0';
-                    t.style.transition = '0.3s';
-                    setTimeout(() => t.remove(), 300);
-                }, 2500);
             },
 
             buildForest: function() {
                 const scene = document.getElementById('forest-scene');
                 for (let i = 0; i < 15; i++) {
-                    const tree = document.createElement('div');
-                    tree.className = 'tree';
-                    tree.style.left = (Math.random() * 100) + '%';
-                    tree.style.height = (80 + Math.random() * 100) + 'px';
-                    tree.style.opacity = 0.3 + Math.random() * 0.7;
-                    tree.style.filter = `blur(${Math.random() * 2}px)`;
-                    // Soft shadow tilt away from top-right moon
-                    tree.style.transform = `skewX(${(Math.random() * 5) - 10}deg)`;
-                    scene.appendChild(tree);
+                    const t = document.createElement('div');
+                    t.className = 'tree';
+                    t.style.left = (Math.random() * 100) + '%';
+                    t.style.height = (60 + Math.random() * 80) + 'px';
+                    t.style.opacity = 0.4 + Math.random() * 0.6;
+                    t.style.transform = `skewX(${(Math.random() * 6) - 10}deg)`;
+                    scene.appendChild(t);
                 }
             },
 
             initFireflies: function() {
                 const canvas = document.getElementById('fireflies');
                 const ctx = canvas.getContext('2d');
-                let w, h;
-                const flies = [];
+                let w, h, flies = [];
                 const resize = () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; };
-                window.addEventListener('resize', resize);
-                resize();
-                for (let i = 0; i < 40; i++) {
-                    flies.push({ x: Math.random() * w, y: Math.random() * h, s: Math.random() * 2, a: Math.random() * Math.PI * 2, v: 0.01, r: Math.random() * 1.5 });
-                }
-                const animate = () => {
-                    ctx.clearRect(0, 0, w, h);
+                window.addEventListener('resize', resize); resize();
+                for (let i = 0; i < 30; i++) flies.push({ x: Math.random()*w, y: Math.random()*h, a: Math.random()*Math.PI*2 });
+                const anim = () => {
+                    ctx.clearRect(0,0,w,h);
                     flies.forEach(f => {
-                        f.a += f.v * this.fireflyIntensity;
-                        f.x += Math.cos(f.a) * 0.3; f.y += Math.sin(f.a) * 0.3;
-                        if (f.x < 0) f.x = w; if (f.x > w) f.x = 0;
-                        if (f.y < 0) f.y = h; if (f.y > h) f.y = 0;
-                        const alpha = (Math.sin(f.a) + 1) / 2;
-                        ctx.fillStyle = `rgba(220, 255, 150, ${alpha * 0.3})`;
-                        ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+                        f.a += 0.02; f.x += Math.cos(f.a)*0.3; f.y += Math.sin(f.a)*0.3;
+                        if (f.x<0) f.x=w; if (f.x>w) f.x=0; if (f.y<0) f.y=h; if (f.y>h) f.y=0;
+                        ctx.fillStyle = `rgba(220, 255, 100, ${(Math.sin(f.a)+1)*0.3})`;
+                        ctx.beginPath(); ctx.arc(f.x, f.y, 1, 0, Math.PI*2); ctx.fill();
                     });
-                    requestAnimationFrame(animate);
+                    requestAnimationFrame(anim);
                 };
-                animate();
+                anim();
             }
         };
 
-        document.addEventListener('keypress', e => { if (e.key === 'Enter') app.sendMessage(); });
+        function onYouTubeIframeAPIReady() { /* Ready to load via app.yt.load */ }
     </script>
 </body>
 </html>
