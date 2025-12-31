@@ -134,7 +134,11 @@
         }
         .nav-item.active { color: var(--sys-accent); font-weight: bold; }
 
-        #yt-player { position: absolute; top: -9999px; left: -9999px; }
+        /* VITAL: Player must exist but be invisible without using display:none */
+        #yt-wrapper {
+            position: fixed; top: 0; left: 0; width: 1px; height: 1px;
+            opacity: 0.01; pointer-events: none; overflow: hidden; z-index: -1;
+        }
 
         #loader {
             position: fixed; inset: 0; background: var(--sys-bg); z-index: 9999;
@@ -153,14 +157,16 @@
 <body>
 
     <div id="loader"><div class="spin"></div></div>
-    <div id="yt-player-container"><div id="yt-player"></div></div>
+    
+    <!-- Player Wrapper -->
+    <div id="yt-wrapper"><div id="yt-player"></div></div>
 
     <!-- LOGIN -->
     <div id="view-login" class="view auth-container">
         <div style="width: 100%;">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h1 class="mono" style="font-size: 20px; margin: 0; color: var(--sys-accent);">drs.one</h1>
-                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.4.1-audio-fix</p>
+                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.4.3-proxy-engine</p>
             </div>
             <div class="sys-card">
                 <span class="label">ssh_identity</span>
@@ -202,8 +208,8 @@
 
         <div class="sys-card" id="audio-card">
             <span class="label">system.audio_service</span>
-            <div id="audio-status" class="mono" style="font-size: 11px;">Tap any button to initialize audio.</div>
-            <button class="btn btn-ghost mono" style="margin-top:10px; font-size:10px;" onclick="togglePlay()">WAKE AUDIO ENGINE</button>
+            <div id="audio-status" class="mono" style="font-size: 11px; margin-bottom: 10px;">ENGINE OFFLINE</div>
+            <button class="btn btn-ghost mono" style="font-size:10px;" id="prime-btn" onclick="primeAudio()">INITIALIZE ENGINE</button>
         </div>
     </div>
 
@@ -293,58 +299,30 @@
             document.getElementById('m-next').onclick = () => player && player.nextVideo();
         });
 
-        // --- MEDIA SESSION & YOUTUBE ---
+        // --- NEW PROXY MEDIA ENGINE ---
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('yt-player', {
-                height: '0', width: '0',
+                height: '100', width: '100', // Small but non-zero to satisfy mobile visibility checks
                 playerVars: { 
                     'listType': 'playlist', 
                     'autoplay': 0, 
                     'enablejsapi': 1,
-                    'origin': window.location.origin 
+                    'controls': 1, // Sometimes needed for mobile browser to treat it as media
+                    'playsinline': 1,
+                    'rel': 0
                 },
                 events: {
-                    'onReady': onPlayerReady,
+                    'onReady': (e) => {
+                        const savedYt = localStorage.getItem('drs_yt');
+                        if (savedYt) {
+                            e.target.cuePlaylist({ list: savedYt });
+                            document.getElementById('media-bar').style.display = 'flex';
+                            document.getElementById('audio-status').innerText = "ENGINE READY";
+                        }
+                    },
                     'onStateChange': onPlayerStateChange
                 }
             });
-        }
-
-        function onPlayerReady(event) {
-            const savedYt = localStorage.getItem('drs_yt');
-            if (savedYt) {
-                // We use cue first, we will load on first interaction
-                event.target.cuePlaylist({ list: savedYt });
-                document.getElementById('media-bar').style.display = 'flex';
-                initMediaSession();
-            }
-        }
-
-        function initMediaSession() {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.setActionHandler('play', () => togglePlay());
-                navigator.mediaSession.setActionHandler('pause', () => togglePlay());
-                navigator.mediaSession.setActionHandler('nexttrack', () => player.nextVideo());
-                navigator.mediaSession.setActionHandler('previoustrack', () => player.previousVideo());
-            }
-        }
-
-        function updateMediaMetadata() {
-            if (!('mediaSession' in navigator) || !player) return;
-            
-            const data = player.getVideoData();
-            const trackTitle = data.title || "DRS-ONE Service";
-            
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: trackTitle,
-                artist: 'DRS-ONE System',
-                album: 'Node Audio',
-                artwork: [
-                    { src: 'https://via.placeholder.com/96/58a6ff/000000?text=DRS', sizes: '96x96', type: 'image/png' },
-                    { src: 'https://via.placeholder.com/512/58a6ff/000000?text=DRS', sizes: '512x512', type: 'image/png' }
-                ]
-            });
-            document.getElementById('track-title').innerText = trackTitle;
         }
 
         function onPlayerStateChange(event) {
@@ -354,35 +332,65 @@
                 isPlaying = true;
                 btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
                 updateMediaMetadata();
+                document.getElementById('audio-status').innerText = "FEED ACTIVE";
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
-            } else {
+            } else if (event.data == YT.PlayerState.PAUSED || event.data == YT.PlayerState.ENDED) {
                 isPlaying = false;
                 btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.playbackState = (event.data === YT.PlayerState.PAUSED) ? "paused" : "none";
-                }
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
             }
+        }
+
+        function updateMediaMetadata() {
+            if (!player || !('mediaSession' in navigator)) return;
+            
+            const data = player.getVideoData();
+            const title = data.title || "DRS Audio Node";
+            document.getElementById('track-title').innerText = title;
+
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: title,
+                artist: "DRS-ONE System",
+                album: "Satellite Feed",
+                artwork: [
+                    { src: 'https://via.placeholder.com/512/58a6ff/000000?text=DRS-ONE', sizes: '512x512', type: 'image/png' }
+                ]
+            });
+
+            navigator.mediaSession.setActionHandler('play', () => player.playVideo());
+            navigator.mediaSession.setActionHandler('pause', () => player.pauseVideo());
+            navigator.mediaSession.setActionHandler('nexttrack', () => player.nextVideo());
+            navigator.mediaSession.setActionHandler('previoustrack', () => player.previousVideo());
+        }
+
+        // Dedicated Function for First-Tap Activation (Browser Requirement)
+        function primeAudio() {
+            if (!player) return;
+            const savedYt = localStorage.getItem('drs_yt');
+            if (!savedYt) {
+                showToast("SET PLAYLIST IN CONFIG");
+                return;
+            }
+
+            // Mobile browsers require a physical play() call inside a touch event
+            player.loadPlaylist({ list: savedYt });
+            audioPrimed = true;
+            document.getElementById('prime-btn').style.display = 'none';
+            document.getElementById('audio-status').innerText = "ENGINE ONLINE";
+            showToast("ENGINE START");
         }
 
         function togglePlay() {
             if (!player) return;
-            
-            // Critical: Prime the audio on first tap
             if (!audioPrimed) {
-                const savedYt = localStorage.getItem('drs_yt');
-                player.loadPlaylist({ list: savedYt });
-                audioPrimed = true;
+                primeAudio();
                 return;
             }
-
-            if (isPlaying) {
-                player.pauseVideo();
-            } else {
-                player.playVideo();
-            }
+            if (isPlaying) player.pauseVideo();
+            else player.playVideo();
         }
 
-        // --- CORE LOGIC ---
+        // --- CORE SYSTEM ---
         function handleLogin() {
             const u = document.getElementById('user-in').value.toLowerCase().trim();
             const p = document.getElementById('pass-in').value.trim();
@@ -423,7 +431,6 @@
             const savedYt = localStorage.getItem('drs_yt');
             if (savedYt) {
                 document.getElementById('yt-in').value = savedYt;
-                document.getElementById('audio-status').innerText = `READY: ${savedYt}`;
             }
 
             db.ref('trip/alerts').on('value', snap => {
@@ -517,7 +524,6 @@
                 const data = snap.val();
                 if (!data) return;
                 const loc = data.location;
-                const logs = data.logs ? Object.values(data.logs).reverse().slice(0, 5) : [];
                 let html = `<div class="sys-card"><span class="label">node.coords</span><h3 class="mono" style="margin:5px 0; font-size:16px;">${loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : 'OFFLINE'}</h3><a href="https://www.google.com/maps?q=${loc?.lat},${loc?.lng}" target="_blank" class="btn btn-primary" style="margin-top:15px; text-decoration:none;">TRACE MAP</a></div>`;
                 document.getElementById('monitor-stream').innerHTML = html;
             });
