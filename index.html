@@ -246,16 +246,18 @@
             measurementId: "G-ZBPCS6QPR5"
         };
 
-        // Initialize Firebase using provided pattern (Compat library handles app existence internally)
+        // Strict Initialization Sequence
         const app = firebase.initializeApp(firebaseConfig);
-        const analytics = firebase.analytics();
         const auth = firebase.auth();
         const db = firebase.database();
+        const analytics = firebase.analytics();
         
         let isRegistering = false;
         let trackWatchId = null;
 
         const nav = (v) => {
+            if (!auth.currentUser) return;
+            
             document.querySelectorAll('.view').forEach(e => e.style.display='none');
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             
@@ -340,6 +342,7 @@
         }
 
         function initTraveler() {
+            if (!auth.currentUser) return;
             db.ref(`live/${auth.currentUser.uid}/watchers`).on('value', snap => {
                 const count = snap.numChildren();
                 document.getElementById('watcher-status').innerText = `WATCHERS: ${count}`;
@@ -350,6 +353,7 @@
             if (!navigator.geolocation) return notify("GPS_UNAVAILABLE", "alert");
             document.getElementById('broadcast-btn').innerText = "BROADCASTING...";
             trackWatchId = navigator.geolocation.watchPosition(pos => {
+                if (!auth.currentUser) return;
                 const loc = { 
                     lat: pos.coords.latitude, 
                     lng: pos.coords.longitude, 
@@ -369,13 +373,15 @@
             }
             document.getElementById('broadcast-btn').innerText = "START BROADCAST";
             document.getElementById('loc-display').innerText = "IDLE";
-            db.ref(`live/${auth.currentUser.uid}/location`).remove();
+            if (auth.currentUser) {
+                db.ref(`live/${auth.currentUser.uid}/location`).remove();
+            }
         }
 
         function broadcastMsg() {
             const textInput = document.getElementById('traveler-msg');
             const text = textInput.value;
-            if(!text) return;
+            if(!text || !auth.currentUser) return;
             db.ref(`live/${auth.currentUser.uid}/messages`).push({ 
                 text: text, 
                 ts: firebase.database.ServerValue.TIMESTAMP 
@@ -386,7 +392,7 @@
 
         function linkToTarget() {
             const targetUid = document.getElementById('target-uid-in').value.trim();
-            if(!targetUid) return notify("TARGET_ID_REQUIRED", "alert");
+            if(!targetUid || !auth.currentUser) return notify("TARGET_ID_REQUIRED", "alert");
 
             const watcherRef = db.ref(`live/${targetUid}/watchers/${auth.currentUser.uid}`);
             watcherRef.set(true);
