@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DRS-ONE | Secure Kernel</title>
-    <!-- Firebase SDKs - Using Compat for broader compatibility with provided config -->
+    <!-- Firebase SDKs - Compat version for maximum reliability -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
     <style>
         :root {
             --sys-bg: #05070a;
@@ -39,19 +38,13 @@
         #bg-canvas {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1;
-            background: linear-gradient(to bottom, #020408 0%, #0d1117 100%);
-        }
-
-        .landscape-svg {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 40vh;
-            z-index: -1; pointer-events: none; opacity: 0.6;
+            background: radial-gradient(circle at center, #0d1117 0%, #05070a 100%);
         }
 
         .view {
             display: none; width: 100%; max-width: 600px; margin: 0 auto;
             padding: 1rem 1rem calc(8rem + var(--safe-bottom));
             flex: 1; overflow-y: auto;
-            position: relative;
         }
 
         .sys-card {
@@ -60,7 +53,7 @@
             padding: 1.2rem;
             margin-bottom: 1rem;
             border-radius: 8px;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(10px);
         }
 
         .label {
@@ -74,22 +67,21 @@
         .label::before { content: "> "; }
 
         input {
-            width: 100%; padding: 12px; border: 1px solid var(--sys-border);
-            background: rgba(1, 4, 9, 0.8); color: var(--sys-accent); font-size: 14px; margin-bottom: 12px;
-            font-family: inherit; border-radius: 4px;
+            width: 100%; padding: 14px; border: 1px solid var(--sys-border);
+            background: rgba(1, 4, 9, 0.9); color: var(--sys-accent); font-size: 16px; margin-bottom: 15px;
+            font-family: inherit; border-radius: 4px; text-align: center;
+            letter-spacing: 4px;
         }
         input:focus { border-color: var(--sys-accent); outline: none; }
 
         .btn {
-            width: 100%; padding: 12px; border: none; font-size: 12px;
+            width: 100%; padding: 14px; border: none; font-size: 12px;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             transition: all 0.2s; font-family: inherit; border-radius: 4px;
-            text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold;
+            text-transform: uppercase; letter-spacing: 1px; font-weight: bold;
         }
         .btn-primary { background: #238636; color: #fff; }
-        .btn-alert { background: var(--sys-alert); color: #fff; }
         .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         #notification-center {
             position: fixed; top: 1rem; left: 1rem; right: 1rem;
@@ -100,7 +92,7 @@
             border-left: 4px solid var(--sys-blue);
             padding: 12px 16px; margin-bottom: 10px;
             border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            animation: slideInDown 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            animation: slideInDown 0.3s ease-out;
             pointer-events: auto;
         }
 
@@ -112,13 +104,14 @@
             display: none; grid-template-columns: repeat(2, 1fr);
             padding: 5px 0 calc(5px + var(--safe-bottom)); z-index: 1000;
         }
-        .nav-item { text-align: center; font-size: 11px; color: var(--sys-dim); cursor: pointer; padding: 10px 0; }
+        .nav-item { text-align: center; font-size: 11px; color: var(--sys-dim); cursor: pointer; padding: 12px 0; }
         .nav-item.active { color: var(--sys-accent); border-top: 2px solid var(--sys-accent); }
 
         .terminal-header {
-            padding: 6px 10px; background: rgba(48, 54, 61, 0.3);
+            padding: 8px 12px; background: rgba(48, 54, 61, 0.2);
             font-size: 10px; color: var(--sys-dim); margin-bottom: 1rem;
             display: flex; justify-content: space-between; border-radius: 4px;
+            border: 1px solid var(--sys-border);
         }
 
         @keyframes slideInDown {
@@ -130,26 +123,23 @@
 <body>
 
     <div id="bg-canvas"></div>
-    <svg class="landscape-svg" viewBox="0 0 1000 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0,400 L0,300 L150,150 L300,320 L450,100 L650,350 L850,200 L1000,380 L1000,400 Z" fill="#080a0f" />
-    </svg>
-
     <div id="notification-center"></div>
 
     <!-- Auth View -->
     <div id="view-auth" class="view" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
         <div style="width: 100%;">
-            <div style="margin-bottom: 2rem; text-align: center;">
-                <div style="color: var(--sys-accent); font-size: 24px; font-weight: bold; letter-spacing: 4px;">DRS-ONE</div>
-                <div id="auth-subtitle" style="color: var(--sys-dim); font-size: 10px;">KERNEL_PROTECTION_ACTIVE</div>
+            <div style="margin-bottom: 2.5rem; text-align: center;">
+                <div style="color: var(--sys-accent); font-size: 28px; font-weight: bold; letter-spacing: 6px;">DRS-ONE</div>
+                <div style="color: var(--sys-dim); font-size: 10px; margin-top: 5px;">KERNEL_ACCESS_TERMINAL</div>
             </div>
             
-            <div class="sys-card">
-                <span class="label">LOGIN_IDENTIFIER</span>
-                <input type="email" id="auth-email" placeholder="Email (Username)">
-                <input type="password" id="auth-pass" placeholder="Access Code (1122 or 1212)">
-
-                <button class="btn btn-primary" id="auth-trigger">INITIALIZE_SESSION</button>
+            <div class="sys-card" style="border-top: 2px solid var(--sys-accent);">
+                <span class="label">PASSCODE_ENTRY</span>
+                <input type="password" id="auth-pass" placeholder="****" maxlength="4">
+                <button class="btn btn-primary" id="auth-trigger">LOGIN_SECURE</button>
+            </div>
+            <div style="text-align: center; color: var(--sys-dim); font-size: 9px; opacity: 0.5;">
+                SECURE AUTH BYPASS ACTIVE
             </div>
         </div>
     </div>
@@ -157,66 +147,65 @@
     <!-- TRAVELER DASHBOARD -->
     <div id="view-traveler" class="view">
         <div class="terminal-header">
-            <span id="traveler-id">USER: DISCONNECTED</span>
+            <span>UPLINK: ACTIVE</span>
             <span id="watcher-status">WATCHERS: 0</span>
         </div>
         
         <div class="sys-card">
-            <span class="label">GPS_BROADCAST_UNIT</span>
-            <div id="loc-display">IDLE</div>
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button class="btn btn-primary" id="broadcast-btn" onclick="startTracking()" style="flex: 2;">START BROADCAST</button>
-                <button class="btn btn-ghost" onclick="stopTracking()" style="flex: 1;">HALT</button>
+            <span class="label">GPS_BROADCAST_STATUS</span>
+            <div id="loc-display">STDBY</div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" id="broadcast-btn" onclick="toggleTracking()" style="flex: 2;">ENGAGE BROADCAST</button>
             </div>
+            <div style="margin-top: 15px; font-size: 10px; color: var(--sys-dim); text-align: center;" id="traveler-id-display">--</div>
         </div>
 
         <div class="sys-card">
-            <span class="label">COMMS_UPLINK</span>
-            <input type="text" id="traveler-msg" placeholder="Signal text...">
-            <button class="btn btn-primary" onclick="broadcastMsg()">SEND SIGNAL</button>
+            <span class="label">COMM_CHANNEL</span>
+            <input type="text" id="traveler-msg" placeholder="Type signal..." style="text-align: left; letter-spacing: normal;">
+            <button class="btn btn-ghost" onclick="broadcastMsg()">TRANSMIT</button>
         </div>
     </div>
 
     <!-- WATCHER DASHBOARD -->
     <div id="view-watcher" class="view">
         <div class="terminal-header">
-            <span id="watcher-id">USER: MONITOR</span>
-            <span style="color: var(--sys-accent);">MODE: LIVE_INTEL</span>
+            <span>MODE: MONITOR</span>
+            <span style="color: var(--sys-accent);">STATUS: READY</span>
         </div>
 
         <div class="sys-card">
-            <span class="label">TARGET_UID</span>
-            <input type="text" id="target-uid-in" placeholder="Enter Traveler ID to track...">
-            <button class="btn btn-primary" onclick="linkToTarget()">ESTABLISH LINK</button>
+            <span class="label">TARGET_ID_UPLINK</span>
+            <input type="text" id="target-uid-in" placeholder="UID-XXXX" style="letter-spacing: 2px;">
+            <button class="btn btn-primary" onclick="linkToTarget()">SYNC_TARGET</button>
         </div>
         
         <div id="watcher-monitor" style="display: none;">
             <div class="sys-card">
                 <span class="label">TARGET_COORDINATES</span>
-                <div id="dash-coords" style="color:#fff; font-size: 28px; font-weight:700;">WAITING...</div>
-                <div id="dash-sync" style="color:var(--sys-dim); font-size: 11px; margin-top:5px;">LAST_UPDATE: --</div>
+                <div id="dash-coords" style="color:#fff; font-size: 28px; font-weight:700;">--</div>
+                <div id="dash-sync" style="color:var(--sys-dim); font-size: 11px; margin-top:5px;">LAST_RX: --</div>
             </div>
             <div class="sys-card">
-                <span class="label">SIGNAL_LOG</span>
-                <div id="watcher-feed" style="max-height: 150px; overflow-y: auto; font-size: 11px;"></div>
+                <span class="label">SIGNAL_DECODE</span>
+                <div id="watcher-feed" style="max-height: 200px; overflow-y: auto; font-size: 12px; color: var(--sys-blue);"></div>
             </div>
         </div>
     </div>
 
     <!-- Config -->
     <div id="view-config" class="view">
-        <span class="label">USER_PROFILE</span>
+        <span class="label">SESSION_DATA</span>
         <div class="sys-card">
-            <div id="profile-email" style="margin-bottom: 5px;">...</div>
-            <div id="profile-role" style="color: var(--sys-accent); font-size: 11px; margin-bottom: 5px;">ROLE: --</div>
-            <div id="profile-uid" style="font-size: 10px; color: var(--sys-dim); margin-bottom: 15px; word-break: break-all;">...</div>
-            <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert);">TERMINATE_SESSION</button>
+            <div id="profile-role" style="color: var(--sys-accent); font-size: 14px; margin-bottom: 10px; font-weight: bold;">ROLE: --</div>
+            <div id="profile-uid" style="font-size: 10px; color: var(--sys-dim); margin-bottom: 20px; word-break: break-all;">--</div>
+            <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert); border-color: var(--sys-alert);">LOGOUT_SECURE</button>
         </div>
     </div>
 
     <nav class="bottom-nav" id="hud">
-        <div class="nav-item active" id="nav-dash-btn" onclick="nav('dash')">DASHBOARD</div>
-        <div class="nav-item" id="nav-config-btn" onclick="nav('config')">SETTINGS</div>
+        <div class="nav-item active" id="nav-dash-btn" onclick="nav('dash')">DRS_CORE</div>
+        <div class="nav-item" id="nav-config-btn" onclick="nav('config')">SESSION</div>
     </nav>
 
     <script>
@@ -231,91 +220,84 @@
             measurementId: "G-ZBPCS6QPR5"
         };
 
-        const app = firebase.initializeApp(firebaseConfig);
+        // Initialize
+        firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
         
         let trackWatchId = null;
+        let currentRole = localStorage.getItem('drs_role') || null;
 
-        const nav = (v) => {
+        function nav(v) {
             if (!auth.currentUser) return;
             document.querySelectorAll('.view').forEach(e => e.style.display='none');
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             
             if (v === 'dash') {
-                db.ref(`users/${auth.currentUser.uid}/role`).once('value', snap => {
-                    const role = snap.val() || 'traveler';
-                    document.getElementById(`view-${role}`).style.display = 'block';
-                });
+                if (currentRole) {
+                    document.getElementById(`view-${currentRole}`).style.display = 'block';
+                }
                 document.getElementById('nav-dash-btn').classList.add('active');
             } else {
                 document.getElementById(`view-${v}`).style.display = 'block';
                 document.getElementById('nav-config-btn').classList.add('active');
             }
-        };
+        }
 
         document.getElementById('auth-trigger').onclick = async () => {
-            const email = document.getElementById('auth-email').value.trim();
             const pass = document.getElementById('auth-pass').value.trim();
 
-            if (!email || !pass) return notify("CREDENTIALS_REQUIRED", "alert");
-            if (pass !== "1122" && pass !== "1212") return notify("INVALID_ACCESS_CODE", "alert");
+            if (pass !== "1122" && pass !== "1212") {
+                return notify("INVALID_PROTOCOL_KEY", "alert");
+            }
 
-            const role = (pass === "1122") ? "traveler" : "watcher";
-            
             try {
-                // Attempt to sign in or create user automatically with the provided email and specific role password
-                // Note: Using the passcode as the actual firebase password for simplicity in this specific bypass logic
-                let userCredential;
-                try {
-                    userCredential = await auth.signInWithEmailAndPassword(email, pass);
-                } catch (err) {
-                    if (err.code === 'auth/user-not-found') {
-                        userCredential = await auth.createUserWithEmailAndPassword(email, pass);
-                    } else {
-                        throw err;
-                    }
-                }
-
+                // Ensure we are signed in anonymously first
+                const userCredential = await auth.signInAnonymously();
                 const user = userCredential.user;
-                // Sync role to DB
-                await db.ref(`users/${user.uid}`).update({
-                    email: email,
+                const role = (pass === "1122") ? "traveler" : "watcher";
+                
+                // Set local state immediately to bypass DB latency
+                currentRole = role;
+                localStorage.setItem('drs_role', role);
+
+                // Attempt to sync to DB, but don't let it block the UI
+                db.ref(`users/${user.uid}`).update({
                     role: role,
                     lastLogin: firebase.database.ServerValue.TIMESTAMP
-                });
+                }).catch(e => console.warn("DB Sync delayed, using local role."));
 
-                notify(`PROTOCOL_${role.toUpperCase()}_ENGAGED`);
+                notify(`KERNEL_LINK_OK: ${role.toUpperCase()}`);
+                
+                // Force UI update
+                authStateUpdated(user);
             } catch (e) {
-                notify("AUTH_ERROR: " + e.message, "alert");
+                notify("AUTH_CRITICAL: Check Firebase Console", "alert");
+                console.error(e);
             }
         };
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
+        function authStateUpdated(user) {
+            if (user && currentRole) {
                 document.getElementById('view-auth').style.display = 'none';
                 document.getElementById('hud').style.display = 'grid';
-                document.getElementById('profile-email').innerText = user.email;
-                document.getElementById('profile-uid').innerText = `UID: ${user.uid}`;
+                document.getElementById('profile-role').innerText = `ROLE: ${currentRole.toUpperCase()}`;
+                document.getElementById('profile-uid').innerText = `SESSION_UID: ${user.uid}`;
                 
-                db.ref(`users/${user.uid}/role`).on('value', snap => {
-                    const role = snap.val();
-                    document.getElementById('profile-role').innerText = `ROLE: ${role?.toUpperCase()}`;
-                    if(role === 'traveler') {
-                        document.getElementById('traveler-id').innerText = `TRAVELER: ${user.email.split('@')[0]}`;
-                        initTraveler();
-                    } else if(role === 'watcher') {
-                        document.getElementById('watcher-id').innerText = `WATCHER: ${user.email.split('@')[0]}`;
-                    }
-                    nav('dash');
-                });
+                if(currentRole === 'traveler') {
+                    document.getElementById('traveler-id-display').innerText = `MY_UID: ${user.uid}`;
+                    initTraveler(user.uid);
+                }
+                nav('dash');
             } else {
                 document.getElementById('hud').style.display = 'none';
                 document.querySelectorAll('.view').forEach(e => e.style.display='none');
                 document.getElementById('view-auth').style.display = 'flex';
                 if(trackWatchId) stopTracking();
             }
-        });
+        }
+
+        auth.onAuthStateChanged(authStateUpdated);
 
         function notify(msg, type='info') {
             const center = document.getElementById('notification-center');
@@ -324,44 +306,49 @@
             if(type === 'alert') toast.style.borderLeftColor = 'var(--sys-alert)';
             toast.innerHTML = `<div style="font-size:9px; color:var(--sys-dim); margin-bottom:2px;">SYS_LOG</div><div>${msg}</div>`;
             center.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
+            setTimeout(() => toast.remove(), 3500);
         }
 
-        function initTraveler() {
-            if (!auth.currentUser) return;
-            db.ref(`live/${auth.currentUser.uid}/watchers`).on('value', snap => {
+        function initTraveler(uid) {
+            db.ref(`live/${uid}/watchers`).on('value', snap => {
                 const count = snap.numChildren();
                 document.getElementById('watcher-status').innerText = `WATCHERS: ${count}`;
             });
         }
 
+        function toggleTracking() {
+            if (trackWatchId) stopTracking();
+            else startTracking();
+        }
+
         function startTracking() {
-            if (!navigator.geolocation) return notify("GPS_UNAVAILABLE", "alert");
-            document.getElementById('broadcast-btn').innerText = "BROADCASTING...";
+            if (!navigator.geolocation) return notify("GPS_FAIL", "alert");
+            const btn = document.getElementById('broadcast-btn');
+            btn.innerText = "TERMINATE BROADCAST";
+            btn.style.background = 'var(--sys-alert)';
+            
             trackWatchId = navigator.geolocation.watchPosition(pos => {
                 if (!auth.currentUser) return;
-                const loc = { 
+                db.ref(`live/${auth.currentUser.uid}/location`).set({ 
                     lat: pos.coords.latitude, 
                     lng: pos.coords.longitude, 
                     ts: firebase.database.ServerValue.TIMESTAMP 
-                };
-                db.ref(`live/${auth.currentUser.uid}/location`).set(loc);
-                document.getElementById('loc-display').innerText = `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`;
+                });
+                document.getElementById('loc-display').innerText = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
             }, (err) => {
-                notify("GPS_ERROR: " + err.message, "alert");
+                notify("GPS_LOST", "alert");
+                stopTracking();
             }, { enableHighAccuracy: true });
         }
 
         function stopTracking() {
-            if(trackWatchId) {
-                navigator.geolocation.clearWatch(trackWatchId);
-                trackWatchId = null;
-            }
-            document.getElementById('broadcast-btn').innerText = "START BROADCAST";
-            document.getElementById('loc-display').innerText = "IDLE";
-            if (auth.currentUser) {
-                db.ref(`live/${auth.currentUser.uid}/location`).remove();
-            }
+            if(trackWatchId) navigator.geolocation.clearWatch(trackWatchId);
+            trackWatchId = null;
+            const btn = document.getElementById('broadcast-btn');
+            btn.innerText = "ENGAGE BROADCAST";
+            btn.style.background = '#238636';
+            document.getElementById('loc-display').innerText = "STDBY";
+            if (auth.currentUser) db.ref(`live/${auth.currentUser.uid}/location`).remove();
         }
 
         function broadcastMsg() {
@@ -373,12 +360,12 @@
                 ts: firebase.database.ServerValue.TIMESTAMP 
             });
             textInput.value = '';
-            notify("SIGNAL_TRANSMITTED");
+            notify("TX_SUCCESS");
         }
 
         function linkToTarget() {
             const targetUid = document.getElementById('target-uid-in').value.trim();
-            if(!targetUid || !auth.currentUser) return notify("TARGET_ID_REQUIRED", "alert");
+            if(!targetUid || !auth.currentUser) return notify("UID_REQUIRED", "alert");
 
             const watcherRef = db.ref(`live/${targetUid}/watchers/${auth.currentUser.uid}`);
             watcherRef.set(true);
@@ -391,32 +378,27 @@
                 const data = snap.val();
                 if(data) {
                     document.getElementById('dash-coords').innerText = `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
-                    document.getElementById('dash-sync').innerText = `LAST_SYNC: ${new Date(data.ts).toLocaleTimeString()}`;
+                    document.getElementById('dash-sync').innerText = `RX_TIME: ${new Date(data.ts).toLocaleTimeString()}`;
                 } else {
                     document.getElementById('dash-coords').innerText = "OFFLINE";
-                    document.getElementById('dash-sync').innerText = "WAITING for broadcast...";
                 }
             });
 
-            db.ref(`live/${targetUid}/messages`).limitToLast(10).off(); 
             db.ref(`live/${targetUid}/messages`).limitToLast(10).on('child_added', snap => {
                 const m = snap.val();
                 const div = document.createElement('div');
-                div.style.padding = '5px 0';
-                div.style.borderBottom = '1px solid #222';
+                div.style.padding = '8px 0'; div.style.borderBottom = '1px solid #222';
                 div.innerHTML = `<span style="color:var(--sys-dim)">[${new Date(m.ts).toLocaleTimeString()}]</span> ${m.text}`;
-                const feed = document.getElementById('watcher-feed');
-                feed.prepend(div);
+                document.getElementById('watcher-feed').prepend(div);
             });
-
-            notify("LINK_ESTABLISHED");
+            notify("SYNC_ESTABLISHED");
         }
 
         function logout() {
             if(trackWatchId) stopTracking();
-            auth.signOut().then(() => {
-                notify("SESSION_TERMINATED");
-            });
+            localStorage.removeItem('drs_role');
+            currentRole = null;
+            auth.signOut().then(() => notify("LOGOUT_COMPLETE"));
         }
     </script>
 </body>
