@@ -1,425 +1,887 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TripTracker | System</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-    <script src="https://www.youtube.com/iframe_api"></script>
-    <style>
-        :root {
-            --ubuntu-orange: #E95420;
-            --ubuntu-dark: #1a0614;
-            --ubuntu-bg: #0c0c0c;
-            --panel-bg: rgba(25, 25, 30, 0.7);
-            --glass: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --text-main: #f0f0f0;
-            --text-dim: #9b958f;
-            --radius: 20px;
-            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1, viewport-fit=cover"/>
+  <title>TripTracker • System</title>
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Ubuntu', sans-serif; background: var(--ubuntu-bg); color: var(--text-main); overflow: hidden; }
+  <!-- Firebase (compat for Realtime DB simple usage) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
-        /* --- BACKGROUND LAYER --- */
-        #global-bg { position: fixed; inset: 0; z-index: 0; background: linear-gradient(to bottom, #02040a, #0d121d); overflow: hidden; }
-        .moon { position: absolute; top: 40px; right: 40px; width: 60px; height: 60px; background: #fffdf2; border-radius: 50%; box-shadow: 0 0 60px 20px rgba(255, 253, 242, 0.15); z-index: 1; }
-        .forest { position: absolute; bottom: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
-        .tree { position: absolute; bottom: 0; width: 2px; background: #040608; transform-origin: bottom; }
-        .tree::before { content: ''; position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 90px solid #040608; }
-        canvas#fireflies { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0.6; }
+  <!-- YouTube IFrame API for playback -->
+  <script src="https://www.youtube.com/iframe_api"></script>
 
-        /* --- AUTH --- */
-        #auth-overlay { position: fixed; inset: 0; z-index: 2000; background: #000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .auth-card { background: var(--panel-bg); padding: 40px 30px; border-radius: 24px; width: 100%; max-width: 340px; backdrop-filter: blur(25px); border: 1px solid var(--glass-border); text-align: center; }
-        
-        /* --- UI ELEMENTS --- */
-        input { width: 100%; padding: 14px 18px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 12px; color: white; font-size: 16px; margin-bottom: 15px; }
-        button { width: 100%; padding: 14px; background: var(--ubuntu-orange); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: var(--transition); }
-        button:active { transform: scale(0.97); opacity: 0.9; }
+  <style>
+    /* ============================
+       THEME / VARIABLES (Ubuntu-inspired)
+       Mobile-first, glassmorphism, dark
+       ============================ */
+    :root{
+      --orange:#E95420;
+      --bg:#0b0c0f;
+      --panel: rgba(18,18,22,0.55);
+      --panel-strong: rgba(18,18,22,0.75);
+      --glass-border: rgba(255,255,255,0.06);
+      --muted:#9b958f;
+      --text:#f6f5f4;
+      --radius:16px;
+      --transition: all 260ms cubic-bezier(.16,1,.3,1);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, "Ubuntu", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue";background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+    a{color:inherit;text-decoration:none}
 
-        #app-shell { display: none; height: 100dvh; flex-direction: column; position: relative; z-index: 10; }
-        header { padding: 18px 24px; background: rgba(0,0,0,0.3); backdrop-filter: blur(15px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); }
-        main { flex: 1; overflow-y: auto; padding: 20px; position: relative; scroll-behavior: smooth; }
-        
-        .view { display: none; animation: viewIn 0.5s ease-out; }
-        .view.active { display: block; }
-        @keyframes viewIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    /* ============================
+       BACKGROUND - Moonlit Forest + optional fireflies canvas
+       Always visible behind UI
+       ============================ */
+    #bg {
+      position:fixed;inset:0;z-index:0;overflow:hidden;
+      background: linear-gradient(180deg,#02040a 0%, #07101a 45%, #0b0c0f 100%);
+      touch-action:none;
+    }
+    /* moon */
+    .moon{
+      position:absolute;right:18px;top:18px;
+      width:72px;height:72px;border-radius:50%;
+      background: radial-gradient(circle at 30% 28%,#fffdf3 0%, #fff9e6 10%, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0) 50%);
+      box-shadow: 0 0 60px 14px rgba(255,245,230,0.06), inset -8px -6px 18px rgba(0,0,0,0.35);
+      filter: blur(0.3px);
+    }
+    /* forest silhouette */
+    .forest { position:absolute; left:0; right:0; bottom:0; height:50%; pointer-events:none; display:flex; align-items:flex-end; gap:6px; padding:0 6px; z-index:1; }
+    .tree{
+      width:8px; height:120px; background: linear-gradient(180deg,#061018,#04060a);
+      border-radius:8px 8px 0 0; opacity:0.9; transform-origin:bottom center;
+      box-shadow: 0 12px 30px rgba(2,4,6,0.7), inset 0 -6px 12px rgba(255,255,255,0.02);
+    }
+    /* subtle glow at forest base */
+    .forest::after{ content:''; position:absolute; left:0; right:0; bottom:0; height:40%; background:linear-gradient(180deg,rgba(233,84,32,0.02),transparent 60%); z-index:0; pointer-events:none;}
 
-        /* --- CARDS (GLASSMORPISM) --- */
-        .card { background: var(--panel-bg); backdrop-filter: blur(20px); border-radius: var(--radius); padding: 22px; margin-bottom: 20px; border: 1px solid var(--glass-border); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .card-label { font-size: 10px; font-weight: 700; color: var(--ubuntu-orange); letter-spacing: 1.5px; margin-bottom: 12px; text-transform: uppercase; }
+    /* fireflies canvas sits above forest but below UI */
+    canvas#fireflies { position:absolute; inset:0; z-index:2; pointer-events:none; opacity:0.55; mix-blend-mode:screen; }
 
-        .list-item { padding: 15px; background: rgba(255,255,255,0.03); margin-bottom: 10px; border-radius: 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; transition: var(--transition); animation: listFade 0.5s ease forwards; }
-        .list-item:active { transform: scale(0.98); background: rgba(255,255,255,0.07); }
-        .list-item.selected { border-color: var(--ubuntu-orange); background: rgba(233, 84, 32, 0.1); }
-        
-        @keyframes listFade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    /* ============================
+       APP SHELL
+       ============================ */
+    .app { position:relative; z-index:10; min-height:100vh; display:flex; flex-direction:column; }
+    header.appbar{
+      display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));backdrop-filter: blur(8px);border-bottom:1px solid var(--glass-border);
+    }
+    .brand { font-weight:700; letter-spacing:1.4px; color:var(--orange); font-size:13px; }
+    .exit-btn{ font-size:13px; color:var(--muted); cursor:pointer; padding:8px; border-radius:8px; }
+    main { padding:12px; flex:1; overflow:auto; -webkit-overflow-scrolling:touch; }
 
-        .select-btn { width: auto; padding: 8px 16px; font-size: 11px; margin: 0; }
+    /* Glass card */
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.03));
+      border-radius:var(--radius); padding:14px; margin-bottom:12px;
+      border:1px solid var(--glass-border);
+      box-shadow: 0 8px 30px rgba(2,4,8,0.45);
+    }
+    .label { font-size:10px; color:var(--orange); font-weight:700; letter-spacing:1.4px; text-transform:uppercase; margin-bottom:10px; }
+    .muted { color:var(--muted); font-size:13px; }
 
-        /* --- NAVIGATION --- */
-        nav { height: 75px; background: rgba(10, 10, 15, 0.9); backdrop-filter: blur(20px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--glass-border); z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
-        .nav-item { color: var(--text-dim); text-decoration: none; font-size: 10px; display: flex; flex-direction: column; align-items: center; font-weight: 500; transition: var(--transition); gap: 4px; }
-        .nav-item span { font-size: 20px; }
-        .nav-item.active { color: var(--ubuntu-orange); transform: translateY(-2px); }
+    /* inputs & buttons */
+    .field{width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);background:rgba(0,0,0,0.25);color:var(--text);margin-bottom:10px}
+    .btn { display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;border-radius:12px;background:var(--orange);color:#fff;border:none;font-weight:700;cursor:pointer;transition:var(--transition); }
+    .btn.ghost{ background:transparent;border:1px solid var(--glass-border); color:var(--text); }
+    .row{display:flex;gap:8px}
+    .small{font-size:12px;padding:8px 10px;border-radius:10px}
 
-        /* --- MEDIA CONTROLS --- */
-        #media-container { position: fixed; bottom: 95px; left: 20px; right: 20px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; }
-        
-        #music-fab { width: 60px; height: 60px; background: var(--ubuntu-orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); cursor: pointer; transition: var(--transition); z-index: 60; }
-        #music-fab.open { transform: rotate(45deg); background: #222; }
+    /* nav bottom */
+    nav.bottom {
+      position:fixed;left:10px;right:10px;bottom:10px;height:72px;border-radius:18px;background:linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.6));display:flex;align-items:center;justify-content:space-around;padding:10px;border:1px solid var(--glass-border);backdrop-filter: blur(8px);z-index:60;
+    }
+    .nav-item{ display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--muted); gap:4px; cursor:pointer; width:70px; text-align:center; }
+    .nav-item.active{ color:var(--orange); transform:translateY(-4px); }
 
-        #player-panel { width: 100%; background: var(--panel-bg); backdrop-filter: blur(30px); border-radius: 24px; border: 1px solid var(--glass-border); margin-bottom: 15px; overflow: hidden; max-height: 0; opacity: 0; transform: translateY(20px); transition: var(--transition); pointer-events: none; }
-        #player-panel.visible { max-height: 420px; opacity: 1; pointer-events: auto; transform: translateY(0); }
+    /* views */
+    .view{ display:none; animation:fadeIn .28s ease both; }
+    .view.active{ display:block; }
+    @keyframes fadeIn{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
 
-        .player-header { padding: 20px; border-bottom: 1px solid var(--glass-border); }
-        .track-title { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        .controls-row { display: flex; justify-content: center; gap: 25px; padding: 20px; }
-        .btn-ctrl { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 50%; background: rgba(255,255,255,0.05); }
-        .btn-ctrl svg { width: 22px; height: 22px; fill: white; }
+    /* messages stream */
+    .msg-card{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.03)); padding:12px;border-radius:12px;margin-bottom:8px;border-left:4px solid var(--orange); }
+    .msg-sender{ font-size:11px; color:var(--orange); font-weight:700; text-transform:uppercase; margin-bottom:6px; }
+    .msg-text{ font-size:14px; color:var(--text); }
 
-        .queue-list { max-height: 180px; overflow-y: auto; padding: 0 15px 20px 15px; }
-        .queue-item { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-dim); display: flex; gap: 12px; font-size: 12px; align-items: center; }
-        .queue-item.active { color: var(--ubuntu-orange); background: rgba(233, 84, 32, 0.05); border-radius: 8px; }
+    /* media controls floating FAB + panel */
+    #media-fab {
+      position:fixed; right:18px; bottom:92px; z-index:70; width:64px;height:64px;border-radius:999px;background:var(--orange);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 34px rgba(233,84,32,0.18);cursor:pointer; transition: transform 260ms;
+    }
+    #media-fab.open{ transform: rotate(45deg) }
+    #media-panel {
+      position:fixed; right:18px; bottom:172px; width:320px; max-width:92%; border-radius:18px; z-index:70; overflow:hidden;
+      background: linear-gradient(180deg, rgba(18,18,22,0.9), rgba(18,18,22,0.88)); border:1px solid var(--glass-border); box-shadow:0 20px 60px rgba(0,0,0,0.6); transform-origin:right bottom;
+      opacity:0; transform: translateY(12px) scale(.98); pointer-events:none; transition: var(--transition);
+    }
+    #media-panel.open{ opacity:1; transform: translateY(0) scale(1); pointer-events:auto; }
+    .player-head{ padding:12px 14px; display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.02) }
+    .track-title{ font-weight:600; font-size:14px; max-width:190px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff }
+    .controls{ padding:12px; display:flex;align-items:center;justify-content:center;gap:16px }
+    .ctrl{ width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.03); cursor:pointer }
+    .queue{ max-height:220px; overflow:auto; padding:8px 12px; border-top:1px dashed rgba(255,255,255,0.02); }
+    .queue-item{ padding:8px;border-radius:10px;margin-bottom:8px;background:transparent;color:var(--muted); font-size:13px; display:flex; justify-content:space-between; align-items:center }
+    .queue-item.active{ color:var(--orange); background:rgba(233,84,32,0.04) }
 
-        #yt-player-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-        .hidden { display: none !important; }
-    </style>
+    /* login overlay */
+    #auth {
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:100;
+      background: linear-gradient(180deg, rgba(2,4,8,0.85), rgba(2,4,8,0.95));
+      padding:20px;
+    }
+    .auth-card{ width:100%; max-width:360px; border-radius:20px; padding:22px; background:var(--panel-strong); border:1px solid var(--glass-border); box-shadow:0 20px 80px rgba(0,0,0,0.7); }
+    .auth-title{ font-size:22px; font-weight:300; letter-spacing:1px; margin:0 0 10px 0; color:var(--text) }
+
+    /* responsive tweaks */
+    @media(min-width:900px){
+      #media-panel{ right:28px; bottom:150px; width:360px; }
+      nav.bottom{ left:calc(50% - 220px); right:calc(50% - 220px); width:440px }
+    }
+  </style>
 </head>
 <body>
 
-    <div id="global-bg">
-        <div class="moon"></div>
-        <div class="forest" id="forest-scene"></div>
-        <canvas id="fireflies"></canvas>
+  <!-- BACKGROUND -->
+  <div id="bg" aria-hidden="true">
+    <div class="moon"></div>
+    <div class="forest" id="forest">
+      <!-- many trees are created via JS for subtle randomization -->
     </div>
+    <canvas id="fireflies"></canvas>
+  </div>
 
-    <div id="yt-player-hidden"></div>
-
-    <!-- AUTH SECTION -->
-    <div id="auth-overlay">
-        <div class="auth-card">
-            <h2 style="margin: 0 0 30px 0; font-weight: 300; letter-spacing: 2px;">TripTracker</h2>
-            <input type="text" id="login-user" placeholder="watched / watcher">
-            <input type="password" id="login-pass" placeholder="••••">
-            <button onclick="app.login()">Initialize System</button>
-            <div id="login-error" style="color: #ff6b6b; font-size: 12px; margin-top: 15px; display: none;">Access Denied: Invalid Credentials</div>
+  <!-- AUTH OVERLAY -->
+  <div id="auth" role="dialog" aria-modal="true">
+    <div class="auth-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div>
+          <h1 class="auth-title">TripTracker</h1>
+          <div style="font-size:12px;color:var(--muted)">Moonlit trip control • Realtime</div>
         </div>
+        <div style="font-size:12px;color:var(--muted);">v1.0</div>
+      </div>
+
+      <!-- Login form -->
+      <div style="margin-top:14px">
+        <input id="login-user" class="field" placeholder="Username (watched or your name)" />
+        <input id="login-pass" type="password" class="field" placeholder="Password" />
+        <div style="display:flex;gap:8px">
+          <button id="btn-login" class="btn">Initialize System</button>
+          <button id="btn-guest" class="btn ghost" title="Quick in as watcher">Quick Watcher</button>
+        </div>
+        <div id="login-error" class="muted" style="margin-top:10px;display:none;color:#ff8b8b"></div>
+        <div style="margin-top:12px;font-size:12px;color:var(--muted)">
+          Watched user: <strong>watched</strong> / 1122 • Watchers: any username / <strong>1212</strong>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- MAIN APP SHELL -->
-    <div id="app-shell">
-        <header>
-            <span style="font-weight: 800; font-size: 11px; letter-spacing: 2px; color: var(--ubuntu-orange);">CORE // CONNECTED</span>
-            <div onclick="app.logout()" style="color: var(--text-dim); font-size: 11px; cursor: pointer; font-weight: 700;">EXIT</div>
-        </header>
+  <!-- APP SHELL -->
+  <div class="app" id="app" style="display:none">
+    <header class="appbar">
+      <div class="brand">CORE // CONNECTED</div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div id="role-badge" style="font-size:12px;color:var(--muted)"></div>
+        <div id="exit" class="exit-btn">EXIT</div>
+      </div>
+    </header>
 
-        <main id="view-container">
-            <!-- DASHBOARD -->
-            <div id="view-dash" class="view active">
-                <div class="card">
-                    <div class="card-label">Real-time Telemetry</div>
-                    <div id="loc-status" style="font-size: 28px; font-weight: 600; margin-bottom: 5px;">Awaiting GPS...</div>
-                    <div id="loc-ts" style="font-size: 11px; color: var(--text-dim);">Last Update: ---</div>
-                    <button id="update-loc-btn" onclick="app.updateLocationManual()" style="margin-top: 20px;">Update Location</button>
-                </div>
-
-                <div class="card">
-                    <div class="card-label">System Feed</div>
-                    <div id="msg-stream" style="max-height: 200px; overflow-y: auto;">
-                        <div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px;">No messages received.</div>
-                    </div>
-                </div>
+    <main>
+      <!-- DASHBOARD VIEW -->
+      <section id="view-dash" class="view active">
+        <!-- Telemetry card -->
+        <div class="card">
+          <div class="label">Real-time Telemetry</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div>
+              <div id="loc-status" style="font-size:20px;font-weight:700">Awaiting GPS...</div>
+              <div id="loc-ts" class="muted" style="font-size:12px">Last Update: ---</div>
             </div>
-
-            <!-- MEDIA VIEW -->
-            <div id="view-media" class="view">
-                <div style="text-align: center; margin-top: 50px;">
-                    <div style="font-size: 12px; color: var(--ubuntu-orange); letter-spacing: 2px; margin-bottom: 10px;">IMMERSIVE MODE</div>
-                    <h2 id="active-stream-title" style="font-weight: 300;">No Stream Loaded</h2>
-                    <p id="active-stream-desc" style="font-size: 13px; color: var(--text-dim); max-width: 240px; margin: 0 auto;">Head to the Data page to select a shared playlist for the trip.</p>
-                </div>
+            <div style="min-width:120px;display:flex;flex-direction:column;gap:8px">
+              <button id="btn-update-loc" class="btn small">Update Location</button>
+              <button id="btn-open-maps" class="btn ghost small">Open Maps</button>
             </div>
-
-            <!-- DATA VIEW -->
-            <div id="view-data" class="view">
-                <div class="card">
-                    <div class="card-label">Cloud Library</div>
-                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px;">Available playlists for the entire crew.</p>
-                    <div id="playlist-library">
-                        <!-- Loaded via Firebase -->
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-label">Register New Source</div>
-                    <input type="text" id="pl-name" placeholder="Playlist Name (e.g. Night Drive)">
-                    <input type="text" id="pl-id" placeholder="YouTube Playlist ID">
-                    <button onclick="app.addPlaylist()">Commit to Cloud</button>
-                </div>
-            </div>
-        </main>
-
-        <!-- PLAYER UI -->
-        <div id="media-container" class="hidden">
-            <div id="player-panel">
-                <div class="player-header">
-                    <div class="track-title" id="current-track-name">Stream Initializing...</div>
-                    <div style="font-size: 9px; color: var(--ubuntu-orange); font-weight: 700; letter-spacing: 1px;">QUEUE PROTOCOL</div>
-                </div>
-                <div class="queue-list" id="upcoming-queue"></div>
-                <div class="controls-row">
-                    <div class="btn-ctrl" onclick="app.yt.prev()"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6L18 18V6z"/></svg></div>
-                    <div class="btn-ctrl" onclick="app.yt.toggle()" style="background: var(--ubuntu-orange);">
-                        <svg id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                        <svg id="pause-icon" class="hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                    </div>
-                    <div class="btn-ctrl" onclick="app.yt.next()"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></div>
-                </div>
-            </div>
-            <div id="music-fab" onclick="app.togglePanel()">
-                <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: white;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-            </div>
+          </div>
         </div>
 
-        <nav id="bottom-nav">
-            <a href="javascript:void(0)" class="nav-item active" onclick="app.switchView('dash', this)"><span>🌍</span>DASH</a>
-            <a href="javascript:void(0)" class="nav-item" onclick="app.switchView('media', this)"><span>🎧</span>MEDIA</a>
-            <a href="javascript:void(0)" class="nav-item" onclick="app.switchView('data', this)"><span>📁</span>DATA</a>
-        </nav>
+        <!-- Messages card -->
+        <div class="card">
+          <div class="label">System Feed</div>
+          <div id="msg-stream" style="max-height:260px;overflow:auto;padding-right:4px">
+            <div class="muted" style="text-align:center;padding:24px">No messages yet.</div>
+          </div>
+
+          <!-- message composer (available to all) -->
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <input id="msg-input" class="field" placeholder="Write a message to the crew..." />
+            <button id="msg-send" class="btn small">Send</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- MEDIA VIEW -->
+      <section id="view-media" class="view">
+        <div style="text-align:center;margin-top:40px">
+          <div class="label">IMMERSIVE MODE</div>
+          <h2 id="active-stream-title" style="font-weight:300;margin:8px 0">No Stream Loaded</h2>
+          <p id="active-stream-desc" class="muted" style="max-width:320px;margin:6px auto">Select a playlist from Data to begin audio playback. Tap the floating icon to open player.</p>
+        </div>
+      </section>
+
+      <!-- DATA VIEW -->
+      <section id="view-data" class="view">
+        <div class="card">
+          <div class="label">Cloud Library</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Add and manage shared playlists for the trip.</div>
+
+          <!-- add playlist -->
+          <input id="pl-name" class="field" placeholder="Playlist Name (e.g. Night Drive)" />
+          <input id="pl-url" class="field" placeholder="YouTube playlist URL or ID" />
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button id="pl-add" class="btn">Commit to Cloud</button>
+            <button id="pl-clear" class="btn ghost">Clear</button>
+          </div>
+
+          <!-- list -->
+          <div id="playlist-library"></div>
+        </div>
+      </section>
+
+      <!-- WATCHER-SPECIFIC quick actions (also accessible in data for watchers) -->
+      <div id="watcher-panel" style="display:none">
+        <div class="card">
+          <div class="label">Quick Alerts</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn small" id="alert-call">Call me</button>
+            <button class="btn small" id="alert-msg">Message me</button>
+            <button class="btn small" id="alert-emerg">Emergency</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- floating media FAB and panel -->
+    <div id="media-fab" title="Open player">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
     </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
-            authDomain: "trip-tracker-57ce0.firebaseapp.com",
-            databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
-            projectId: "trip-tracker-57ce0",
-            storageBucket: "trip-tracker-57ce0.firebasestorage.app",
-            messagingSenderId: "236146303848",
-            appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
-        };
+    <div id="media-panel" aria-hidden="true">
+      <div class="player-head">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.15));display:flex;align-items:center;justify-content:center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+          </div>
+          <div>
+            <div class="track-title" id="current-track-name">Stream idle</div>
+            <div class="muted" style="font-size:11px" id="player-info">0 tracks</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="panel-close" class="btn ghost small">Close</button>
+        </div>
+      </div>
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+      <div class="controls" style="padding:12px">
+        <div class="ctrl" id="btn-prev" title="Previous">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M6 6h2v12H6zm3.5 6L18 18V6z"/></svg>
+        </div>
+        <div class="ctrl" id="btn-toggle" title="Play / Pause" style="background:var(--orange)">
+          <svg id="play-icon" width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+          <svg id="pause-icon" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="#fff" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </div>
+        <div class="ctrl" id="btn-next" title="Next">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </div>
+      </div>
 
-        const app = {
-            role: null,
-            player: null,
-            activePlaylistId: null,
-            isPanelOpen: false,
+      <div class="queue" id="upcoming-queue">
+        <div class="muted" style="padding:8px">No playlist loaded</div>
+      </div>
+    </div>
 
-            checkSession: function() {
-                const saved = localStorage.getItem('trip_tracker_role');
-                if (saved) this.init(saved);
-            },
+    <!-- bottom nav -->
+    <nav class="bottom" role="navigation" aria-label="Main navigation">
+      <div class="nav-item active" data-view="dash"><div style="font-size:18px">🌍</div>DASH</div>
+      <div class="nav-item" data-view="media"><div style="font-size:18px">🎧</div>MEDIA</div>
+      <div class="nav-item" data-view="data"><div style="font-size:18px">📁</div>DATA</div>
+    </nav>
 
-            login: function() {
-                const u = document.getElementById('login-user').value.trim();
-                const p = document.getElementById('login-pass').value.trim();
-                if (u === 'watched' && p === '1122') {
-                    localStorage.setItem('trip_tracker_role', 'watched');
-                    this.init('watched');
-                } else if (u === 'watcher' && p === '1212') {
-                    localStorage.setItem('trip_tracker_role', 'watcher');
-                    this.init('watcher');
-                } else {
-                    document.getElementById('login-error').style.display = 'block';
-                }
-            },
+  </div>
 
-            init: function(role) {
-                this.role = role;
-                document.getElementById('auth-overlay').style.display = 'none';
-                document.getElementById('app-shell').style.display = 'flex';
-                this.buildForest();
-                this.initFireflies();
-                this.syncCloud();
-                if (role === 'watched') this.startTracking();
-                if (role === 'watcher') document.getElementById('update-loc-btn').style.display = 'none';
-            },
+  <!-- Hidden YouTube player element required by API (kept minimal to be audio-first) -->
+  <div id="yt-holder" style="position:fixed;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:0"></div>
 
-            logout: function() { 
-                localStorage.removeItem('trip_tracker_role');
-                location.reload(); 
-            },
+  <script>
+    /* ============================
+       Firebase config (reuse the one originally in repository)
+       Replace with your own project's config if needed.
+       ============================ */
+    const firebaseConfig = {
+      apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
+      authDomain: "trip-tracker-57ce0.firebaseapp.com",
+      databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
+      projectId: "trip-tracker-57ce0",
+      storageBucket: "trip-tracker-57ce0.firebasestorage.app",
+      messagingSenderId: "236146303848",
+      appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-            switchView: function(id, el) {
-                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-                document.getElementById('view-' + id).classList.add('active');
-                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                if (el) el.classList.add('active');
-            },
+    /* ============================
+       Utility helpers
+       ============================ */
+    const el = id => document.getElementById(id);
+    const $ = sel => document.querySelector(sel);
+    const formatTime = ts => ts ? new Date(ts).toLocaleTimeString() : '---';
 
-            togglePanel: function() {
-                this.isPanelOpen = !this.isPanelOpen;
-                document.getElementById('player-panel').classList.toggle('visible', this.isPanelOpen);
-                document.getElementById('music-fab').classList.toggle('open', this.isPanelOpen);
-            },
+    /* ============================
+       Application state
+       ============================ */
+    const state = {
+      role: null,        // 'watched' or 'watcher'
+      user: null,        // username for watcher
+      player: null,      // YT.Player instance
+      activePlaylist: null, // { id, name, url, createdAt }
+      watchingPosId: null, // watchPosition id
+      lastMsgTs: 0
+    };
 
-            syncCloud: function() {
-                // Real-time Playlists Library
-                db.ref('trip/playlists').on('value', snap => {
-                    const data = snap.val();
-                    const container = document.getElementById('playlist-library');
-                    if (!data) {
-                        container.innerHTML = `<div style="color:var(--text-dim); font-size:12px; text-align:center; padding:20px;">No playlists found in cloud.</div>`;
-                        return;
-                    }
-                    
-                    container.innerHTML = Object.keys(data).map(key => {
-                        const item = data[key];
-                        const isCurrent = this.activePlaylistId === item.pid;
-                        return `
-                            <div class="list-item ${isCurrent ? 'selected' : ''}">
-                                <div>
-                                    <div style="font-weight:600; font-size:14px; color:${isCurrent ? 'var(--ubuntu-orange)' : '#fff'};">${item.name}</div>
-                                    <div style="font-size:10px; color:var(--text-dim);">ID: ${item.pid.substring(0,8)}...</div>
-                                </div>
-                                <button class="select-btn" onclick="app.setActivePlaylist('${item.pid}', '${item.name}')">
-                                    ${isCurrent ? 'ACTIVE' : 'SELECT'}
-                                </button>
-                            </div>
-                        `;
-                    }).join('');
-                });
+    /* ============================
+       MOUNTAIN / FOREST BUILD
+       dynamically creates trees for the moonlit forest
+       ============================ */
+    function buildForest(){
+      const container = document.getElementById('forest');
+      if(container.children.length) return;
+      for(let i=0;i<22;i++){
+        const t = document.createElement('div');
+        t.className = 'tree';
+        const w = 6 + Math.round(Math.random()*16);
+        t.style.width = w+'px';
+        t.style.height = (80 + Math.random()*160) + 'px';
+        t.style.opacity = 0.2 + Math.random()*0.8;
+        t.style.transform = `translateY(${Math.random()*30}px) rotate(${(Math.random()*8)-4}deg)`;
+        t.style.marginLeft = (Math.random()*6)+'px';
+        container.appendChild(t);
+      }
+    }
 
-                // Active Playlist Observer
-                db.ref('trip/activePlaylist').on('value', snap => {
-                    const active = snap.val();
-                    if (active && active.pid !== this.activePlaylistId) {
-                        this.activePlaylistId = active.pid;
-                        document.getElementById('active-stream-title').innerText = active.name;
-                        document.getElementById('active-stream-desc').innerText = "Cloud stream active. Tap the floating icon to play.";
-                        this.yt.load(active.pid);
-                    }
-                });
+    /* ============================
+       Fireflies (subtle canvas animation)
+       ============================ */
+    function initFireflies(){
+      const canvas = document.getElementById('fireflies');
+      const ctx = canvas.getContext('2d');
+      let w=innerWidth,h=innerHeight,flies=[];
+      const resize = () => { w=canvas.width=innerWidth; h=canvas.height=innerHeight; };
+      window.addEventListener('resize', resize); resize();
+      for(let i=0;i<48;i++) flies.push({ x:Math.random()*w, y:Math.random()*h, r:0.8+Math.random()*1.6, a:Math.random()*Math.PI*2, s:0.2+Math.random()*0.6 });
+      (function anim(){
+        ctx.clearRect(0,0,w,h);
+        flies.forEach(f=>{
+          f.a += 0.01 + Math.random()*0.02;
+          f.x += Math.cos(f.a)*f.s;
+          f.y += Math.sin(f.a)*f.s*0.6;
+          if(f.x<0) f.x=w; if(f.x>w) f.x=0; if(f.y<0) f.y=h; if(f.y>h) f.y=0;
+          ctx.beginPath();
+          const alpha = 0.25 + (Math.sin(f.a)+1)*0.25;
+          ctx.fillStyle = `rgba(233,84,32,${alpha})`;
+          ctx.arc(f.x,f.y,f.r,0,Math.PI*2);
+          ctx.fill();
+        });
+        requestAnimationFrame(anim);
+      })();
+    }
 
-                // Telemetry Observer
-                db.ref('trip/location').on('value', snap => {
-                    const data = snap.val();
-                    if (data) {
-                        document.getElementById('loc-status').innerText = data.lat.toFixed(5) + ", " + data.lng.toFixed(5);
-                        document.getElementById('loc-ts').innerText = "Last Update: " + new Date(data.ts).toLocaleTimeString();
-                    }
-                });
+    /* ============================
+       AUTH: validate, remember login
+       - watched: username == 'watched' && pass == '1122'
+       - watchers: pass == '1212', username any
+       ============================ */
+    function showAppAs(role, user){
+      state.role = role;
+      state.user = user || role;
+      document.getElementById('auth').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      el('role-badge').innerText = `${state.user} • ${state.role}`;
+      // show/hide watched-only controls
+      if(state.role === 'watched'){
+        el('btn-update-loc').style.display = 'inline-block';
+        el('watcher-panel').style.display = 'none';
+      } else {
+        el('btn-update-loc').style.display = 'none';
+        el('watcher-panel').style.display = 'block';
+      }
+      // initialize visuals
+      buildForest();
+      initFireflies();
+      // start listeners
+      initListeners();
+      // if watched start geolocation watch
+      if(state.role === 'watched') startTracking();
+      // restore media if activePlaylist present
+      // request notification permission for watchers
+      if(Notification && Notification.permission !== 'granted') {
+        Notification.requestPermission().catch(()=>{});
+      }
+    }
 
-                // Comm Feed Observer
-                db.ref('trip/messages').limitToLast(10).on('value', snap => {
-                    const msgs = snap.val();
-                    if (!msgs) return;
-                    document.getElementById('msg-stream').innerHTML = Object.keys(msgs).map(k => `
-                        <div class="card" style="padding:15px; margin-bottom:10px; border-left:4px solid var(--ubuntu-orange);">
-                            <div style="font-size:10px; color:var(--ubuntu-orange); font-weight:700; margin-bottom:4px; text-transform:uppercase;">${msgs[k].user}</div>
-                            <div style="font-size:14px;">${msgs[k].text}</div>
-                        </div>
-                    `).reverse().join('');
-                });
-            },
+    // login flows
+    document.getElementById('btn-login').addEventListener('click', ()=>{
+      const u = el('login-user').value.trim();
+      const p = el('login-pass').value.trim();
+      if(u === 'watched' && p === '1122'){
+        localStorage.setItem('trip_role','watched');
+        localStorage.setItem('trip_user','watched');
+        showAppAs('watched','watched');
+      } else if(p === '1212' && u.length>0){
+        localStorage.setItem('trip_role','watcher');
+        localStorage.setItem('trip_user',u);
+        showAppAs('watcher',u);
+      } else {
+        el('login-error').style.display='block';
+        el('login-error').innerText = 'Invalid credentials';
+      }
+    });
+    // quick watcher (dev convenience)
+    document.getElementById('btn-guest').addEventListener('click', ()=> {
+      const user = 'watcher-'+Math.floor(Math.random()*999);
+      localStorage.setItem('trip_role','watcher');
+      localStorage.setItem('trip_user',user);
+      showAppAs('watcher',user);
+    });
 
-            setActivePlaylist: function(pid, name) {
-                db.ref('trip/activePlaylist').set({ pid, name, ts: Date.now() });
-            },
+    // logout
+    document.getElementById('exit').addEventListener('click', ()=> {
+      localStorage.removeItem('trip_role');
+      localStorage.removeItem('trip_user');
+      location.reload();
+    });
 
-            addPlaylist: function() {
-                const name = document.getElementById('pl-name').value.trim();
-                const pid = document.getElementById('pl-id').value.trim();
-                if (!name || !pid) return;
-                db.ref('trip/playlists').push({ name, pid });
-                document.getElementById('pl-name').value = '';
-                document.getElementById('pl-id').value = '';
-            },
+    // restore session if present
+    window.addEventListener('load', ()=>{
+      const role = localStorage.getItem('trip_role');
+      const user = localStorage.getItem('trip_user');
+      if(role && user){
+        showAppAs(role,user);
+      } else {
+        // show login overlay
+        document.getElementById('auth').style.display = 'flex';
+      }
+    });
 
-            startTracking: function() {
-                if (navigator.geolocation) {
-                    navigator.geolocation.watchPosition(this.pushLoc.bind(this), null, { enableHighAccuracy: true });
-                }
-            },
+    /* ============================
+       NAVIGATION - bottom nav items
+       ============================ */
+    document.querySelectorAll('.nav-item').forEach(item=>{
+      item.addEventListener('click', ()=>{
+        document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+        item.classList.add('active');
+        const view = item.getAttribute('data-view');
+        document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+        document.getElementById('view-'+view).classList.add('active');
+      });
+    });
 
-            pushLoc: function(p) {
-                db.ref('trip/location').set({ lat: p.coords.latitude, lng: p.coords.longitude, ts: Date.now() });
-            },
+    /* ============================
+       Realtime Firebase listeners for:
+       - /trip/location
+       - /trip/messages
+       - /trip/playlists
+       - /trip/activePlaylist
+       - /trip/alerts
+       ============================ */
+    let messagesRef, locationRef, playlistsRef, activePlaylistRef, alertsRef;
 
-            updateLocationManual: function() {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(this.pushLoc.bind(this), null, { enableHighAccuracy: true });
-                }
-            },
-
-            yt: {
-                load: function(pid) {
-                    document.getElementById('media-container').classList.remove('hidden');
-                    if (app.player && typeof app.player.loadPlaylist === 'function') {
-                        app.player.loadPlaylist({ list: pid, listType: 'playlist', index: 0 });
-                    } else {
-                        app.player = new YT.Player('yt-player-hidden', {
-                            height: '1', width: '1',
-                            playerVars: { list: pid, listType: 'playlist', autoplay: 0 },
-                            events: { onStateChange: app.yt.onStateChange }
-                        });
-                    }
-                },
-                toggle: function() {
-                    if (!app.player) return;
-                    const state = app.player.getPlayerState();
-                    if (state === 1) app.player.pauseVideo(); else app.player.playVideo();
-                },
-                next: () => app.player.nextVideo(),
-                prev: () => app.player.previousVideo(),
-                onStateChange: function(e) {
-                    const playing = (e.data === 1);
-                    document.getElementById('play-icon').classList.toggle('hidden', playing);
-                    document.getElementById('pause-icon').classList.toggle('hidden', !playing);
-                    
-                    if (e.data === 1 || e.data === 0) {
-                        const data = e.target.getVideoData();
-                        document.getElementById('current-track-name').innerText = data.title || "Stream Active";
-                    }
-                }
-            },
-
-            buildForest: function() {
-                const scene = document.getElementById('forest-scene');
-                if (scene.children.length > 0) return;
-                for (let i = 0; i < 20; i++) {
-                    const t = document.createElement('div');
-                    t.className = 'tree';
-                    t.style.left = (Math.random() * 100) + '%';
-                    t.style.height = (80 + Math.random() * 120) + 'px';
-                    t.style.opacity = 0.3 + Math.random() * 0.5;
-                    t.style.transform = `skewX(${(Math.random() * 10) - 15}deg)`;
-                    scene.appendChild(t);
-                }
-            },
-
-            initFireflies: function() {
-                const canvas = document.getElementById('fireflies');
-                const ctx = canvas.getContext('2d');
-                let w, h, flies = [];
-                const resize = () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; };
-                window.addEventListener('resize', resize); resize();
-                for (let i = 0; i < 40; i++) flies.push({ x: Math.random()*w, y: Math.random()*h, a: Math.random()*Math.PI*2, s: 0.2 + Math.random()*0.4 });
-                const anim = () => {
-                    ctx.clearRect(0,0,w,h);
-                    flies.forEach(f => {
-                        f.a += 0.01; f.x += Math.cos(f.a)*f.s; f.y += Math.sin(f.a)*f.s;
-                        if (f.x<0) f.x=w; if (f.x>w) f.x=0; if (f.y<0) f.y=h; if (f.y>h) f.y=0;
-                        ctx.fillStyle = `rgba(233, 84, 32, ${(Math.sin(f.a)+1)*0.4})`;
-                        ctx.beginPath(); ctx.arc(f.x, f.y, 1.2, 0, Math.PI*2); ctx.fill();
-                    });
-                    requestAnimationFrame(anim);
-                };
-                anim();
+    function initListeners(){
+      // messages
+      messagesRef = db.ref('trip/messages');
+      messagesRef.limitToLast(50).on('value', snap => {
+        const data = snap.val();
+        renderMessages(data);
+        // send push for new messages for watchers
+        if(data){
+          const keys = Object.keys(data).sort((a,b)=> data[a].timestamp - data[b].timestamp);
+          const latest = data[keys[keys.length-1]];
+          if(latest && latest.timestamp > state.lastMsgTs){
+            state.lastMsgTs = latest.timestamp;
+            if(Notification && Notification.permission === 'granted'){
+              new Notification(`New from ${latest.sender}`, { body: latest.text, silent:false });
             }
-        };
+          }
+        }
+      });
 
-        function onYouTubeIframeAPIReady() { /* Hooks to app.yt.load */ }
-        window.onload = () => app.checkSession();
-    </script>
+      // location
+      locationRef = db.ref('trip/location');
+      locationRef.on('value', snap => {
+        const d = snap.val();
+        if(d){
+          el('loc-status').innerText = `${Number(d.lat).toFixed(5)}, ${Number(d.lng).toFixed(5)}`;
+          el('loc-ts').innerText = `Last Update: ${formatTime(d.timestamp || d.ts || d.t)}`;
+          // update maps button href (handled in click)
+        } else {
+          el('loc-status').innerText = 'Awaiting GPS...';
+          el('loc-ts').innerText = 'Last Update: ---';
+        }
+      });
+
+      // playlists
+      playlistsRef = db.ref('trip/playlists');
+      playlistsRef.on('value', snap => {
+        renderPlaylists(snap.val());
+      });
+
+      // active playlist
+      activePlaylistRef = db.ref('trip/activePlaylist');
+      activePlaylistRef.on('value', snap => {
+        const v = snap.val();
+        if(v){
+          state.activePlaylist = v;
+          el('active-stream-title').innerText = v.name;
+          el('active-stream-desc').innerText = 'Cloud stream active. Tap the player to play.';
+          // attempt to load into player
+          if(playerReady) {
+            loadPlaylistToPlayer(v);
+          }
+        } else {
+          state.activePlaylist = null;
+          el('active-stream-title').innerText = 'No Stream Loaded';
+          el('active-stream-desc').innerText = 'Select a playlist from Data to begin.';
+          cleanupPlayer();
+        }
+      });
+
+      // alerts (optional UI hook)
+      alertsRef = db.ref('trip/alerts');
+      alertsRef.limitToLast(10).on('value', snap=>{
+        // could show alerts in UI; not required to display
+        // but we keep this to ensure observers are connected
+        // console.log('alerts', snap.val());
+      });
+    }
+
+    /* ============================
+       MESSAGES: render and send
+       ============================ */
+    function renderMessages(data){
+      const container = el('msg-stream');
+      if(!data){
+        container.innerHTML = `<div class="muted" style="text-align:center;padding:24px">No messages yet.</div>`;
+        return;
+      }
+      const keys = Object.keys(data).sort((a,b)=> data[a].timestamp - data[b].timestamp);
+      container.innerHTML = keys.map(k=>{
+        const m = data[k];
+        return `
+          <div class="msg-card">
+            <div class="msg-sender">${escapeHtml(m.sender)} • ${new Date(m.timestamp).toLocaleTimeString()}</div>
+            <div class="msg-text">${escapeHtml(m.text)}</div>
+          </div>
+        `;
+      }).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // sanitize
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+    // send message
+    document.getElementById('msg-send').addEventListener('click', sendMessage);
+    el('msg-input').addEventListener('keydown', e=> { if(e.key === 'Enter') sendMessage(); });
+
+    function sendMessage(){
+      const txt = el('msg-input').value.trim();
+      if(!txt) return;
+      const payload = { sender: state.user || 'anon', text: txt, timestamp: Date.now() };
+      db.ref('trip/messages').push(payload);
+      el('msg-input').value = '';
+    }
+
+    /* ============================
+       LOCATION: watched user can push location
+       - startTracking uses watchPosition to continuously update /trip/location
+       - updateLocation triggers getCurrentPosition once
+       ============================ */
+    function startTracking(){
+      if(!navigator.geolocation) return;
+      // continuous watcher; store id to clear later if needed
+      try{
+        state.watchingPosId = navigator.geolocation.watchPosition(pos=>{
+          const payload = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
+          db.ref('trip/location').set(payload);
+        }, err => {
+          console.warn('geo err', err);
+        }, { enableHighAccuracy:true, maximumAge:3500, timeout:8000 });
+      }catch(e){ console.warn('watch pos failed', e); }
+    }
+    el('btn-update-loc').addEventListener('click', ()=>{
+      if(!navigator.geolocation) return alert('Geolocation not supported');
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const payload = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
+        db.ref('trip/location').set(payload);
+      }, err=> alert('Location error: ' + (err.message || err.code)), { enableHighAccuracy:true });
+    });
+
+    // Open maps button -> uses the latest /trip/location snapshot
+    el('btn-open-maps').addEventListener('click', async ()=>{
+      const snap = await db.ref('trip/location').once('value');
+      const d = snap.val();
+      if(!d) return alert('No location available');
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.lat+','+d.lng)}`;
+      window.open(url, '_blank');
+    });
+
+    /* ============================
+       ALERT buttons (watcher quick actions)
+       - call me opens tel:
+       - message me prefills message composer
+       - emergency writes to /trip/alerts and also to messages
+       ============================ */
+    document.getElementById('alert-call').addEventListener('click', ()=>{
+      const snap = localStorage.getItem('trip_user') || state.user || 'watcher';
+      // open dialer (best-effort)
+      window.open('tel:+0000000000'); // placeholder; real number to be provided
+    });
+    document.getElementById('alert-msg').addEventListener('click', ()=>{
+      el('msg-input').value = 'Quick request: please respond when you can.';
+      el('msg-input').focus();
+    });
+    document.getElementById('alert-emerg').addEventListener('click', ()=>{
+      const payload = { type:'emergency', timestamp: Date.now(), from: state.user || 'watcher' };
+      db.ref('trip/alerts').push(payload);
+      // also push a message
+      db.ref('trip/messages').push({ sender: state.user || 'watcher', text: 'EMERGENCY alert raised!', timestamp: Date.now() });
+      alert('Emergency alert sent.');
+    });
+
+    /* ============================
+       PLAYLISTS: Add / render / select / delete
+       Stored under /trip/playlists with fields: name, url, createdAt
+       Selecting writes to /trip/activePlaylist
+       ============================ */
+    function getPlaylistIdFromUrl(url){
+      // extract playlist id: list=PL...
+      if(!url) return '';
+      try{
+        const u = new URL(url);
+        const list = u.searchParams.get('list');
+        if(list) return list;
+        // some people paste full youtube urls with /playlist?v=...
+        const pathParts = u.pathname.split('/');
+        const idx = pathParts.indexOf('playlist');
+        if(idx >=0 && pathParts[idx+1]) return pathParts[idx+1];
+      }catch(e){
+        // maybe raw id was input
+        const t = url.trim();
+        if(t.length>0) return t;
+      }
+      return url.trim();
+    }
+
+    document.getElementById('pl-add').addEventListener('click', ()=>{
+      const name = el('pl-name').value.trim();
+      const raw = el('pl-url').value.trim();
+      if(!name || !raw) return alert('Provide name and playlist URL/ID');
+      const pid = getPlaylistIdFromUrl(raw);
+      const payload = { name, url: raw, pid, createdAt: Date.now() };
+      db.ref('trip/playlists').push(payload).then(()=>{
+        el('pl-name').value = ''; el('pl-url').value = '';
+      });
+    });
+    document.getElementById('pl-clear').addEventListener('click', ()=>{
+      el('pl-name').value = ''; el('pl-url').value = '';
+    });
+
+    function renderPlaylists(data){
+      const c = el('playlist-library');
+      if(!data){ c.innerHTML = `<div class="muted" style="padding:12px;text-align:center">No playlists found in cloud.</div>`; return; }
+      const keys = Object.keys(data).sort((a,b)=> data[a].createdAt - data[b].createdAt);
+      c.innerHTML = keys.map(k=>{
+        const p = data[k];
+        return `
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px;margin-bottom:10px">
+            <div style="flex:1">
+              <div style="font-weight:700;color:${(state.activePlaylist && state.activePlaylist.pid === p.pid)?'var(--orange)':'#fff'}">${escapeHtml(p.name)}</div>
+              <div class="muted" style="font-size:12px">ID: ${escapeHtml((p.pid||'').substring(0,10))} • ${new Date(p.createdAt).toLocaleString()}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <button class="btn small" data-pid="${p.pid}" data-name="${escapeHtml(p.name)}">Select</button>
+              <button class="btn ghost small" data-del="${k}">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      // attach actions
+      c.querySelectorAll('button[data-pid]').forEach(b=>{
+        b.addEventListener('click', ()=>{
+          const pid = b.getAttribute('data-pid');
+          const name = b.getAttribute('data-name');
+          db.ref('trip/activePlaylist').set({ pid, name, url: '', ts: Date.now() });
+        });
+      });
+      c.querySelectorAll('button[data-del]').forEach(b=>{
+        b.addEventListener('click', ()=>{
+          const key = b.getAttribute('data-del');
+          if(confirm('Delete this playlist?')) db.ref('trip/playlists/' + key).remove();
+        });
+      });
+    }
+
+    /* ============================
+       YOUTUBE PLAYER: load playlist and control playback
+       - Player is hidden (1x1) so playback is audio-first.
+       - We maintain upcoming queue using getPlaylist & index
+       ============================ */
+    let playerReady = false;
+    function onYouTubeIframeAPIReady(){
+      // create minimal player; we will load playlists when available
+      state.player = new YT.Player('yt-holder', {
+        height: '1', width: '1', playerVars: { autoplay:0, controls:0, disablekb:1, fs:0, modestbranding:1 },
+        events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
+      });
+    }
+    function onPlayerReady(){
+      playerReady = true;
+      // if activePlaylist available in state, load
+      if(state.activePlaylist) loadPlaylistToPlayer(state.activePlaylist);
+    }
+    function cleanupPlayer(){
+      if(state.player && typeof state.player.destroy === 'function') {
+        // keep player but stop playback
+        try{ state.player.stopVideo(); }catch(e){}
+        el('upcoming-queue').innerHTML = `<div class="muted" style="padding:8px">No playlist loaded</div>`;
+        el('current-track-name').innerText = 'Stream idle';
+        el('player-info').innerText = '0 tracks';
+      }
+    }
+
+    // load playlist object { pid, name }
+    function loadPlaylistToPlayer(p){
+      if(!playerReady || !state.player) return;
+      try{
+        // if pid looks like a playlist id, load it
+        state.player.loadPlaylist({ list: p.pid, listType: 'playlist', index: 0, suggestedQuality: 'small' });
+        el('media-panel').classList.add('open'); // show panel collapsed state
+        state.isPanelOpen = true;
+        updateQueue();
+      }catch(e){
+        console.warn('load playlist failed', e);
+      }
+    }
+
+    // on player state change update UI
+    function onPlayerStateChange(e){
+      const playing = (e.data === YT.PlayerState.PLAYING);
+      const paused = (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED || e.data === YT.PlayerState.CUED);
+      // toggle icons
+      if(playing){
+        el('play-icon').style.display = 'none';
+        el('pause-icon').style.display = 'block';
+      } else {
+        el('play-icon').style.display = 'block';
+        el('pause-icon').style.display = 'none';
+      }
+      // update track title
+      try{
+        const info = e.target.getVideoData();
+        const title = info && info.title ? info.title : (state.activePlaylist ? state.activePlaylist.name : 'Stream Active');
+        el('current-track-name').innerText = title;
+      }catch(e){ /* ignore */ }
+
+      updateQueue();
+    }
+
+    // control bindings
+    document.getElementById('btn-toggle').addEventListener('click', ()=>{
+      if(!state.player) return;
+      const st = state.player.getPlayerState();
+      if(st === YT.PlayerState.PLAYING) state.player.pauseVideo();
+      else state.player.playVideo();
+    });
+    document.getElementById('btn-next').addEventListener('click', ()=> { if(state.player) state.player.nextVideo(); updateQueue(); });
+    document.getElementById('btn-prev').addEventListener('click', ()=> { if(state.player) state.player.previousVideo(); updateQueue(); });
+    document.getElementById('panel-close').addEventListener('click', ()=> {
+      document.getElementById('media-panel').classList.remove('open');
+      document.getElementById('media-fab').classList.remove('open');
+      state.isPanelOpen = false;
+    });
+
+    // FAB open toggle
+    document.getElementById('media-fab').addEventListener('click', ()=>{
+      const fab = document.getElementById('media-fab');
+      const panel = document.getElementById('media-panel');
+      state.isPanelOpen = !state.isPanelOpen;
+      fab.classList.toggle('open', state.isPanelOpen);
+      panel.classList.toggle('open', state.isPanelOpen);
+      if(state.isPanelOpen) updateQueue();
+    });
+
+    // update upcoming queue list
+    function updateQueue(){
+      const q = el('upcoming-queue');
+      if(!state.player || !playerReady) { q.innerHTML = `<div class="muted" style="padding:8px">No playlist loaded</div>`; return; }
+      try{
+        const list = state.player.getPlaylist() || [];
+        const index = state.player.getPlaylistIndex ? state.player.getPlaylistIndex() : 0;
+        if(!list || list.length === 0){ q.innerHTML = `<div class="muted" style="padding:8px">No playlist loaded</div>`; el('player-info').innerText = '0 tracks'; return; }
+        el('player-info').innerText = `${list.length} tracks`;
+        q.innerHTML = list.map((vid, i)=>{
+          const cls = (i === index) ? 'queue-item active' : 'queue-item';
+          const title = (i === index) ? (state.player.getVideoData().title || `Track ${i+1}`) : `Track ${i+1}`;
+          return `<div class="${cls}" data-index="${i}"><div style="max-width:72%">${escapeHtml(title)}</div><div style="font-size:12px;color:var(--muted)">${i===index?'Now':''}</div></div>`;
+        }).join('');
+        // allow clicking a queue item to jump
+        q.querySelectorAll('.queue-item').forEach(it=>{
+          it.addEventListener('click', ()=> {
+            const idx = Number(it.getAttribute('data-index'));
+            state.player.playVideoAt && state.player.playVideoAt(idx);
+            // fallback: loadPlaylist with index
+            try{ state.player.playVideoAt(idx); }catch(e){}
+          });
+        });
+      } catch(e){
+        console.warn('updateQueue failed', e);
+      }
+    }
+
+    /* ============================
+       SMALL POLISH: show/hide UI elements depending on role
+       ============================ */
+    function adjustUIForRole(){
+      if(state.role === 'watched'){
+        // watched sees their telemetry and messages; hide quick alerts
+        el('watcher-panel').style.display = 'none';
+      } else {
+        el('watcher-panel').style.display = 'block';
+      }
+    }
+
+    /* ============================
+       ON STARTUP: nothing else
+       ============================ */
+
+    /* ============================
+       Misc / safety: ensure YouTube API hook exists even if API not yet loaded
+       ============================ */
+    window.onYouTubeIframeAPIReady = function(){ onYouTubeIframeAPIReady(); };
+
+    // Keep player UI updated by polling every second when playing
+    setInterval(()=>{
+      if(playerReady && state.player && (state.player.getPlayerState() === YT.PlayerState.PLAYING || state.player.getPlayerState() === YT.PlayerState.PAUSED)) {
+        updateQueue();
+      }
+    }, 1200);
+
+    // expose some state for debugging (optional)
+    window.tripApp = { state };
+
+  </script>
 </body>
 </html>
