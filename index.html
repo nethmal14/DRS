@@ -391,7 +391,7 @@
                 this.pz = this.z;
             }
             update() {
-                const speed = isPlaying ? (15 + musicIntensity * 45) : 1.5;
+                const speed = isPlaying ? (6 + musicIntensity * 45) : 3;
                 this.z -= speed;
                 if (this.z < 1) { this.init(); this.pz = this.z; }
             }
