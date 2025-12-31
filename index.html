@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DRS-ONE</title>
-    <!-- Using Compat version for maximum reliability in iframe/preview environments -->
+    <title>DRS-ONE | System</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- YouTube API for audio control -->
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root {
-            --drs-bg: #000000;
-            --drs-card: #0a0a0b;
-            --drs-accent: #0070f3;
-            --drs-text: #ffffff;
-            --drs-text-dim: #666666;
-            --drs-border: #1a1a1a;
-            --safe-top: env(safe-area-inset-top);
+            --sys-bg: #0d1117;
+            --sys-surface: #161b22;
+            --sys-border: #30363d;
+            --sys-accent: #58a6ff;
+            --sys-text: #c9d1d9;
+            --sys-dim: #8b949e;
             --safe-bottom: env(safe-area-inset-bottom);
         }
 
@@ -23,162 +23,257 @@
 
         body {
             margin: 0; padding: 0;
-            background: var(--drs-bg);
-            color: var(--drs-text);
-            font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+            background: var(--sys-bg);
+            color: var(--sys-text);
+            font-family: -apple-system, "Segoe UI", "Roboto", "Helvetica", sans-serif;
+            font-size: 14px;
             min-height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
         }
 
+        .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+
         /* Views */
         .view {
-            display: none; width: 100%; max-width: 480px; margin: 0 auto;
-            padding: calc(2rem + var(--safe-top)) 1.5rem calc(6rem + var(--safe-bottom));
+            display: none; width: 100%; max-width: 540px; margin: 0 auto;
+            padding: 2rem 1.5rem calc(8rem + var(--safe-bottom));
             flex: 1; overflow-y: auto;
         }
 
-        /* Auth Screen */
         .auth-container { height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .auth-box { width: 100%; text-align: center; padding: 2rem; }
-
-        /* UI Elements */
-        .drs-card {
-            background: var(--drs-card); border: 1px solid var(--drs-border);
-            border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;
-        }
-        .label { font-size: 10px; font-weight: 800; color: var(--drs-text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; display: block; }
         
-        input {
-            width: 100%; padding: 12px; border-radius: 4px; border: 1px solid var(--drs-border);
-            background: #000; color: #fff; font-size: 14px; margin-bottom: 12px;
+        .sys-card {
+            background: var(--sys-surface);
+            border: 1px solid var(--sys-border);
+            border-radius: 6px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
         }
-        input:focus { border-color: var(--drs-accent); outline: none; }
+
+        .label {
+            font-family: "SFMono-Regular", monospace;
+            font-size: 11px;
+            color: var(--sys-dim);
+            margin-bottom: 8px;
+            display: block;
+            position: relative;
+            z-index: 2;
+        }
+
+        input {
+            width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--sys-border);
+            background: #0d1117; color: #fff; font-size: 13px; margin-bottom: 12px;
+            font-family: "SFMono-Regular", monospace;
+        }
+        input:focus { border-color: var(--sys-accent); outline: none; }
 
         .btn {
-            width: 100%; padding: 14px; border-radius: 4px; border: none; font-size: 12px;
-            font-weight: 700; text-transform: uppercase; letter-spacing: 1px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; transition: opacity 0.2s;
+            width: 100%; padding: 12px; border-radius: 4px; border: none; font-size: 13px;
+            font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
         }
-        .btn-primary { background: var(--drs-accent); color: #fff; }
-        .btn-ghost { background: transparent; color: #fff; border: 1px solid var(--drs-border); }
-        .btn:active { opacity: 0.7; }
+        .btn-primary { background: var(--sys-accent); color: #0d1117; }
+        .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
+
+        /* Weather Animations */
+        .weather-anim {
+            position: absolute; inset: 0; opacity: 0.15; pointer-events: none; z-index: 1;
+        }
+        
+        /* Cloud Animation */
+        .clouds-bg::after {
+            content: ""; position: absolute; top: 0; left: -100%; width: 200%; height: 100%;
+            background: radial-gradient(circle, #fff 10%, transparent 40%), radial-gradient(circle, #fff 5%, transparent 30%);
+            background-size: 50px 50px;
+            animation: drift 10s linear infinite;
+        }
+        @keyframes drift { to { transform: translateX(50%); } }
+
+        /* Rain Animation */
+        .rain-bg::after {
+            content: ""; position: absolute; inset: 0;
+            background-image: linear-gradient(transparent, #fff);
+            background-size: 1px 20px;
+            animation: rain 0.3s linear infinite;
+        }
+        @keyframes rain { 
+            0% { background-position: 0 0; }
+            100% { background-position: 5px 100px; }
+        }
+
+        /* Sun/Clear Pulse */
+        .clear-bg { 
+            background: radial-gradient(circle at 80% 20%, rgba(255,200,0,0.15) 0%, transparent 60%); 
+            animation: glow 4s ease-in-out infinite alternate;
+        }
+        @keyframes glow { from { opacity: 0.1; } to { opacity: 0.25; } }
+
+        /* Media Player Bar */
+        #media-bar {
+            position: fixed;
+            bottom: calc(4.5rem + var(--safe-bottom));
+            left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 480px;
+            background: #21262d;
+            border: 1px solid var(--sys-border);
+            border-radius: 12px;
+            padding: 10px 16px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1001;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        .media-info { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
+        .media-title { font-size: 12px; font-weight: 600; color: #fff; }
+        .media-controls { display: flex; gap: 15px; align-items: center; }
+        .m-btn { background: none; border: none; color: #fff; cursor: pointer; padding: 5px; }
 
         /* HUD Navigation */
         .bottom-nav {
-            position: fixed; bottom: calc(1rem + var(--safe-bottom)); left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 400px; background: rgba(10,10,11,0.9);
-            border: 1px solid var(--drs-border); border-radius: 12px;
-            display: none; grid-template-columns: repeat(3, 1fr); padding: 6px; z-index: 1000;
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: var(--sys-surface); border-top: 1px solid var(--sys-border);
+            display: none; grid-template-columns: repeat(3, 1fr);
+            padding: 8px 0 calc(8px + var(--safe-bottom)); z-index: 1000;
         }
         .nav-item {
-            text-align: center; padding: 12px 0; font-size: 10px; font-weight: 800;
-            text-transform: uppercase; color: var(--drs-text-dim); cursor: pointer;
+            text-align: center; font-size: 11px; font-family: "SFMono-Regular", monospace;
+            color: var(--sys-dim); cursor: pointer; padding: 10px 0;
         }
-        .nav-item.active { color: var(--drs-accent); }
+        .nav-item.active { color: var(--sys-accent); font-weight: bold; }
 
-        /* Loader Overlay */
+        #yt-player { position: absolute; top: -999px; left: -999px; visibility: hidden; }
+
         #loader {
-            position: fixed; inset: 0; background: #000; z-index: 9999;
+            position: fixed; inset: 0; background: var(--sys-bg); z-index: 9999;
             display: flex; align-items: center; justify-content: center;
         }
-        .spin { width: 24px; height: 24px; border: 2px solid #333; border-top-color: var(--drs-accent); border-radius: 50%; animation: s 0.6s linear infinite; }
+        .spin { width: 20px; height: 20px; border: 2px solid #333; border-top-color: var(--sys-accent); border-radius: 50%; animation: s 0.6s linear infinite; }
         @keyframes s { to { transform: rotate(360deg); } }
 
-        .media-box { position: relative; padding-bottom: 56.25%; height: 0; border: 1px solid var(--drs-border); margin-top: 10px; }
-        .media-box iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
-        
         .toast {
-            position: fixed; top: 2rem; left: 50%; transform: translateX(-50%);
-            background: #fff; color: #000; padding: 8px 20px; border-radius: 4px;
-            font-size: 11px; font-weight: 900; text-transform: uppercase; z-index: 10001; display: none;
+            position: fixed; bottom: 6rem; left: 50%; transform: translateX(-50%);
+            background: var(--sys-accent); color: #000; padding: 8px 16px; border-radius: 20px;
+            font-size: 12px; font-weight: 600; z-index: 10001; display: none;
         }
     </style>
 </head>
 <body>
 
     <div id="loader"><div class="spin"></div></div>
+    <div id="yt-player"></div>
 
     <!-- LOGIN -->
     <div id="view-login" class="view auth-container">
-        <div class="auth-box">
-            <h1 style="letter-spacing: 12px; font-weight: 900; margin: 0;">DRS-ONE</h1>
-            <p style="color: var(--drs-text-dim); font-size: 10px; letter-spacing: 4px; margin-top: 10px; margin-bottom: 40px;">COMMAND SYSTEM</p>
-            <div class="drs-card" style="text-align: left;">
-                <span class="label">Access Key</span>
-                <input type="text" id="user-in" placeholder="ID">
-                <input type="password" id="pass-in" placeholder="PASS">
-                <button class="btn btn-primary" id="login-trigger">Initialize</button>
-                <div id="auth-err" style="color:red; font-size:10px; text-align:center; margin-top:15px; display:none;">ACCESS DENIED</div>
+        <div style="width: 100%;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h1 class="mono" style="font-size: 20px; margin: 0; color: var(--sys-accent);">drs.one</h1>
+                <p class="mono" style="font-size: 11px; color: var(--sys-dim);">v2.4.0-stable</p>
+            </div>
+            <div class="sys-card">
+                <span class="label">ssh_identity</span>
+                <input type="text" id="user-in" placeholder="user_id">
+                <input type="password" id="pass-in" placeholder="passphrase">
+                <button class="btn btn-primary" id="login-trigger">Execute Login</button>
+                <div id="auth-err" style="color:#f85149; font-size:11px; text-align:center; margin-top:15px; display:none;" class="mono">err: access_denied</div>
             </div>
         </div>
     </div>
 
     <!-- TRAVELER HOME -->
     <div id="view-home" class="view">
-        <header style="margin-bottom: 2rem;">
-            <span class="label">Primary Node Location</span>
-            <h2 id="loc-display" style="font-weight: 300; margin: 0;">SYNCHRONIZING...</h2>
-        </header>
+        <div style="margin-bottom: 2rem;">
+            <span class="label">system.current_node</span>
+            <h2 id="loc-display" style="font-size: 24px; font-weight: 600; margin: 0; color: #fff;">LOCATING...</h2>
+        </div>
+        
         <div id="alert-zone"></div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="drs-card">
-                <span class="label">Thermal</span>
-                <div id="temp-display" style="font-size: 24px; font-weight: 200;">--</div>
+            <div class="sys-card">
+                <span class="label">env.thermal</span>
+                <div id="temp-display" style="font-size: 24px; font-weight: 300; position:relative; z-index:2;" class="mono">--</div>
             </div>
-            <div class="drs-card">
-                <span class="label">Status</span>
-                <div id="weather-display" style="font-size: 11px; font-weight: 800; padding-top: 8px;">ACTIVE</div>
+            <div class="sys-card" id="weather-card">
+                <div id="weather-effect" class="weather-anim"></div>
+                <span class="label">env.condition</span>
+                <div id="weather-display" style="font-size: 12px; font-weight: 600; position:relative; z-index:2;" class="mono">SYNCING</div>
             </div>
         </div>
-        <div class="drs-card">
-            <span class="label">External Intel Stream</span>
-            <div id="media-wrap"><p style="font-size:10px; color:#444; text-align:center; padding: 20px;">NODE IDLE</p></div>
+
+        <div class="sys-card">
+            <span class="label">env.forecast_3h</span>
+            <div id="forecast-strip" style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 5px;" class="mono">
+                <span style="font-size: 10px; color: var(--sys-dim);">Retrieving meteorological data...</span>
+            </div>
+        </div>
+
+        <div class="sys-card">
+            <span class="label">system.audio_service</span>
+            <div id="audio-status" class="mono" style="font-size: 11px;">Waiting for playlist id...</div>
         </div>
     </div>
 
     <!-- TRAVELER UPLINK -->
     <div id="view-uplink" class="view">
-        <span class="label">Data Logistics</span>
-        <div class="drs-card" style="text-align: center; padding: 40px 20px;">
-            <button class="btn btn-primary" id="gps-trigger">Push Coordinates</button>
-            <p id="ping-ts" style="font-size: 9px; color: var(--drs-text-dim); margin-top: 20px; font-weight: 800;">LINK READY</p>
+        <span class="label">uplink.telemetry</span>
+        <div class="sys-card" style="text-align: center; padding: 30px 20px;">
+            <button class="btn btn-primary" id="gps-trigger">Push GPS Burst</button>
+            <p id="ping-ts" class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 20px;">link.state: READY</p>
         </div>
-        <div class="drs-card">
-            <span class="label">Manual Log Entry</span>
-            <input type="text" id="log-in" placeholder="Message content...">
-            <button class="btn btn-ghost" id="log-trigger">Commit</button>
+        <div class="sys-card">
+            <span class="label">uplink.manual_log</span>
+            <input type="text" id="log-in" placeholder="Entry data...">
+            <button class="btn btn-ghost" id="log-trigger">Commit Log</button>
         </div>
     </div>
 
     <!-- SYSTEM CONFIG -->
     <div id="view-config" class="view">
-        <span class="label">Core Config</span>
-        <div class="drs-card">
-            <span class="label">Playlist Integration</span>
-            <input type="text" id="yt-in" placeholder="YOUTUBE_ID">
-            <button class="btn btn-primary" id="config-save">Save Config</button>
+        <span class="label">system.kernel_config</span>
+        <div class="sys-card">
+            <span class="label">playlist_id</span>
+            <input type="text" id="yt-in" placeholder="YT_PLAYLIST_ID">
+            <button class="btn btn-primary" id="config-save">Apply Config</button>
         </div>
-        <button class="btn" style="color:red; font-size:10px; border:1px solid #300;" onclick="logout()">Terminate Session</button>
+        <button class="btn" style="color:#f85149; font-size:11px; border:1px solid #3e1e1e;" onclick="logout()" class="mono">kill -9 session</button>
     </div>
 
     <!-- WATCHER MONITOR -->
     <div id="view-monitor" class="view">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h2 style="font-size: 14px; font-weight: 900; letter-spacing: 2px;">DRS-MONITOR</h2>
-            <button class="btn btn-ghost" style="width:auto; padding: 5px 12px; font-size: 9px;" onclick="logout()">EXIT</button>
+            <h2 class="mono" style="font-size: 14px; color: var(--sys-accent);">drs.monitor</h2>
+            <button class="btn btn-ghost" style="width:auto; padding: 4px 10px; font-size: 10px;" onclick="logout()">EXIT</button>
         </div>
         <div id="monitor-stream"></div>
     </div>
 
+    <!-- Media UI -->
+    <div id="media-bar">
+        <div class="media-info">
+            <div class="media-title" id="track-title">DRS Audio Service</div>
+        </div>
+        <div class="media-controls">
+            <button class="m-btn" id="m-play">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button class="m-btn" id="m-next">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+            </button>
+        </div>
+    </div>
+
     <nav class="bottom-nav" id="hud">
-        <div class="nav-item active" onclick="nav('home')">Focus</div>
-        <div class="nav-item" onclick="nav('uplink')">Uplink</div>
-        <div class="nav-item" onclick="nav('config')">Sys</div>
+        <div class="nav-item active" onclick="nav('home')">status</div>
+        <div class="nav-item" onclick="nav('uplink')">uplink</div>
+        <div class="nav-item" onclick="nav('config')">config</div>
     </nav>
 
-    <div id="toast" class="toast">ACKNOWLEDGED</div>
+    <div id="toast" class="toast">ACK</div>
 
     <script>
         const config = {
@@ -191,55 +286,105 @@
             appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
         };
 
-        let db;
+        let db, player;
+        let isPlaying = false;
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Firebase
             try {
                 const app = firebase.initializeApp(config);
                 db = firebase.database();
-            } catch (e) {
-                console.error("Firebase Init Error", e);
-            }
+            } catch (e) { console.error(e); }
 
-            // Safety timeout for loader
-            setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 1500);
+            setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 1000);
 
             const role = localStorage.getItem('drs_v3_role');
-            if (role) {
-                startSession(role);
-            } else {
-                document.getElementById('view-login').style.display = 'flex';
+            if (role) { startSession(role); } 
+            else { document.getElementById('view-login').style.display = 'flex'; }
+
+            if ("Notification" in window && Notification.permission !== "granted") {
+                Notification.requestPermission();
             }
 
-            // Bind Events
+            // Global Media Listeners
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.setActionHandler('play', () => togglePlay());
+                navigator.mediaSession.setActionHandler('pause', () => togglePlay());
+                navigator.mediaSession.setActionHandler('nexttrack', () => player && player.nextVideo());
+                navigator.mediaSession.setActionHandler('previoustrack', () => player && player.previousVideo());
+            }
+
             document.getElementById('login-trigger').onclick = handleLogin;
             document.getElementById('config-save').onclick = saveConfig;
             document.getElementById('gps-trigger').onclick = pushGps;
             document.getElementById('log-trigger').onclick = pushLog;
+            document.getElementById('m-play').onclick = togglePlay;
+            document.getElementById('m-next').onclick = () => player && player.nextVideo();
         });
+
+        // --- YT AUDIO INTEGRATION ---
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('yt-player', {
+                height: '0', width: '0',
+                playerVars: { 'listType': 'playlist', 'autoplay': 0 },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            const savedYt = localStorage.getItem('drs_yt');
+            if (savedYt) {
+                event.target.cuePlaylist({ list: savedYt });
+                document.getElementById('media-bar').style.display = 'flex';
+            }
+        }
+
+        function onPlayerStateChange(event) {
+            const btn = document.getElementById('m-play');
+            const data = player.getVideoData();
+            const trackTitle = data.title || "DRS-ONE Audio";
+            
+            if (event.data == YT.PlayerState.PLAYING) {
+                isPlaying = true;
+                btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+                document.getElementById('track-title').innerText = trackTitle;
+                
+                // Update System Media Center
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = "playing";
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: trackTitle,
+                        artist: 'DRS-ONE System',
+                        album: 'Audio Service',
+                        artwork: [{ src: 'https://via.placeholder.com/512/58a6ff/000000?text=DRS', sizes: '512x512', type: 'image/png' }]
+                    });
+                }
+            } else {
+                isPlaying = false;
+                btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = (event.data === YT.PlayerState.PAUSED) ? "paused" : "none";
+                }
+            }
+        }
+
+        function togglePlay() {
+            if (!player) return;
+            isPlaying ? player.pauseVideo() : player.playVideo();
+        }
 
         function handleLogin() {
             const u = document.getElementById('user-in').value.toLowerCase().trim();
             const p = document.getElementById('pass-in').value.trim();
-            const btn = document.getElementById('login-trigger');
-            
-            btn.innerHTML = "Processing...";
-            btn.disabled = true;
-
-            setTimeout(() => {
-                if (u === 'watched' && p === '1122') {
-                    localStorage.setItem('drs_v3_role', 'traveler');
-                    startSession('traveler');
-                } else if (u !== '' && p === '1212') {
-                    localStorage.setItem('drs_v3_role', 'watcher');
-                    startSession('watcher');
-                } else {
-                    document.getElementById('auth-err').style.display = 'block';
-                    btn.innerHTML = "Initialize";
-                    btn.disabled = false;
-                }
-            }, 600);
+            if ((u === 'watched' && p === '1122') || (u !== '' && p === '1212')) {
+                const role = p === '1122' ? 'traveler' : 'watcher';
+                localStorage.setItem('drs_v3_role', role);
+                startSession(role);
+            } else {
+                document.getElementById('auth-err').style.display = 'block';
+            }
         }
 
         function startSession(role) {
@@ -265,13 +410,13 @@
             document.querySelectorAll('.nav-item')[map[v]].classList.add('active');
         };
 
-        // --- TRAVELER LOGIC ---
+        // --- TRAVELER ---
         function initTraveler() {
-            fetchEnv();
+            fetchWeather();
             const savedYt = localStorage.getItem('drs_yt');
             if (savedYt) {
                 document.getElementById('yt-in').value = savedYt;
-                document.getElementById('media-wrap').innerHTML = `<div class="media-box"><iframe src="https://www.youtube.com/embed/videoseries?list=${savedYt}"></iframe></div>`;
+                document.getElementById('audio-status').innerText = `Service mapped to: ${savedYt}`;
             }
 
             db.ref('trip/alerts').on('value', snap => {
@@ -280,13 +425,17 @@
                 const data = snap.val();
                 if (data) {
                     Object.keys(data).forEach(id => {
+                        const msg = data[id].text;
+                        if (document.hidden && Notification.permission === "granted") {
+                            new Notification("DRS-ONE: Priority Alert", { body: msg });
+                        }
                         const div = document.createElement('div');
-                        div.className = 'drs-card';
-                        div.style.borderColor = 'var(--drs-accent)';
+                        div.className = 'sys-card';
+                        div.style.borderLeft = '3px solid var(--sys-accent)';
                         div.innerHTML = `
-                            <span class="label" style="color:var(--drs-accent)">Incoming Priority</span>
-                            <div style="font-weight:700; font-size:14px; margin:10px 0;">${data[id].text}</div>
-                            <button class="btn btn-primary" style="padding:8px; font-size:9px;" onclick="ackAlert('${id}')">Acknowledge</button>
+                            <span class="label" style="color:var(--sys-accent)">msg.priority_incoming</span>
+                            <div class="mono" style="font-size:13px; margin:10px 0;">${msg}</div>
+                            <button class="btn btn-ghost" style="padding:6px; font-size:10px;" onclick="ackAlert('${id}')">ACKNOWLEDGE</button>
                         `;
                         zone.appendChild(div);
                     });
@@ -294,37 +443,76 @@
             });
         }
 
-        function fetchEnv() {
+        function fetchWeather() {
             navigator.geolocation.getCurrentPosition(async (pos) => {
+                const { latitude: lat, longitude: lon } = pos.coords;
                 try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`);
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,weathercode&forecast_days=1`);
                     const data = await res.json();
-                    document.getElementById('temp-display').innerText = `${Math.round(data.current_weather.temperature)}°C`;
-                } catch(e) {}
+                    
+                    const code = data.current_weather.weathercode;
+                    const temp = Math.round(data.current_weather.temperature);
+                    const desc = interpretWeatherCode(code);
+                    
+                    document.getElementById('temp-display').innerText = `${temp}°C`;
+                    document.getElementById('weather-display').innerText = desc.toUpperCase();
+                    applyWeatherEffect(code);
+
+                    const strip = document.getElementById('forecast-strip');
+                    strip.innerHTML = '';
+                    const next3 = data.hourly.temperature_2m.slice(0, 6);
+                    next3.forEach((t, i) => {
+                        const div = document.createElement('div');
+                        div.style.textAlign = 'center';
+                        div.style.minWidth = '50px';
+                        div.innerHTML = `<div style="font-size:9px; color:var(--sys-dim)">+${i+1}h</div><div style="font-size:12px">${Math.round(t)}°</div>`;
+                        strip.appendChild(div);
+                    });
+
+                } catch(e) { console.error("Weather Error", e); }
+
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
                     const data = await res.json();
-                    document.getElementById('loc-display').innerText = (data.address.city || data.address.town || data.address.village || "TRANSMITTING").toUpperCase();
+                    document.getElementById('loc-display').innerText = (data.address.city || data.address.town || data.address.village || "REMOTE").toUpperCase();
                 } catch(e) {}
             });
+        }
+
+        function interpretWeatherCode(code) {
+            if (code === 0) return "Clear Sky";
+            if (code <= 3) return "Cloudy";
+            if (code >= 51 && code <= 67) return "Rainy";
+            if (code >= 71 && code <= 77) return "Snow";
+            if (code >= 80) return "Stormy";
+            return "Stable";
+        }
+
+        function applyWeatherEffect(code) {
+            const effect = document.getElementById('weather-effect');
+            effect.className = 'weather-anim';
+            if (code === 0) effect.classList.add('clear-bg');
+            else if (code <= 3) effect.classList.add('clouds-bg');
+            else if (code >= 51) effect.classList.add('rain-bg');
         }
 
         function saveConfig() {
             const id = document.getElementById('yt-in').value.trim();
             localStorage.setItem('drs_yt', id);
-            location.reload();
+            showToast("CONFIG UPDATED");
+            setTimeout(() => location.reload(), 1000);
         }
 
         async function pushGps() {
             const btn = document.getElementById('gps-trigger');
-            btn.innerHTML = "READING SAT...";
+            btn.innerHTML = "UPLOADING...";
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const ts = new Date().toISOString();
                 await db.ref('trip/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude, ts });
-                await db.ref('trip/logs').push({ text: "SATELLITE_UPLINK_SUCCESS", ts });
-                document.getElementById('ping-ts').innerText = "LAST SYNC: " + new Date().toLocaleTimeString();
-                btn.innerHTML = "Push Coordinates";
-                showToast("COORDINATES SENT");
+                await db.ref('trip/logs').push({ text: "GPS_UPLINK_SUCCESS", ts });
+                document.getElementById('ping-ts').innerText = "link.last_sync: " + new Date().toLocaleTimeString();
+                btn.innerHTML = "Push GPS Burst";
+                showToast("SYNC COMPLETE");
             });
         }
 
@@ -333,12 +521,11 @@
             if (!val) return;
             await db.ref('trip/logs').push({ text: val, ts: new Date().toISOString() });
             document.getElementById('log-in').value = '';
-            showToast("LOG COMMITTED");
+            showToast("LOG_ACK");
         }
 
         window.ackAlert = async (id) => { await db.ref(`trip/alerts/${id}`).remove(); };
 
-        // --- WATCHER LOGIC ---
         function initWatcher() {
             db.ref('trip').on('value', snap => {
                 const data = snap.val();
@@ -347,25 +534,25 @@
                 const logs = data.logs ? Object.values(data.logs).reverse().slice(0, 5) : [];
 
                 let html = `
-                    <div class="drs-card">
-                        <span class="label">Target Position</span>
-                        <h3 style="margin:5px 0; font-size:18px; font-weight:300;">${loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : 'SIGNAL_LOST'}</h3>
-                        <p style="font-size:9px; color:var(--drs-text-dim); font-weight:800;">SYNC_REF: ${loc ? new Date(loc.ts).toLocaleTimeString() : '---'}</p>
-                        ${loc ? `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:20px; text-decoration:none;">Launch Map Trace</a>` : ''}
+                    <div class="sys-card">
+                        <span class="label">node.coords</span>
+                        <h3 class="mono" style="margin:5px 0; font-size:16px;">${loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : 'OFFLINE'}</h3>
+                        <p class="mono" style="font-size:10px; color:var(--sys-dim);">ref: ${loc ? new Date(loc.ts).toLocaleTimeString() : '---'}</p>
+                        ${loc ? `<a href="https://www.google.com/maps?q=${loc.lat},${loc.lng}" target="_blank" class="btn btn-primary" style="margin-top:15px; text-decoration:none;">TRACE MAP</a>` : ''}
                     </div>
-                    <div class="drs-card">
-                        <span class="label">Command Options</span>
+                    <div class="sys-card">
+                        <span class="label">cmd.send</span>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                            <button class="btn btn-ghost" style="font-size:9px;" onclick="sendPing('REQUEST_VOICE_CONTACT')">Call Req</button>
-                            <button class="btn btn-ghost" style="font-size:9px;" onclick="sendPing('REQUEST_GPS_UPLINK')">Ping Req</button>
+                            <button class="btn btn-ghost mono" style="font-size:10px;" onclick="sendPing('REQ_VOICE_COMMS')">VOICE</button>
+                            <button class="btn btn-ghost mono" style="font-size:10px;" onclick="sendPing('REQ_GPS_REFRESH')">PING</button>
                         </div>
                     </div>
-                    <div class="drs-card"><span class="label">Log History</span>
+                    <div class="sys-card"><span class="label">node.log_stream</span>
                 `;
                 logs.forEach(l => {
-                    html += `<div style="padding:10px 0; border-bottom:1px solid #1a1a1a;">
-                        <div style="font-size:11px; font-weight:800; text-transform:uppercase;">${l.text}</div>
-                        <div style="font-size:9px; color:#444; margin-top:4px;">${new Date(l.ts).toLocaleTimeString()}</div>
+                    html += `<div style="padding:8px 0; border-bottom:1px solid var(--sys-border);">
+                        <div class="mono" style="font-size:11px; color:#fff;">${l.text}</div>
+                        <div class="mono" style="font-size:9px; color:var(--sys-dim); margin-top:4px;">${new Date(l.ts).toLocaleTimeString()}</div>
                     </div>`;
                 });
                 html += '</div>';
@@ -375,7 +562,7 @@
 
         window.sendPing = async (txt) => {
             await db.ref('trip/alerts').push({ text: txt, ts: new Date().toISOString() });
-            showToast("CMD SENT");
+            showToast("CMD_SENT");
         };
 
         function showToast(m) {
@@ -387,5 +574,3 @@
     </script>
 </body>
 </html>
-
-                
