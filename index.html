@@ -208,12 +208,23 @@
             isPanelOpen: false,
             activePlaylistId: null,
 
+            checkSession: function() {
+                const savedRole = localStorage.getItem('trip_tracker_role');
+                if (savedRole) {
+                    this.init(savedRole);
+                }
+            },
+
             login: function() {
                 const u = document.getElementById('login-user').value.trim();
                 const p = document.getElementById('login-pass').value.trim();
-                if (u === 'watched' && p === '1122') this.init('watched');
-                else if (u === 'watcher' && p === '1212') this.init('watcher');
-                else {
+                if (u === 'watched' && p === '1122') {
+                    localStorage.setItem('trip_tracker_role', 'watched');
+                    this.init('watched');
+                } else if (u === 'watcher' && p === '1212') {
+                    localStorage.setItem('trip_tracker_role', 'watcher');
+                    this.init('watcher');
+                } else {
                     const err = document.getElementById('login-error');
                     err.style.display = 'block';
                     setTimeout(() => err.style.display = 'none', 3000);
@@ -230,7 +241,10 @@
                 if (role === 'watched') this.startTracking();
             },
 
-            logout: function() { location.reload(); },
+            logout: function() { 
+                localStorage.removeItem('trip_tracker_role');
+                location.reload(); 
+            },
 
             switchView: function(id, el) {
                 document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -373,6 +387,7 @@
 
             buildForest: function() {
                 const scene = document.getElementById('forest-scene');
+                if (scene.children.length > 0) return;
                 for (let i = 0; i < 20; i++) {
                     const t = document.createElement('div');
                     t.className = 'tree';
@@ -406,6 +421,8 @@
         };
 
         function onYouTubeIframeAPIReady() { /* Ready */ }
+
+        window.onload = () => app.checkSession();
     </script>
 </body>
 </html>
