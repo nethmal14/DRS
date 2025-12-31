@@ -154,7 +154,7 @@
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: rgba(13, 17, 23, 0.95); border-top: 1px solid var(--sys-border);
-            display: none; grid-template-columns: repeat(3, 1fr);
+            display: none; grid-template-columns: repeat(2, 1fr);
             padding: 5px 0 calc(5px + var(--safe-bottom)); z-index: 1000;
             backdrop-filter: blur(10px);
         }
@@ -182,7 +182,7 @@
         .watcher-active { color: var(--sys-blue) !important; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-        .msg-feed { max-height: 150px; overflow-y: auto; font-size: 11px; color: var(--sys-dim); border-top: 1px solid var(--sys-border); padding-top: 10px; margin-top: 10px; }
+        .msg-feed { max-height: 250px; overflow-y: auto; font-size: 11px; color: var(--sys-dim); border-top: 1px solid var(--sys-border); padding-top: 10px; margin-top: 10px; }
         .msg-entry { margin-bottom: 5px; border-bottom: 1px dashed #222; padding-bottom: 2px; }
 
         .firefly {
@@ -199,16 +199,12 @@
 </head>
 <body>
 
-    <!-- Background Scenery -->
     <div id="bg-canvas"></div>
     <svg class="landscape-svg" viewBox="0 0 1000 400" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Moon -->
         <circle cx="850" cy="100" r="40" fill="#f0f0f0" opacity="0.8" />
         <circle cx="850" cy="100" r="50" fill="#f0f0f0" opacity="0.1" />
-        <!-- Mountains -->
         <path d="M0,400 L0,300 L150,150 L300,320 L450,100 L650,350 L850,200 L1000,380 L1000,400 Z" fill="#080a0f" />
         <path d="M0,400 L0,350 L200,250 L400,380 L600,220 L800,390 L1000,320 L1000,400 Z" fill="#0c1117" opacity="0.7" />
-        <!-- Trees -->
         <g opacity="0.4">
             <path d="M50,400 L65,340 L80,400 Z" fill="#020408" />
             <path d="M120,400 L135,330 L150,400 Z" fill="#020408" />
@@ -225,7 +221,7 @@
         <div style="width: 100%;">
             <div style="margin-bottom: 2rem; text-align: center;">
                 <div style="color: var(--sys-accent); font-size: 20px; font-weight: bold; letter-spacing: 2px;">DRS-ONE KERNEL</div>
-                <div style="color: var(--sys-dim); font-size: 10px;">MOONLIGHT ACCESS v5.4.1</div>
+                <div style="color: var(--sys-dim); font-size: 10px;">AUTHORIZATION REQUIRED</div>
             </div>
             <div class="sys-card">
                 <span class="label">SSH_AUTH</span>
@@ -235,8 +231,8 @@
         </div>
     </div>
 
-    <!-- Traveler View -->
-    <div id="view-home" class="view">
+    <!-- TRAVELER DASHBOARD -->
+    <div id="view-traveler" class="view">
         <div class="terminal-header">
             <span>traveler@drs-one: ~</span>
             <span id="watcher-status" style="color: var(--sys-dim);">WATCHERS: OFFLINE</span>
@@ -244,12 +240,11 @@
         
         <div class="sys-card">
             <span class="label">LIVE_GEOLOCATION</span>
-            <div id="loc-display">SYNCING...</div>
+            <div id="loc-display">GPS_IDLE</div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
                 <button class="btn btn-primary" id="broadcast-btn" onclick="startTracking()" style="flex: 2;">BROADCAST LIVE</button>
                 <button class="btn btn-ghost" onclick="stopTracking()" style="flex: 1;">STOP</button>
             </div>
-            <div id="tracking-status" style="color: var(--sys-dim); font-size: 10px; margin-top: 10px;">GPS: DISCONNECTED</div>
         </div>
 
         <div class="sys-card">
@@ -260,52 +255,54 @@
 
         <div class="sys-card" id="audio-card">
             <span class="label">AUDIO_SUBSYSTEM</span>
-            <div id="audio-status" style="color: #d29922; margin-bottom: 8px; font-weight: bold;">[ INITIALIZING ]</div>
-            <div id="active-pl-name" style="color: var(--sys-accent); font-size: 12px;">$ mount /dev/media0</div>
+            <div id="audio-status" style="color: #d29922; margin-bottom: 8px; font-weight: bold;">[ READY ]</div>
             <div class="prog-bar-bg"><div id="prog-fill" class="prog-bar-fill"></div></div>
         </div>
-        <div id="yt-wrapper"><div id="yt-player"></div></div>
     </div>
 
-    <!-- Watcher View -->
-    <div id="view-monitor" class="view">
+    <!-- WATCHER DASHBOARD -->
+    <div id="view-watcher" class="view">
         <div class="terminal-header">
             <span>watcher@drs-one: ~</span>
-            <span style="color: var(--sys-accent);">MODE: MONITORING_ACTIVE</span>
+            <span style="color: var(--sys-accent);">MODE: TELEMETRY_INTERCEPT</span>
         </div>
         
-        <span class="label">SUBJECT_TELEMETRY</span>
         <div id="subject-info" class="sys-card">
-            <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
-                <div><div class="label" style="font-size: 9px;">COORDINATES_PRIMARY</div><div id="dash-coords" style="color:#fff; font-size: 32px; font-weight:700;">OFFLINE</div></div>
-                <div><div class="label" style="font-size: 9px;">LAST_ACK_TIME</div><div id="dash-sync" style="color:#fff; font-size: 16px; font-weight:700;">--</div></div>
-            </div>
-            <div class="msg-feed" id="watcher-feed">
-                <div class="label" style="font-size: 8px; margin: 0 0 5px 0;">INCOMING_SIGNALS</div>
-            </div>
+            <span class="label">SUBJECT_POSITION</span>
+            <div id="dash-coords" style="color:#fff; font-size: 32px; font-weight:700;">OFFLINE</div>
+            <div class="label" style="font-size: 9px; margin-top:10px;">LAST_SYNC_TS</div>
+            <div id="dash-sync" style="color:var(--sys-dim); font-size: 14px;">--:--:--</div>
         </div>
 
         <div class="sys-card">
-            <span class="label">INTERCEPT_COMMAND</span>
-            <input type="text" id="cmd-input" placeholder="Alert payload...">
+            <span class="label">INCOMING_SIGNALS</span>
+            <div class="msg-feed" id="watcher-feed"></div>
+        </div>
+
+        <div class="sys-card">
+            <span class="label">UPLINK_COMMAND</span>
+            <input type="text" id="cmd-input" placeholder="Message to traveler...">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button class="btn btn-alert" onclick="sendCmd('ALERT')">TRIGGER ALERT</button>
-                <button class="btn btn-primary" onclick="sendCmd('MSG')">SEND CMD</button>
+                <button class="btn btn-alert" onclick="sendCmd('ALERT')">SEND ALERT</button>
+                <button class="btn btn-primary" onclick="sendCmd('MSG')">SEND MESSAGE</button>
             </div>
         </div>
     </div>
 
-    <!-- Config View -->
+    <!-- System Config View -->
     <div id="view-config" class="view">
         <span class="label">SYSTEM_REGISTRY</span>
         <div class="sys-card">
-            <input type="text" id="pl-name-in" placeholder="Alias">
-            <input type="text" id="pl-url-in" placeholder="Mount Source (URL/ID)">
+            <input type="text" id="pl-name-in" placeholder="Source Alias">
+            <input type="text" id="pl-url-in" placeholder="Playlist ID or URL">
             <button class="btn btn-primary" onclick="addPlaylist()">ADD SOURCE</button>
         </div>
         <div id="playlist-list"></div>
-        <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert); margin-top:2rem; border-color: rgba(248,81,73,0.3);">SHUTDOWN</button>
+        <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert); margin-top:2rem; border-color: rgba(248,81,73,0.3);">SHUTDOWN_SESSION</button>
     </div>
+
+    <!-- Audio Wrapper -->
+    <div id="yt-wrapper"><div id="yt-player"></div></div>
 
     <!-- Mini Media Bar -->
     <div id="media-bar" onclick="openExpanded()">
@@ -318,38 +315,31 @@
         <button onclick="event.stopPropagation(); togglePlay()" style="background:none; border:none; color:var(--sys-accent); cursor:pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
     </div>
 
-    <!-- Expanded Player - Sheet Style -->
+    <!-- Expanded Player -->
     <div id="media-expanded">
         <div style="width: 40px; height: 5px; background: var(--sys-border); border-radius: 5px; margin: 0 auto 1.5rem auto; cursor: pointer;" onclick="closeExpanded()"></div>
-        
         <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <div class="label" style="margin:0;">STREAM_BUFFER_01</div>
             <button onclick="closeExpanded()" style="background:none; border:none; color:var(--sys-dim); font-size: 24px; cursor: pointer;">&times;</button>
         </div>
-        
-        <div style="width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--sys-border); margin-bottom: 1.5rem; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
+        <div style="width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--sys-border); margin-bottom: 1.5rem; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img id="exp-thumb" src="" style="width:100%; height:100%; object-fit:contain;">
         </div>
-
         <div style="margin-bottom: 1.5rem; text-align: center;">
             <div id="exp-title" style="color:#fff; font-size:16px; font-weight: 700; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">...</div>
-            <div style="color: var(--sys-accent); font-size: 10px; letter-spacing: 1px;">ENCRYPTED_STREAM_STABLE</div>
         </div>
-
         <div style="margin-top: auto; padding-bottom: 2rem;">
             <div class="prog-bar-bg" style="height: 6px;"><div id="exp-prog" class="prog-bar-fill"></div></div>
-            
             <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 2rem;">
                 <button onclick="player.previousVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-                <button onclick="togglePlay()" style="background: var(--sys-accent); color:#000; border-radius:50%; width:64px; height:64px; display:flex; align-items:center; justify-content:center; border:none; box-shadow: 0 0 15px var(--sys-accent);"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path id="exp-play-icon" d="M8 5v14l11-7z"/></svg></button>
+                <button onclick="togglePlay()" style="background: var(--sys-accent); color:#000; border-radius:50%; width:64px; height:64px; display:flex; align-items:center; justify-content:center; border:none;"><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path id="exp-play-icon" d="M8 5v14l11-7z"/></svg></button>
                 <button onclick="player.nextVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
             </div>
         </div>
     </div>
 
     <nav class="bottom-nav" id="hud">
-        <div class="nav-item active" id="nav-main-btn" onclick="nav('home')">/bin/main</div>
-        <div class="nav-item" onclick="nav('monitor')">/usr/top</div>
+        <div class="nav-item active" id="nav-dash-btn" onclick="nav('dash')">/bin/dash</div>
         <div class="nav-item" onclick="nav('config')">/etc/sys</div>
     </nav>
 
@@ -372,43 +362,22 @@
         let currentRole = null;
         let fireflies = [];
 
-        // Firefly Logic
         function createFireflies() {
-            const container = document.body;
             for(let i=0; i<15; i++) {
                 const f = document.createElement('div');
                 f.className = 'firefly';
-                f.style.left = Math.random() * 100 + 'vw';
-                f.style.top = Math.random() * 100 + 'vh';
-                container.appendChild(f);
-                fireflies.push({
-                    el: f,
-                    x: Math.random() * 100,
-                    y: Math.random() * 100,
-                    vx: (Math.random() - 0.5) * 0.05,
-                    vy: (Math.random() - 0.5) * 0.05,
-                    life: Math.random() * Math.PI
-                });
+                document.body.appendChild(f);
+                fireflies.push({ el: f, x: Math.random()*100, y: Math.random()*100, vx: (Math.random()-0.5)*0.03, vy: (Math.random()-0.5)*0.03, life: Math.random()*Math.PI });
             }
         }
 
         function updateFireflies() {
-            if (!isPlaying) {
-                fireflies.forEach(f => f.el.style.opacity = 0);
-                requestAnimationFrame(updateFireflies);
-                return;
-            }
-
             fireflies.forEach(f => {
-                f.x += f.vx;
-                f.y += f.vy;
-                f.life += 0.01;
-                
+                if (!isPlaying) { f.el.style.opacity = 0; return; }
+                f.x += f.vx; f.y += f.vy; f.life += 0.01;
                 if (f.x < 0) f.x = 100; if (f.x > 100) f.x = 0;
                 if (f.y < 0) f.y = 100; if (f.y > 100) f.y = 0;
-
-                f.el.style.left = f.x + 'vw';
-                f.el.style.top = f.y + 'vh';
+                f.el.style.left = f.x + 'vw'; f.el.style.top = f.y + 'vh';
                 f.el.style.opacity = (Math.sin(f.life) + 1) / 2 * 0.4;
             });
             requestAnimationFrame(updateFireflies);
@@ -422,108 +391,35 @@
             toast.innerHTML = `<div style="font-size:10px; color:var(--sys-dim); margin-bottom:4px;">SYSTEM_ALERT</div><div>${msg}</div>`;
             center.appendChild(toast);
             setTimeout(() => toast.remove(), 5000);
-
-            if (Notification.permission === "granted") {
-                new Notification("DRS-ONE System Alert", { body: msg });
-            }
         }
 
-        if (Notification.permission !== "denied") {
-            Notification.requestPermission();
-        }
-
-        function startTracking() {
-            if (!navigator.geolocation) return notify("GPS_HARDWARE_NOT_FOUND", "alert");
-            document.getElementById('broadcast-btn').innerText = "BROADCASTING...";
-            document.getElementById('tracking-status').innerText = "GPS: BROADCAST_ACTIVE";
+        // Logic to switch views based on role
+        window.nav = (v) => {
+            document.querySelectorAll('.view').forEach(e => e.style.display='none');
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             
-            trackWatchId = navigator.geolocation.watchPosition(pos => {
-                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, ts: Date.now() };
-                db.ref('trip/location').set(loc);
-                if(document.getElementById('loc-display')) document.getElementById('loc-display').innerText = `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`;
-            }, err => notify(`GPS_ERROR: ${err.message}`, "alert"), { enableHighAccuracy: true });
-        }
-
-        function stopTracking() {
-            if(trackWatchId) navigator.geolocation.clearWatch(trackWatchId);
-            document.getElementById('broadcast-btn').innerText = "BROADCAST LIVE";
-            document.getElementById('tracking-status').innerText = "GPS: DISCONNECTED";
-        }
-
-        function broadcastMsg() {
-            const val = document.getElementById('traveler-msg').value;
-            if(!val) return;
-            db.ref('trip/messages').push({ text: val, ts: Date.now() });
-            document.getElementById('traveler-msg').value = '';
-            notify("Signal transmitted to watchers.");
-        }
-
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('yt-player', {
-                playerVars: { 'listType': 'playlist', 'autoplay': 1, 'controls': 0, 'playsinline': 1, 'mute': 1 },
-                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
-            });
-        }
-
-        function onPlayerReady(e) {
-            if (currentPlaylistId) {
-                const listId = parsePlaylistId(currentPlaylistId);
-                e.target.cuePlaylist({ list: listId });
-                document.getElementById('media-bar').style.display = 'flex';
-                
-                const checkAutoStart = setInterval(() => {
-                    if (player.getPlayerState() === YT.PlayerState.CUED) player.playVideo();
-                    else if (player.getPlayerState() === YT.PlayerState.PLAYING) {
-                        clearInterval(checkAutoStart);
-                        startProgressLoop();
-                    }
-                }, 1000);
-            }
-        }
-
-        function onPlayerStateChange(ev) {
-            isPlaying = (ev.data === YT.PlayerState.PLAYING);
-            const playIcon = document.getElementById('exp-play-icon');
-            
-            if (isPlaying) {
-                const data = player.getVideoData();
-                document.getElementById('track-title').innerText = data.title;
-                document.getElementById('exp-title').innerText = data.title;
-                document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/mqdefault.jpg`;
-                if(document.getElementById('audio-status')) document.getElementById('audio-status').innerText = "[ ACTIVE_LINK ]";
-                if(playIcon) playIcon.setAttribute('d', 'M6 19h4V5H6v14zm8-14v14h4V5h-4z'); // Pause Icon
+            if (v === 'dash') {
+                document.getElementById(`view-${currentRole}`).style.display = 'block';
+                document.getElementById('nav-dash-btn').classList.add('active');
             } else {
-                if(document.getElementById('audio-status')) document.getElementById('audio-status').innerText = "[ PAUSED ]";
-                if(playIcon) playIcon.setAttribute('d', 'M8 5v14l11-7z'); // Play Icon
+                document.getElementById(`view-${v}`).style.display = 'block';
+                const items = document.querySelectorAll('.nav-item');
+                items[1].classList.add('active');
+                if (v === 'config') renderPL();
             }
-        }
-
-        function startProgressLoop() {
-            setInterval(() => {
-                if(isPlaying && player && player.getDuration) {
-                    const prog = (player.getCurrentTime() / player.getDuration()) * 100;
-                    if(document.getElementById('prog-fill')) document.getElementById('prog-fill').style.width = prog + '%';
-                    document.getElementById('exp-prog').style.width = prog + '%';
-                }
-            }, 1000);
-        }
-
-        function togglePlay() {
-            if (player.isMuted()) player.unMute();
-            if (isPlaying) player.pauseVideo(); else player.playVideo();
-        }
-
-        function parsePlaylistId(url) {
-            if (url.includes('list=')) return new URLSearchParams(url.split('?')[1]).get('list');
-            return url;
-        }
+        };
 
         document.getElementById('login-trigger').onclick = () => {
             const p = document.getElementById('pass-in').value;
-            const role = p === '1122' ? 'traveler' : (p === '1212' ? 'watcher' : null);
+            let role = null;
+            if (p === '1122') role = 'traveler';
+            else if (p === '1212') role = 'watcher';
+
             if (role) {
                 localStorage.setItem('drs_role', role);
                 initSession(role);
+            } else {
+                notify("INVALID_ACCESS_KEY", "alert");
             }
         };
 
@@ -532,44 +428,57 @@
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('hud').style.display = 'grid';
             
-            if (role === 'traveler') { 
-                nav('home');
-                initTravelerPresence(); 
-            } else { 
-                nav('monitor'); 
-                initWatcherPresence(); 
-            }
+            if (role === 'traveler') initTravelerSubsystem();
+            else initWatcherSubsystem();
+            
+            nav('dash');
+            createFireflies();
+            updateFireflies();
             
             db.ref('trip/presence/' + role).set(true);
             db.ref('trip/presence/' + role).onDisconnect().remove();
-            
-            createFireflies();
-            updateFireflies();
         }
 
-        function initTravelerPresence() {
+        // --- TRAVELER LOGIC ---
+        function initTravelerSubsystem() {
             db.ref('trip/presence/watcher').on('value', snap => {
                 const active = snap.val();
                 const statusEl = document.getElementById('watcher-status');
-                if(active) {
-                    statusEl.innerText = "WATCHERS: ACTIVE";
-                    statusEl.classList.add('watcher-active');
-                    notify("Watcher uplink established.");
-                } else {
-                    statusEl.innerText = "WATCHERS: OFFLINE";
-                    statusEl.classList.remove('watcher-active');
-                }
+                if(active) { statusEl.innerText = "WATCHERS: ACTIVE"; statusEl.classList.add('watcher-active'); }
+                else { statusEl.innerText = "WATCHERS: OFFLINE"; statusEl.classList.remove('watcher-active'); }
             });
 
             db.ref('trip/command').on('value', snap => {
                 const cmd = snap.val();
-                if(cmd && Date.now() - cmd.ts < 5000) {
-                    notify(`WATCHER_ALERT: ${cmd.msg}`, 'alert');
-                }
+                if(cmd && Date.now() - cmd.ts < 5000) notify(`WATCHER_ALERT: ${cmd.msg}`, 'alert');
             });
         }
 
-        function initWatcherPresence() {
+        function startTracking() {
+            if (!navigator.geolocation) return notify("GPS_HARDWARE_NOT_FOUND", "alert");
+            document.getElementById('broadcast-btn').innerText = "BROADCASTING...";
+            trackWatchId = navigator.geolocation.watchPosition(pos => {
+                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, ts: Date.now() };
+                db.ref('trip/location').set(loc);
+                document.getElementById('loc-display').innerText = `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`;
+            }, null, { enableHighAccuracy: true });
+        }
+
+        function stopTracking() {
+            if(trackWatchId) navigator.geolocation.clearWatch(trackWatchId);
+            document.getElementById('broadcast-btn').innerText = "BROADCAST LIVE";
+            document.getElementById('loc-display').innerText = "GPS_IDLE";
+        }
+
+        function broadcastMsg() {
+            const val = document.getElementById('traveler-msg').value;
+            if(!val) return;
+            db.ref('trip/messages').push({ text: val, ts: Date.now() });
+            document.getElementById('traveler-msg').value = '';
+        }
+
+        // --- WATCHER LOGIC ---
+        function initWatcherSubsystem() {
             db.ref('trip/location').on('value', snap => {
                 const data = snap.val();
                 if (!data) return;
@@ -584,38 +493,67 @@
                 div.className = 'msg-entry';
                 div.innerHTML = `<span style="color:var(--sys-accent)">[${new Date(msg.ts).toLocaleTimeString()}]</span> ${msg.text}`;
                 feed.prepend(div);
-                if(Date.now() - msg.ts < 5000) notify(`SUBJECT_SIGNAL: ${msg.text}`);
             });
         }
 
         function sendCmd(type) {
-            const msg = document.getElementById('cmd-input').value || (type === 'ALERT' ? 'IMMEDIATE_STOP' : 'REQUEST_SYNC');
+            const msg = document.getElementById('cmd-input').value || "SYSTEM_PING";
             db.ref('trip/command').set({ type, msg, ts: Date.now() });
-            notify(`Alert dispatched: ${msg}`, 'alert');
+            notify(`Command dispatched: ${msg}`);
+            document.getElementById('cmd-input').value = '';
         }
 
-        window.nav = (v) => {
-            document.querySelectorAll('.view').forEach(e => e.style.display='none');
-            const target = document.getElementById(`view-${v}`);
-            if(target) target.style.display='block';
-            
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            const items = document.querySelectorAll('.nav-item');
-            if(v === 'home') items[0].classList.add('active');
-            if(v === 'monitor') items[1].classList.add('active');
-            if(v === 'config') items[2].classList.add('active');
-
-            if (v === 'config') renderPL();
-        };
-
-        function addPlaylist() {
-            const name = document.getElementById('pl-name-in').value;
-            const url = document.getElementById('pl-url-in').value;
-            if(!name || !url) return;
-            playlists.push({name, url});
-            localStorage.setItem('drs_pl_v3', JSON.stringify(playlists));
-            renderPL();
+        // --- AUDIO ENGINE ---
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('yt-player', {
+                playerVars: { 'listType': 'playlist', 'autoplay': 1, 'controls': 0, 'playsinline': 1, 'mute': 1 },
+                events: { 
+                    'onReady': (e) => {
+                        if (currentPlaylistId) {
+                            player.cuePlaylist({ list: parsePlaylistId(currentPlaylistId) });
+                            document.getElementById('media-bar').style.display = 'flex';
+                        }
+                    }, 
+                    'onStateChange': onPlayerStateChange 
+                }
+            });
         }
+
+        function onPlayerStateChange(ev) {
+            isPlaying = (ev.data === YT.PlayerState.PLAYING);
+            if (isPlaying) {
+                const data = player.getVideoData();
+                document.getElementById('track-title').innerText = data.title;
+                document.getElementById('exp-title').innerText = data.title;
+                document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/mqdefault.jpg`;
+                if(document.getElementById('audio-status')) document.getElementById('audio-status').innerText = "[ STREAM_ACTIVE ]";
+                document.getElementById('exp-play-icon').setAttribute('d', 'M6 19h4V5H6v14zm8-14v14h4V5h-4z');
+            } else {
+                if(document.getElementById('audio-status')) document.getElementById('audio-status').innerText = "[ PAUSED ]";
+                document.getElementById('exp-play-icon').setAttribute('d', 'M8 5v14l11-7z');
+            }
+        }
+
+        setInterval(() => {
+            if(isPlaying && player && player.getDuration) {
+                const prog = (player.getCurrentTime() / player.getDuration()) * 100;
+                if(document.getElementById('prog-fill')) document.getElementById('prog-fill').style.width = prog + '%';
+                document.getElementById('exp-prog').style.width = prog + '%';
+            }
+        }, 1000);
+
+        function togglePlay() {
+            if (player.isMuted()) player.unMute();
+            if (isPlaying) player.pauseVideo(); else player.playVideo();
+        }
+
+        function parsePlaylistId(url) {
+            if (url.includes('list=')) return new URLSearchParams(url.split('?')[1]).get('list');
+            return url;
+        }
+
+        function openExpanded() { document.getElementById('media-expanded').style.display='flex'; }
+        function closeExpanded() { document.getElementById('media-expanded').style.display='none'; }
 
         function renderPL() {
             const list = document.getElementById('playlist-list');
@@ -627,24 +565,18 @@
             `).join('');
         }
 
-        function selectPL(url) {
-            localStorage.setItem('drs_curr_pl', url);
-            location.reload();
-        }
-
-        function delPL(i) {
-            playlists.splice(i, 1);
+        function addPlaylist() {
+            const name = document.getElementById('pl-name-in').value;
+            const url = document.getElementById('pl-url-in').value;
+            if(!name || !url) return;
+            playlists.push({name, url});
             localStorage.setItem('drs_pl_v3', JSON.stringify(playlists));
             renderPL();
         }
 
-        function logout() {
-            localStorage.removeItem('drs_role');
-            location.reload();
-        }
-
-        function openExpanded() { document.getElementById('media-expanded').style.display='flex'; }
-        function closeExpanded() { document.getElementById('media-expanded').style.display='none'; }
+        function selectPL(url) { localStorage.setItem('drs_curr_pl', url); location.reload(); }
+        function delPL(i) { playlists.splice(i, 1); localStorage.setItem('drs_pl_v3', JSON.stringify(playlists)); renderPL(); }
+        function logout() { localStorage.removeItem('drs_role'); location.reload(); }
 
         const savedRole = localStorage.getItem('drs_role');
         if (savedRole) initSession(savedRole);
