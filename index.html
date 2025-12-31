@@ -240,10 +240,15 @@
                 this.sync();
                 if (this.role === 'watched') this.gps.track();
                 
-                // Pre-warm the YouTube API Ready function
+                // Set up the global callback for YouTube API
                 window.onYouTubeIframeAPIReady = () => {
                    this.audio.initPlayer();
                 };
+                
+                // Check if API is already ready (if the script loaded faster than app.init)
+                if (window.YT && window.YT.Player) {
+                    this.audio.initPlayer();
+                }
             },
 
             sync: function() {
@@ -310,7 +315,6 @@
                     } else if (rawUrl.includes('/playlist/')) {
                         listId = rawUrl.split('/playlist/')[1].split('?')[0];
                     } else if (rawUrl.includes('youtu.be/')) {
-                        // In case they paste a single video that happens to be a list
                         listId = rawUrl.split('youtu.be/')[1].split('?')[0];
                     }
 
@@ -332,31 +336,33 @@
                     this.player = new YT.Player('yt-iframe', {
                         height: '1', width: '1',
                         playerVars: { 
-                            listType: id ? 'playlist' : undefined, 
+                            listType: 'playlist', 
                             list: id || undefined, 
                             autoplay: 1, 
-                            controls: 0 
+                            controls: 0,
+                            enablejsapi: 1
                         },
                         events: {
                             onReady: (e) => {
                                 if (id) e.target.loadPlaylist({ list: id, listType: 'playlist', index: 0, play: true });
+                                app.audio.updateUI(e);
                             },
                             onStateChange: (e) => this.updateUI(e),
                             onError: (e) => console.error("YT Error", e)
                         }
                     });
+                    // Store locally on app object for button access
+                    app.player = this.player;
                 },
                 playNew: function(id) {
                     if (this.player && typeof this.player.loadPlaylist === 'function') {
                         try {
                             this.player.loadPlaylist({ list: id, listType: 'playlist', index: 0, play: true });
                         } catch(e) {
-                            console.warn("Re-init player");
                             this.player = null;
                             this.initPlayer(id);
                         }
                     } else {
-                        // If API is already loaded but player isn't, or player is broken
                         if (window.YT && window.YT.Player) {
                             this.initPlayer(id);
                         }
@@ -365,17 +371,39 @@
                 toggle: function() {
                     if (!this.player || !this.player.getPlayerState) return;
                     const s = this.player.getPlayerState();
-                    s === 1 ? this.player.pauseVideo() : this.player.playVideo();
+                    // YT.PlayerState.PLAYING is 1
+                    if (s === 1) {
+                        this.player.pauseVideo();
+                    } else {
+                        this.player.playVideo();
+                    }
                 },
-                next: () => app.player?.nextVideo(),
-                prev: () => app.player?.previousVideo(),
+                next: function() {
+                    if (this.player && typeof this.player.nextVideo === 'function') {
+                        this.player.nextVideo();
+                    }
+                },
+                prev: function() {
+                    if (this.player && typeof this.player.previousVideo === 'function') {
+                        this.player.previousVideo();
+                    }
+                },
                 updateUI: function(e) {
-                    const isPlaying = e.data === 1;
+                    // 1 = playing, 2 = paused, 3 = buffering, -1 = unstarted
+                    const state = e.target.getPlayerState();
+                    const isPlaying = state === 1 || state === 3;
+                    
                     const playBtn = document.getElementById('svg-play');
                     const pauseBtn = document.getElementById('svg-pause');
+                    
                     if(playBtn && pauseBtn) {
-                        playBtn.classList.toggle('hidden', isPlaying);
-                        pauseBtn.classList.toggle('hidden', !isPlaying);
+                        if (isPlaying) {
+                            playBtn.classList.add('hidden');
+                            pauseBtn.classList.remove('hidden');
+                        } else {
+                            playBtn.classList.remove('hidden');
+                            pauseBtn.classList.add('hidden');
+                        }
                     }
                     
                     const data = e.target.getVideoData();
@@ -386,7 +414,7 @@
                     if (typeof e.target.getPlaylist === 'function') {
                         const playlist = e.target.getPlaylist();
                         const currentIdx = e.target.getPlaylistIndex();
-                        if (playlist) {
+                        if (playlist && playlist.length > 0) {
                             document.getElementById('queue-list').innerText = `Track ${currentIdx + 1} of ${playlist.length}`;
                         }
                     }
@@ -421,7 +449,7 @@
                 },
                 renderTrees: function() {
                     const forest = document.getElementById('forest-scene');
-                    forest.innerHTML = ''; // Clear old ones
+                    forest.innerHTML = '';
                     for (let i = 0; i < 12; i++) {
                         const t = document.createElement('div');
                         t.className = 'tree';
@@ -462,10 +490,6 @@
         window.onload = () => {
             const r = localStorage.getItem('tt_role');
             if (r) app.start(r);
-            // Handle if API already loaded
-            if (window.YT && window.YT.Player) {
-                app.audio.initPlayer();
-            }
         };
     </script>
 </body>
