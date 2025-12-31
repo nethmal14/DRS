@@ -73,7 +73,7 @@
         }
         .label::before { content: "> "; }
 
-        input, select {
+        input {
             width: 100%; padding: 12px; border: 1px solid var(--sys-border);
             background: rgba(1, 4, 9, 0.8); color: var(--sys-accent); font-size: 14px; margin-bottom: 12px;
             font-family: inherit; border-radius: 4px;
@@ -90,11 +90,6 @@
         .btn-alert { background: var(--sys-alert); color: #fff; }
         .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .auth-toggle {
-            text-align: center; margin-top: 15px; font-size: 11px; color: var(--sys-dim); cursor: pointer;
-        }
-        .auth-toggle span { color: var(--sys-blue); text-decoration: underline; }
 
         #notification-center {
             position: fixed; top: 1rem; left: 1rem; right: 1rem;
@@ -146,25 +141,15 @@
         <div style="width: 100%;">
             <div style="margin-bottom: 2rem; text-align: center;">
                 <div style="color: var(--sys-accent); font-size: 24px; font-weight: bold; letter-spacing: 4px;">DRS-ONE</div>
-                <div id="auth-subtitle" style="color: var(--sys-dim); font-size: 10px;">USER_AUTHENTICATION_REQUIRED</div>
+                <div id="auth-subtitle" style="color: var(--sys-dim); font-size: 10px;">KERNEL_PROTECTION_ACTIVE</div>
             </div>
             
             <div class="sys-card">
-                <span class="label" id="auth-label">SIGN_IN</span>
-                <input type="email" id="auth-email" placeholder="Email Address">
-                <input type="password" id="auth-pass" placeholder="Secret Key">
-                
-                <div id="reg-fields" style="display: none;">
-                    <select id="auth-role">
-                        <option value="traveler">Traveler (Broadcast Mode)</option>
-                        <option value="watcher">Watcher (Monitor Mode)</option>
-                    </select>
-                </div>
+                <span class="label">LOGIN_IDENTIFIER</span>
+                <input type="email" id="auth-email" placeholder="Email (Username)">
+                <input type="password" id="auth-pass" placeholder="Access Code (1122 or 1212)">
 
-                <button class="btn btn-primary" id="auth-trigger">Execute Protocol</button>
-                <div class="auth-toggle" id="auth-toggle-btn">
-                    Don't have an ID? <span>Create New Identity</span>
-                </div>
+                <button class="btn btn-primary" id="auth-trigger">INITIALIZE_SESSION</button>
             </div>
         </div>
     </div>
@@ -223,6 +208,7 @@
         <span class="label">USER_PROFILE</span>
         <div class="sys-card">
             <div id="profile-email" style="margin-bottom: 5px;">...</div>
+            <div id="profile-role" style="color: var(--sys-accent); font-size: 11px; margin-bottom: 5px;">ROLE: --</div>
             <div id="profile-uid" style="font-size: 10px; color: var(--sys-dim); margin-bottom: 15px; word-break: break-all;">...</div>
             <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert);">TERMINATE_SESSION</button>
         </div>
@@ -234,7 +220,6 @@
     </nav>
 
     <script>
-        // YOUR UPDATED CONFIGURATION
         const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
             authDomain: "trip-tracker-57ce0.firebaseapp.com",
@@ -246,18 +231,14 @@
             measurementId: "G-ZBPCS6QPR5"
         };
 
-        // Strict Initialization Sequence
         const app = firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
-        const analytics = firebase.analytics();
         
-        let isRegistering = false;
         let trackWatchId = null;
 
         const nav = (v) => {
             if (!auth.currentUser) return;
-            
             document.querySelectorAll('.view').forEach(e => e.style.display='none');
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             
@@ -273,36 +254,40 @@
             }
         };
 
-        document.getElementById('auth-toggle-btn').onclick = () => {
-            isRegistering = !isRegistering;
-            document.getElementById('auth-label').innerText = isRegistering ? 'CREATE_IDENTITY' : 'SIGN_IN';
-            document.getElementById('reg-fields').style.display = isRegistering ? 'block' : 'none';
-            document.getElementById('auth-toggle-btn').innerHTML = isRegistering ? 
-                'Already have an ID? <span>Sign In</span>' : 'Don\'t have an ID? <span>Create New Identity</span>';
-        };
-
         document.getElementById('auth-trigger').onclick = async () => {
             const email = document.getElementById('auth-email').value.trim();
             const pass = document.getElementById('auth-pass').value.trim();
-            const role = document.getElementById('auth-role').value;
 
-            if(!email || !pass) return notify("CREDENTIALS_MISSING", "alert");
+            if (!email || !pass) return notify("CREDENTIALS_REQUIRED", "alert");
+            if (pass !== "1122" && pass !== "1212") return notify("INVALID_ACCESS_CODE", "alert");
 
+            const role = (pass === "1122") ? "traveler" : "watcher";
+            
             try {
-                if (isRegistering) {
-                    const res = await auth.createUserWithEmailAndPassword(email, pass);
-                    await db.ref(`users/${res.user.uid}`).set({ 
-                        email: email, 
-                        role: role, 
-                        createdAt: firebase.database.ServerValue.TIMESTAMP 
-                    });
-                    notify("IDENTITY_CREATED");
-                } else {
-                    await auth.signInWithEmailAndPassword(email, pass);
-                    notify("KERNEL_ACCESS_GRANTED");
+                // Attempt to sign in or create user automatically with the provided email and specific role password
+                // Note: Using the passcode as the actual firebase password for simplicity in this specific bypass logic
+                let userCredential;
+                try {
+                    userCredential = await auth.signInWithEmailAndPassword(email, pass);
+                } catch (err) {
+                    if (err.code === 'auth/user-not-found') {
+                        userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+                    } else {
+                        throw err;
+                    }
                 }
+
+                const user = userCredential.user;
+                // Sync role to DB
+                await db.ref(`users/${user.uid}`).update({
+                    email: email,
+                    role: role,
+                    lastLogin: firebase.database.ServerValue.TIMESTAMP
+                });
+
+                notify(`PROTOCOL_${role.toUpperCase()}_ENGAGED`);
             } catch (e) {
-                notify(e.message, "alert");
+                notify("AUTH_ERROR: " + e.message, "alert");
             }
         };
 
@@ -315,6 +300,7 @@
                 
                 db.ref(`users/${user.uid}/role`).on('value', snap => {
                     const role = snap.val();
+                    document.getElementById('profile-role').innerText = `ROLE: ${role?.toUpperCase()}`;
                     if(role === 'traveler') {
                         document.getElementById('traveler-id').innerText = `TRAVELER: ${user.email.split('@')[0]}`;
                         initTraveler();
