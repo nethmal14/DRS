@@ -1,244 +1,423 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trip Tracker</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SafeJourney | Family Trip Tracker</title>
+    <!-- Firebase v9 Compat Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --bg: #020617;
+            --card-bg: #0f172a;
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-<style>
-:root {
-  --bg: #020617;
-  --card: #020617;
-  --border: #1f2937;
-  --accent: #38bdf8;
-  --accent2: #0ea5e9;
-  --text: #e5e7eb;
-  --muted: #9ca3af;
-}
+        body {
+            margin: 0; padding: 0;
+            font-family: var(--font-sans);
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
 
-* { box-sizing: border-box; }
+        #app-loader {
+            position: fixed; inset: 0; background: var(--bg); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+        }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: radial-gradient(circle at top, #020617, #020617);
-  font-family: system-ui, sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text);
-}
+        .container {
+            width: 100%; max-width: 500px; margin: 0 auto; padding: 1rem 1rem 5rem 1rem;
+            display: none; animation: fadeIn 0.3s ease-out;
+        }
 
-.container {
-  width: 100%;
-  max-width: 380px;
-  padding: 16px;
-}
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-.card {
-  background: linear-gradient(180deg, #020617, #020617);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  padding: 24px;
-  box-shadow: 0 30px 60px rgba(0,0,0,.45);
-}
+        /* Navigation Bar */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 500px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            display: none; grid-template-columns: repeat(4, 1fr);
+            border-top: 1px solid var(--card-border);
+            padding: 0.75rem 0; z-index: 900;
+        }
 
-h1 {
-  text-align: center;
-  font-size: 1.6rem;
-  margin-bottom: 24px;
-}
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center;
+            font-size: 0.7rem; color: var(--text-dim); cursor: pointer;
+        }
 
-h2 {
-  font-size: 1.2rem;
-  margin-bottom: 8px;
-}
+        .nav-item.active { color: var(--accent); }
+        .nav-icon { font-size: 1.25rem; margin-bottom: 2px; }
 
-p {
-  font-size: .95rem;
-  color: var(--muted);
-}
+        /* UI Elements */
+        .card {
+            background: var(--card-bg); border-radius: 1.25rem;
+            padding: 1.25rem; border: 1px solid var(--card-border);
+            margin-bottom: 1rem; box-shadow: var(--shadow);
+        }
 
-input, textarea {
-  width: 100%;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: #020617;
-  color: var(--text);
-  font-size: 1rem;
-  margin-bottom: 12px;
-}
+        .card-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
 
-textarea {
-  resize: none;
-  min-height: 90px;
-}
+        .btn {
+            width: 100%; padding: 0.9rem; border-radius: 0.75rem; border: none;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        }
 
-button {
-  width: 100%;
-  padding: 14px;
-  border-radius: 14px;
-  border: none;
-  font-size: 1rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #020617;
-  cursor: pointer;
-}
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-ghost { background: #1e293b; color: white; }
 
-button.secondary {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
-  margin-top: 10px;
-}
+        input {
+            width: 100%; padding: 0.8rem 1rem; border-radius: 0.75rem;
+            border: 1px solid var(--card-border); background: #1e293b; color: white;
+            outline: none; margin-bottom: 0.5rem;
+        }
 
-button:active { transform: scale(.98); }
+        /* Widgets */
+        .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .weather-val { font-size: 1.25rem; font-weight: 700; }
 
-.value-box {
-  background: #020617;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 12px;
-  font-size: .95rem;
-}
+        .video-container {
+            position: relative; padding-bottom: 56.25%; height: 0; border-radius: 0.75rem; overflow: hidden;
+            margin-top: 0.5rem; background: #000;
+        }
+        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-.status {
-  font-size: .9rem;
-  color: #22c55e;
-  margin-top: 6px;
-}
+        .urgent-alert { border: 2px solid var(--warning); background: #451a03; }
 
-.error {
-  text-align: center;
-  color: #ef4444;
-  margin-top: 10px;
-}
+        .toast {
+            position: fixed; top: 2rem; left: 50%; transform: translateX(-50%);
+            background: var(--success); color: white; padding: 0.8rem 1.5rem;
+            border-radius: 2rem; z-index: 10000; display: none; font-weight: 600;
+        }
 
-.hidden { display: none; }
-
-a {
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 500;
-}
-</style>
+        .spinner {
+            width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.1);
+            border-top: 2px solid #000; border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 </head>
-
 <body>
 
-<div class="container">
-  <div class="card">
-
-    <h1>Trip Tracker</h1>
-
-    <!-- LOGIN -->
-    <div id="loginCard">
-      <input id="user" placeholder="Username">
-      <input id="pass" type="password" placeholder="Password">
-      <button onclick="doLogin()">Continue</button>
-      <div id="err" class="error"></div>
+    <div id="app-loader">
+        <div class="spinner" style="border-top-color: var(--accent);"></div>
     </div>
 
-    <!-- WATCHED -->
-    <div id="watchedUI" class="hidden">
-      <h2>You’re Traveling</h2>
-      <p>Send updates to mum</p>
-
-      <textarea id="msg" placeholder="Reached hotel safely"></textarea>
-      <button onclick="sendMsg()">Send Message</button>
-
-      <button onclick="sendLocation()">Share Location</button>
-      <div id="status" class="status"></div>
-
-      <button class="secondary" onclick="logout()">Logout</button>
+    <!-- Login View -->
+    <div id="view-login" class="container" style="display: block; margin-top: 15vh;">
+        <div class="card" style="text-align: center; padding: 2.5rem 2rem;">
+            <h1>SafeJourney</h1>
+            <p style="color: var(--text-dim); margin-bottom: 2rem;">Family Travel Companion</p>
+            <input type="text" id="login-user" placeholder="Username (watched/mum)">
+            <input type="password" id="login-pass" placeholder="Password">
+            <button class="btn btn-primary" id="btn-login">Enter System</button>
+            <p id="login-err" style="color: var(--danger); display: none; margin-top: 1rem;">Invalid credentials.</p>
+        </div>
     </div>
 
-    <!-- WATCHER -->
-    <div id="watcherUI" class="hidden">
-      <h2>Mum’s View</h2>
+    <!-- Traveler Home Tab -->
+    <div id="view-home" class="container">
+        <header style="margin-bottom: 1.5rem;">
+            <p style="color: var(--text-dim); font-size: 0.85rem;">Good day, traveler</p>
+            <h2>Your Journey</h2>
+        </header>
 
-      <p>Latest message</p>
-      <div id="msgBox" class="value-box">Waiting for update…</div>
+        <div id="traveler-alerts"></div>
 
-      <p>Last known location</p>
-      <div id="locBox" class="value-box">Waiting for location…</div>
+        <div class="card">
+            <div class="card-label">Current Environment</div>
+            <h3 id="geo-location">Locating...</h3>
+            <div class="weather-grid" style="margin-top: 1rem;">
+                <div><div class="card-label">Temp</div><div class="weather-val" id="weather-temp">--°C</div></div>
+                <div><div class="card-label">Condition</div><div class="weather-val" id="weather-desc">Clear</div></div>
+            </div>
+        </div>
 
-      <button class="secondary" onclick="logout()">Logout</button>
+        <div class="card">
+            <div class="card-label">Media Player</div>
+            <div id="player-placeholder" style="color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 1rem;">
+                No playlist configured. Visit Settings.
+            </div>
+            <div id="player-wrapper" style="display: none;">
+                <div class="video-container">
+                    <iframe id="yt-player" frameborder="0" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
     </div>
 
-  </div>
-</div>
+    <!-- Traveler Status Tab -->
+    <div id="view-status" class="container">
+        <h2>Safety Updates</h2>
+        <div class="card" style="text-align: center; padding: 2rem 1.5rem;">
+            <button class="btn btn-primary" id="btn-update-loc" style="height: 60px;">Share Location Now</button>
+            <p id="status-last-loc" class="card-label" style="margin-top: 1rem;">Last shared: Never</p>
+        </div>
+        <div class="card">
+            <div class="card-label">Custom Message</div>
+            <input type="text" id="status-msg" placeholder="e.g. Traffic is heavy...">
+            <button class="btn btn-ghost" id="btn-send-msg">Send Update</button>
+        </div>
+    </div>
 
-<script>
-/* 🔥 FIREBASE CONFIG – PASTE YOUR OWN */
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
-  authDomain: "trip-tracker-57ce0.firebaseapp.com",
-  databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
-  projectId: "trip-tracker-57ce0",
-  storageBucket: "trip-tracker-57ce0.firebasestorage.app",
-  messagingSenderId: "236146303848",
-  appId: "1:236146303848:web:933f1e79e8a97687db6cdd",
-  measurementId: "G-ZBPCS6QPR5"
-};
+    <!-- Traveler Settings Tab -->
+    <div id="view-settings" class="container">
+        <h2>App Settings</h2>
+        <div class="card">
+            <div class="card-label">YouTube Playlist ID</div>
+            <input type="text" id="setting-playlist" placeholder="PL... (Playlist ID)">
+            <p style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 1rem;">Enter the ID found after 'list=' in a YouTube URL</p>
+            <button class="btn btn-primary" onclick="saveSettings()">Save Configuration</button>
+        </div>
+        <button class="btn btn-ghost" onclick="location.reload()">Log Out</button>
+    </div>
 
-const db = firebase.database();
+    <!-- Watcher View (Separate) -->
+    <div id="view-watcher" class="container">
+        <header style="margin-bottom: 1rem;">
+            <h2>Trip Monitor</h2>
+        </header>
+        <div class="card">
+            <div class="card-label">Alert Traveler</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <button class="btn btn-ghost" style="font-size: 0.8rem;" onclick="sendAlert('Call me now')">📞 Call</button>
+                <button class="btn btn-ghost" style="font-size: 0.8rem;" onclick="sendAlert('Message update')">💬 Msg</button>
+            </div>
+        </div>
+        <div id="watcher-data"></div>
+    </div>
 
-/* LOGIN */
-function doLogin() {
-  err.textContent = "";
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav" id="main-nav">
+        <div class="nav-item" onclick="navTo('home')"><span class="nav-icon">🏠</span>Home</div>
+        <div class="nav-item" onclick="navTo('status')"><span class="nav-icon">📍</span>Status</div>
+        <div class="nav-item" onclick="navTo('settings')"><span class="nav-icon">⚙️</span>Settings</div>
+    </nav>
 
-  if (user.value === "watched" && pass.value === "1122") {
-    loginCard.classList.add("hidden");
-    watchedUI.classList.remove("hidden");
-  }
-  else if (pass.value === "1212") {
-    loginCard.classList.add("hidden");
-    watcherUI.classList.remove("hidden");
-  }
-  else {
-    err.textContent = "Incorrect login details";
-  }
-}
+    <div id="toast" class="toast">Update Sent</div>
 
-/* SEND MESSAGE */
-function sendMsg() {
-  if (!msg.value.trim()) return;
-  db.ref("trip/message").set(msg.value);
-  msg.value = "";
-}
+    <script>
+        // --- Firebase & State ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
+            authDomain: "trip-tracker-57ce0.firebaseapp.com",
+            databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
+            projectId: "trip-tracker-57ce0",
+            storageBucket: "trip-tracker-57ce0.firebasestorage.app",
+            messagingSenderId: "236146303848",
+            appId: "1:236146303848:web:933f1e79e8a97687db6cdd",
+            measurementId: "G-ZBPCS6QPR5"
+        };
 
-/* SEND LOCATION */
-function sendLocation() {
-  navigator.geolocation.getCurrentPosition(p => {
-    const link = `https://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`;
-    db.ref("trip/location").set(link);
-    status.textContent = "Location shared successfully";
-  });
-}
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let userRole = '';
 
-/* REAL-TIME LISTENERS */
-db.ref("trip/message").on("value", s => {
-  if (s.exists()) msgBox.textContent = s.val();
-});
+        // --- Core App Logic ---
+        window.onload = () => {
+            document.getElementById('app-loader').style.display = 'none';
+            if (localStorage.getItem('yt_playlist')) {
+                document.getElementById('setting-playlist').value = localStorage.getItem('yt_playlist');
+            }
+        };
 
-db.ref("trip/location").on("value", s => {
-  if (s.exists()) locBox.innerHTML = `<a href="${s.val()}" target="_blank">Open in Google Maps</a>`;
-});
+        document.getElementById('btn-login').addEventListener('click', () => {
+            const u = document.getElementById('login-user').value.toLowerCase().trim();
+            const p = document.getElementById('login-pass').trim();
 
-/* LOGOUT */
-function logout() {
-  location.reload();
-}
-</script>
+            if (u === 'watched' && p === '1122') {
+                userRole = 'traveler';
+                initTraveler();
+            } else if (u !== '' && p === '1212') {
+                userRole = 'watcher';
+                initWatcher();
+            } else {
+                document.getElementById('login-err').style.display = 'block';
+            }
+        });
 
+        // --- Navigation ---
+        function navTo(view) {
+            document.querySelectorAll('.container').forEach(c => c.style.display = 'none');
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById(`view-${view}`).style.display = 'block';
+            const navItems = document.querySelectorAll('.nav-item');
+            if (view === 'home') navItems[0].classList.add('active');
+            if (view === 'status') navItems[1].classList.add('active');
+            if (view === 'settings') navItems[2].classList.add('active');
+        }
+
+        // --- Traveler Functions ---
+        function initTraveler() {
+            navTo('home');
+            document.getElementById('main-nav').style.display = 'grid';
+            refreshEnvironmentalData();
+            loadPlaylist();
+            
+            // Listen for Watcher Alerts
+            db.ref('trip/alerts').on('value', snap => {
+                const container = document.getElementById('traveler-alerts');
+                container.innerHTML = '';
+                const data = snap.val();
+                if (data) {
+                    Object.keys(data).forEach(id => {
+                        const alert = data[id];
+                        const div = document.createElement('div');
+                        div.className = 'card urgent-alert';
+                        div.innerHTML = `
+                            <div class="card-label" style="color:var(--warning)">Watcher Alert</div>
+                            <div style="font-weight:700;">${alert.text}</div>
+                            <button class="btn btn-primary" style="width:auto; height:30px; padding:0 1rem; font-size:0.7rem; margin-top:0.5rem;" onclick="dismissAlert('${id}')">Got it</button>
+                        `;
+                        container.appendChild(div);
+                        if (Notification.permission === "granted") new Notification("New Alert", { body: alert.text });
+                    });
+                }
+            });
+        }
+
+        async function refreshEnvironmentalData() {
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                
+                // 1. Reverse Geocoding (Closest Town) - OpenStreetMap
+                try {
+                    const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                    const geoData = await geo.json();
+                    const city = geoData.address.city || geoData.address.town || geoData.address.village || "Unknown Area";
+                    document.getElementById('geo-location').innerText = `Near ${city}`;
+                } catch(e) { document.getElementById('geo-location').innerText = "Location Unknown"; }
+
+                // 2. Weather Data - Open-Meteo
+                try {
+                    const weather = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+                    const wData = await weather.json();
+                    document.getElementById('weather-temp').innerText = `${wData.current_weather.temperature}°C`;
+                    document.getElementById('weather-desc').innerText = getWeatherDesc(wData.current_weather.weathercode);
+                } catch(e) { console.error("Weather error"); }
+            });
+        }
+
+        function getWeatherDesc(code) {
+            const map = { 0: 'Clear', 1: 'Mainly Clear', 2: 'Cloudy', 3: 'Overcast', 45: 'Fog', 61: 'Rain', 95: 'Stormy' };
+            return map[code] || 'Stable';
+        }
+
+        function loadPlaylist() {
+            const playlistId = localStorage.getItem('yt_playlist');
+            if (playlistId) {
+                document.getElementById('player-placeholder').style.display = 'none';
+                document.getElementById('player-wrapper').style.display = 'block';
+                document.getElementById('yt-player').src = `https://www.youtube.com/embed/videoseries?list=${playlistId}`;
+            }
+        }
+
+        function saveSettings() {
+            const id = document.getElementById('setting-playlist').value.trim();
+            localStorage.setItem('yt_playlist', id);
+            loadPlaylist();
+            showToast("Settings Saved");
+        }
+
+        async function dismissAlert(id) {
+            await db.ref(`trip/alerts/${id}`).remove();
+        }
+
+        // --- Status Logic ---
+        document.getElementById('btn-update-loc').addEventListener('click', updateLocation);
+        document.getElementById('btn-send-msg').addEventListener('click', sendMessage);
+
+        async function updateLocation() {
+            const btn = document.getElementById('btn-update-loc');
+            btn.innerHTML = '<div class="spinner"></div>';
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const ts = new Date().toISOString();
+                const data = {
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    timestamp: ts,
+                    mapLink: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
+                };
+                await db.ref('trip/location').set(data);
+                await db.ref('trip/messages').push({ text: "📍 GPS Update Shared", timestamp: ts });
+                document.getElementById('status-last-loc').innerText = "Last shared: " + new Date().toLocaleTimeString();
+                showToast("Location Sync'd");
+                btn.innerHTML = 'Share Location Now';
+            });
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('status-msg');
+            if (!input.value.trim()) return;
+            await db.ref('trip/messages').push({
+                text: input.value,
+                timestamp: new Date().toISOString()
+            });
+            input.value = '';
+            showToast("Message Sent");
+        }
+
+        // --- Watcher Functions ---
+        function initWatcher() {
+            document.querySelectorAll('.container').forEach(c => c.style.display = 'none');
+            document.getElementById('view-watcher').style.display = 'block';
+
+            db.ref('trip').on('value', snap => {
+                const data = snap.val();
+                if (!data) return;
+                
+                let html = `
+                    <div class="card">
+                        <div class="card-label">Last Known Position</div>
+                        <h3>${data.location?.lat.toFixed(4)}, ${data.location?.lng.toFixed(4)}</h3>
+                        <a href="${data.location?.mapLink}" target="_blank" class="btn btn-primary" style="margin-top:1rem;">Open Maps</a>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">Recent Messages</div>
+                `;
+                
+                if (data.messages) {
+                    Object.values(data.messages).reverse().slice(0, 5).forEach(m => {
+                        html += `<div style="padding:0.5rem 0; border-bottom:1px solid #1e293b;">
+                            <div style="font-size:0.9rem;">${m.text}</div>
+                            <div style="font-size:0.7rem; color:var(--text-dim);">${new Date(m.timestamp).toLocaleTimeString()}</div>
+                        </div>`;
+                    });
+                }
+                html += '</div>';
+                document.getElementById('watcher-data').innerHTML = html;
+            });
+        }
+
+        async function sendAlert(txt) {
+            await db.ref('trip/alerts').push({ text: txt, timestamp: new Date().toISOString() });
+            showToast("Alert Broadcasted");
+        }
+
+        function showToast(txt) {
+            const t = document.getElementById('toast');
+            t.innerText = txt;
+            t.style.display = "block";
+            setTimeout(() => t.style.display = "none", 2500);
+        }
+    </script>
 </body>
 </html>
+
