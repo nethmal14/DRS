@@ -9,13 +9,14 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root {
-            --sys-bg: #0a0c10;
-            --sys-surface: #141820;
-            --sys-border: #232935;
-            --sys-accent: #00f2ff;
-            --sys-alert: #ff3e3e;
-            --sys-text: #e1e7f0;
-            --sys-dim: #7a8aa3;
+            --sys-bg: #0d0f12;
+            --sys-surface: #161b22;
+            --sys-border: #30363d;
+            --sys-accent: #3fb950; /* Terminal Green */
+            --sys-alert: #f85149; 
+            --sys-text: #c9d1d9;
+            --sys-dim: #8b949e;
+            --sys-blue: #58a6ff;
             --safe-bottom: env(safe-area-inset-bottom);
         }
 
@@ -25,182 +26,252 @@
             margin: 0; padding: 0;
             background: var(--sys-bg);
             color: var(--sys-text);
-            font-family: 'Inter', -apple-system, sans-serif;
-            font-size: 14px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 13px;
             min-height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
         }
 
         .view {
-            display: none; width: 100%; max-width: 500px; margin: 0 auto;
-            padding: 1rem 1.5rem calc(8rem + var(--safe-bottom));
+            display: none; width: 100%; max-width: 600px; margin: 0 auto;
+            padding: 1rem 1rem calc(8rem + var(--safe-bottom));
             flex: 1; overflow-y: auto;
         }
 
         .sys-card {
             background: var(--sys-surface);
             border: 1px solid var(--sys-border);
-            padding: 1.25rem;
+            padding: 1rem;
             margin-bottom: 1rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border-radius: 4px;
+            position: relative;
         }
 
         .label {
-            font-size: 11px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 1px; color: var(--sys-accent);
-            margin-bottom: 8px; display: block;
+            font-size: 11px;
+            color: var(--sys-accent);
+            margin-bottom: 8px;
+            display: block;
         }
+        .label::before { content: "[ "; opacity: 0.5; }
+        .label::after { content: " ]"; opacity: 0.5; }
 
         input {
-            width: 100%; padding: 14px; border: 1px solid var(--sys-border);
-            background: #000; color: #fff; font-size: 15px; margin-bottom: 12px;
-            font-family: inherit; border-radius: 8px;
+            width: 100%; padding: 12px; border: 1px solid var(--sys-border);
+            background: #010409; color: var(--sys-accent); font-size: 14px; margin-bottom: 12px;
+            font-family: inherit; border-radius: 4px;
         }
+        input:focus { border-color: var(--sys-accent); outline: none; }
 
         .btn {
-            width: 100%; padding: 14px; border: none; font-weight: 600;
+            width: 100%; padding: 12px; border: none; font-size: 12px;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s; font-family: inherit; border-radius: 8px;
+            transition: opacity 0.2s; font-family: inherit; border-radius: 4px;
+            text-transform: uppercase; letter-spacing: 0.5px;
         }
-        .btn-primary { background: var(--sys-accent); color: #000; }
+        .btn-primary { background: #238636; color: #fff; }
         .btn-alert { background: var(--sys-alert); color: #fff; }
         .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
-        .btn:active { transform: scale(0.98); opacity: 0.8; }
+        .btn:active { opacity: 0.7; }
+
+        /* Notification System */
+        #notification-center {
+            position: fixed; top: 1rem; left: 1rem; right: 1rem;
+            z-index: 9999; pointer-events: none;
+        }
+        .toast {
+            background: rgba(22, 27, 34, 0.95);
+            border-left: 4px solid var(--sys-blue);
+            padding: 12px 16px; margin-bottom: 10px;
+            border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: slideInDown 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            pointer-events: auto; backdrop-filter: blur(10px);
+        }
+        @keyframes slideInDown { from { transform: translateY(-150%); } to { transform: translateY(0); } }
+
+        /* Bigger Location UI */
+        #loc-display {
+            font-size: 32px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -1px;
+            margin: 10px 0;
+            line-height: 1;
+        }
 
         #media-bar {
             position: fixed;
             bottom: calc(4.5rem + var(--safe-bottom));
-            left: 50%; transform: translateX(-50%);
-            width: 92%; max-width: 460px;
-            background: rgba(20, 24, 32, 0.9);
-            border: 1px solid var(--sys-accent);
-            padding: 10px 18px;
+            left: 1rem; right: 1rem;
+            max-width: 500px; margin: 0 auto;
+            background: #161b22;
+            border: 1px solid var(--sys-border);
+            border-left: 4px solid var(--sys-accent);
+            padding: 10px 15px;
             display: none;
             align-items: center;
             justify-content: space-between;
             z-index: 1001;
-            border-radius: 30px;
-            backdrop-filter: blur(15px);
             cursor: pointer;
         }
 
         #media-expanded {
             position: fixed; 
             bottom: 0; left: 0; right: 0;
-            height: 85vh;
+            height: 100vh;
             background: var(--sys-bg); 
             z-index: 2000;
             display: none; flex-direction: column; 
             padding: 2rem;
-            border-top: 1px solid var(--sys-border);
-            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: slideUp 0.3s ease-out;
         }
 
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: var(--sys-surface); border-top: 1px solid var(--sys-border);
+            background: #0d1117; border-top: 1px solid var(--sys-border);
             display: none; grid-template-columns: repeat(3, 1fr);
-            padding: 8px 0 calc(8px + var(--safe-bottom)); z-index: 1000;
+            padding: 5px 0 calc(5px + var(--safe-bottom)); z-index: 1000;
         }
         .nav-item {
-            text-align: center; font-size: 10px; font-weight: 600;
-            color: var(--sys-dim); cursor: pointer; text-transform: uppercase;
+            text-align: center; font-size: 11px;
+            color: var(--sys-dim); cursor: pointer; padding: 10px 0;
         }
-        .nav-item.active { color: var(--sys-accent); }
+        .nav-item.active { color: var(--sys-accent); border-top: 2px solid var(--sys-accent); }
+
+        .terminal-header {
+            padding: 4px 8px;
+            background: var(--sys-border);
+            font-size: 10px;
+            color: var(--sys-text);
+            margin-bottom: 1rem;
+            display: flex; justify-content: space-between;
+        }
 
         #yt-wrapper { position: absolute; top: -9999px; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+        
+        .prog-bar-bg { width: 100%; height: 4px; background: #30363d; margin: 10px 0; border-radius: 2px; }
+        .prog-bar-fill { height: 100%; background: var(--sys-accent); width: 0%; transition: width 0.5s; }
+
+        .watcher-active { color: var(--sys-blue) !important; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
+    <div id="notification-center"></div>
+
     <div id="view-login" class="view" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
         <div style="width: 100%;">
-            <div style="text-align: center; margin-bottom: 3rem;">
-                <h1 style="color: var(--sys-accent); margin:0; font-weight: 800; letter-spacing: -1px;">DRS-ONE</h1>
-                <p style="color: var(--sys-dim); font-size: 12px;">SYSTEM_AUTH_REQUIRED</p>
+            <div style="margin-bottom: 2rem;">
+                <div style="color: var(--sys-accent); font-size: 18px; font-weight: bold;">DRS-ONE Kernel v5.4.0</div>
+                <div style="color: var(--sys-dim);">Standard System Authentication</div>
             </div>
             <div class="sys-card">
-                <span class="label">Credentials</span>
-                <input type="password" id="pass-in" placeholder="Access Key">
-                <button class="btn btn-primary" id="login-trigger">INITIALIZE SESSION</button>
+                <span class="label">SSH_AUTH</span>
+                <input type="password" id="pass-in" placeholder="Enter Access Key...">
+                <button class="btn btn-primary" id="login-trigger">Login to Console</button>
             </div>
         </div>
     </div>
 
     <div id="view-home" class="view">
-        <div class="sys-card">
-            <span class="label">Location Feed</span>
-            <div id="loc-display" style="font-size: 20px; font-weight: 700; color: #fff;">Tracking...</div>
+        <div class="terminal-header">
+            <span>user@drs-one: ~</span>
+            <span id="watcher-status" style="color: var(--sys-dim);">WATCHERS: OFFLINE</span>
         </div>
+        
+        <div class="sys-card">
+            <span class="label">LIVE_GEOLOCATION</span>
+            <div id="loc-display">SYNCING...</div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn btn-primary" id="broadcast-btn" onclick="startTracking()" style="flex: 2;">BROADCAST LIVE</button>
+                <button class="btn btn-ghost" onclick="stopTracking()" style="flex: 1;">STOP</button>
+            </div>
+            <div id="tracking-status" style="color: var(--sys-dim); font-size: 10px; margin-top: 10px;">GPS: DISCONNECTED</div>
+        </div>
+
         <div class="sys-card" id="audio-card">
-            <span class="label">Audio Uplink</span>
-            <div id="audio-status" style="color: var(--sys-dim); margin-bottom: 12px; font-weight: 600;">[STANDBY]</div>
-            <div id="active-pl-name" style="color: var(--sys-accent); font-size: 12px;">No active session</div>
+            <span class="label">AUDIO_SUBSYSTEM</span>
+            <div id="audio-status" style="color: #d29922; margin-bottom: 8px; font-weight: bold;">[ INITIALIZING ]</div>
+            <div id="active-pl-name" style="color: var(--sys-accent); font-size: 12px;">$ mount /dev/media0</div>
+            <div class="prog-bar-bg"><div id="prog-fill" class="prog-bar-fill"></div></div>
         </div>
         <div id="yt-wrapper"><div id="yt-player"></div></div>
     </div>
 
     <div id="view-monitor" class="view">
-        <span class="label">System Telemetry</span>
+        <span class="label">SUBJECT_TELEMETRY</span>
         <div id="subject-info" class="sys-card">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div><div class="label" style="font-size: 9px;">Coordinates</div><div id="dash-coords" style="color:#fff; font-weight:700;">--</div></div>
-                <div><div class="label" style="font-size: 9px;">Sync Time</div><div id="dash-sync" style="color:#fff; font-weight:700;">--</div></div>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                <div><div class="label" style="font-size: 9px;">COORDINATES_PRIMARY</div><div id="dash-coords" style="color:#fff; font-size: 24px; font-weight:700;">--</div></div>
+                <div><div class="label" style="font-size: 9px;">LAST_ACK_TIME</div><div id="dash-sync" style="color:#fff; font-size: 16px; font-weight:700;">--</div></div>
             </div>
         </div>
 
         <div class="sys-card">
-            <span class="label">System Directive</span>
-            <input type="text" id="cmd-input" placeholder="Transmission payload...">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <button class="btn btn-alert" onclick="sendCmd('ALERT')">SEND ALERT</button>
-                <button class="btn btn-primary" onclick="sendCmd('MSG')">SEND MSG</button>
+            <span class="label">REMOTE_COMMAND_PIPE</span>
+            <input type="text" id="cmd-input" placeholder="Enter string payload...">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="btn btn-alert" onclick="sendCmd('ALERT')">SIGTERM</button>
+                <button class="btn btn-primary" onclick="sendCmd('MSG')">WRITE</button>
             </div>
         </div>
     </div>
 
     <div id="view-config" class="view">
-        <span class="label">Registry</span>
+        <span class="label">SYSTEM_REGISTRY</span>
         <div class="sys-card">
-            <input type="text" id="pl-name-in" placeholder="Source Alias">
-            <input type="text" id="pl-url-in" placeholder="YouTube Link/ID">
-            <button class="btn btn-primary" onclick="addPlaylist()">COMMIT SOURCE</button>
+            <input type="text" id="pl-name-in" placeholder="Alias">
+            <input type="text" id="pl-url-in" placeholder="Mount Source (URL/ID)">
+            <button class="btn btn-primary" onclick="addPlaylist()">ADD SOURCE</button>
         </div>
         <div id="playlist-list"></div>
-        <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert); margin-top:2rem; border-color: rgba(255,62,62,0.3);">TERMINATE SESSION</button>
+        <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert); margin-top:2rem; border-color: rgba(248,81,73,0.3);">SHUTDOWN</button>
     </div>
 
     <div id="media-bar" onclick="openExpanded()">
-        <div id="track-title" style="font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">CONNECTING...</div>
-        <div style="display:flex; gap:12px; align-items: center;">
-            <button onclick="event.stopPropagation(); togglePlay()" style="background:none; border:none; color:var(--sys-accent); cursor:pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <div style="display: flex; align-items: center; gap: 12px; width: 70%;">
+            <div style="width: 32px; height: 32px; background: #000; display: flex; align-items: center; justify-content: center; border: 1px solid var(--sys-border);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sys-accent)"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            </div>
+            <div id="track-title" style="font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">...</div>
         </div>
+        <button onclick="event.stopPropagation(); togglePlay()" style="background:none; border:none; color:var(--sys-accent); cursor:pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
     </div>
 
     <div id="media-expanded">
         <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <div class="label" style="margin:0;">Remote Playback</div>
-            <button onclick="closeExpanded()" style="background:none; border:none; color:var(--sys-dim); font-size: 24px;">×</button>
+            <div class="label" style="margin:0;">STREAM_BUFFER_01</div>
+            <button onclick="closeExpanded()" style="background:none; border:none; color:var(--sys-dim); font-size: 28px;">&times;</button>
         </div>
-        <div style="width: 100%; aspect-ratio: 1/1; background: var(--sys-surface); border: 1px solid var(--sys-border); margin-bottom: 2rem; border-radius: 20px; overflow: hidden;">
-            <img id="exp-thumb" src="" style="width:100%; height:100%; object-fit:cover;">
+        
+        <div style="width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--sys-border); margin-bottom: 2rem; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            <img id="exp-thumb" src="" style="width:100%; height:100%; object-fit:contain;">
         </div>
-        <div id="exp-title" style="color:#fff; font-size:20px; font-weight: 800; line-height:1.2; margin-bottom: 2rem;">...</div>
-        <div style="display: flex; justify-content: center; gap: 40px; margin-top: auto; padding-bottom: 4rem;">
-            <button onclick="player.previousVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-            <button onclick="togglePlay()" style="background: var(--sys-accent); color:#000; border-radius:50%; width:72px; height:72px; display:flex; align-items:center; justify-content:center; border:none; box-shadow: 0 0 20px rgba(0,242,255,0.4);"><svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-            <button onclick="player.nextVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+
+        <div style="margin-bottom: 2rem;">
+            <div id="exp-title" style="color:#fff; font-size:18px; font-weight: 700; margin-bottom: 8px;">...</div>
+            <div style="color: var(--sys-accent); font-size: 11px;">SOURCE_LINK: STABLE</div>
+        </div>
+
+        <div style="margin-top: auto; padding-bottom: 4rem;">
+            <div class="prog-bar-bg" style="height: 6px;"><div id="exp-prog" class="prog-bar-fill"></div></div>
+            
+            <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 3rem;">
+                <button onclick="player.previousVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+                <button onclick="togglePlay()" style="background: var(--sys-accent); color:#000; border-radius:4px; width:80px; height:60px; display:flex; align-items:center; justify-content:center; border:none;"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+                <button onclick="player.nextVideo()" style="background:none; border:none; color:var(--sys-text);"><svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+            </div>
         </div>
     </div>
 
     <nav class="bottom-nav" id="hud">
-        <div class="nav-item active" onclick="nav('home')">FEED</div>
-        <div class="nav-item" onclick="nav('monitor')">DASH</div>
-        <div class="nav-item" onclick="nav('config')">REGS</div>
+        <div class="nav-item active" onclick="nav('home')">/bin/main</div>
+        <div class="nav-item" onclick="nav('monitor')">/usr/top</div>
+        <div class="nav-item" onclick="nav('config')">/etc/sys</div>
     </nav>
 
     <script>
@@ -216,9 +287,41 @@
 
         firebase.initializeApp(fbConfig);
         const db = firebase.database();
-        let player, isPlaying = false;
+        let player, isPlaying = false, trackWatchId = null;
         let playlists = JSON.parse(localStorage.getItem('drs_pl_v3') || '[]');
         let currentPlaylistId = localStorage.getItem('drs_curr_pl');
+
+        function notify(msg, type='info') {
+            const center = document.getElementById('notification-center');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            if(type === 'alert') toast.style.borderLeftColor = 'var(--sys-alert)';
+            toast.innerHTML = `<div style="font-size:10px; color:var(--sys-dim); margin-bottom:4px;">SYSTEM_ALERT</div><div>${msg}</div>`;
+            center.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        function startTracking() {
+            if (!navigator.geolocation) return notify("GPS_HARDWARE_NOT_FOUND", "alert");
+            
+            document.getElementById('broadcast-btn').innerText = "BROADCASTING...";
+            document.getElementById('tracking-status').innerText = "GPS: BROADCAST_ACTIVE";
+            
+            trackWatchId = navigator.geolocation.watchPosition(pos => {
+                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, ts: Date.now() };
+                db.ref('trip/location').set(loc);
+                document.getElementById('loc-display').innerText = `${loc.lat.toFixed(3)}, ${loc.lng.toFixed(3)}`;
+            }, err => notify(`GPS_ERROR: ${err.message}`, "alert"), { enableHighAccuracy: true });
+            
+            notify("Location stream established. Monitoring uplink.");
+        }
+
+        function stopTracking() {
+            if(trackWatchId) navigator.geolocation.clearWatch(trackWatchId);
+            document.getElementById('broadcast-btn').innerText = "BROADCAST LIVE";
+            document.getElementById('tracking-status').innerText = "GPS: DISCONNECTED";
+            notify("Uplink terminated.");
+        }
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('yt-player', {
@@ -239,7 +342,8 @@
                     if (player.getPlayerState() === YT.PlayerState.CUED) player.playVideo();
                     else if (player.getPlayerState() === YT.PlayerState.PLAYING) {
                         clearInterval(checkAutoStart);
-                        document.getElementById('audio-status').innerText = "[LINK ACTIVE]";
+                        document.getElementById('audio-status').innerText = "[ ACTIVE_LINK ]";
+                        startProgressLoop();
                     }
                 }, 1000);
             }
@@ -251,11 +355,21 @@
                 const data = player.getVideoData();
                 document.getElementById('track-title').innerText = data.title;
                 document.getElementById('exp-title').innerText = data.title;
-                document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/maxresdefault.jpg`;
-                document.getElementById('audio-status').innerText = "[LINK ACTIVE]";
+                document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/mqdefault.jpg`;
+                document.getElementById('audio-status').innerText = "[ ACTIVE_LINK ]";
             } else {
-                document.getElementById('audio-status').innerText = "[PAUSED]";
+                document.getElementById('audio-status').innerText = "[ PAUSED ]";
             }
+        }
+
+        function startProgressLoop() {
+            setInterval(() => {
+                if(isPlaying && player && player.getDuration) {
+                    const prog = (player.getCurrentTime() / player.getDuration()) * 100;
+                    document.getElementById('prog-fill').style.width = prog + '%';
+                    document.getElementById('exp-prog').style.width = prog + '%';
+                }
+            }, 1000);
         }
 
         function togglePlay() {
@@ -280,17 +394,47 @@
         function initSession(role) {
             document.getElementById('view-login').style.display = 'none';
             document.getElementById('hud').style.display = 'grid';
-            if (role === 'traveler') { nav('home'); } else { nav('monitor'); initWatcher(); }
+            if (role === 'traveler') { 
+                nav('home');
+                initPresenceMonitor(); 
+            } else { 
+                nav('monitor'); 
+                initWatcher(); 
+            }
             db.ref('trip/presence/' + role).set(true);
             db.ref('trip/presence/' + role).onDisconnect().remove();
+        }
+
+        function initPresenceMonitor() {
+            db.ref('trip/presence/watcher').on('value', snap => {
+                const active = snap.val();
+                const statusEl = document.getElementById('watcher-status');
+                if(active) {
+                    statusEl.innerText = "WATCHERS: ACTIVE_LINK";
+                    statusEl.classList.add('watcher-active');
+                    notify("Watchers are active on site. Signal monitoring enabled.");
+                } else {
+                    statusEl.innerText = "WATCHERS: OFFLINE";
+                    statusEl.classList.remove('watcher-active');
+                }
+            });
+
+            // Monitor Commands (Remote notifications)
+            db.ref('trip/command').on('value', snap => {
+                const cmd = snap.val();
+                if(cmd && Date.now() - cmd.ts < 5000) {
+                    notify(`REMOTE_SIGNAL: ${cmd.msg}`, cmd.type === 'ALERT' ? 'alert' : 'info');
+                }
+            });
         }
 
         function initWatcher() {
             db.ref('trip/location').on('value', snap => {
                 const data = snap.val();
                 if (!data) return;
-                document.getElementById('dash-coords').innerText = `${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}`;
+                document.getElementById('dash-coords').innerText = `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
                 document.getElementById('dash-sync').innerText = new Date(data.ts).toLocaleTimeString();
+                document.getElementById('loc-display').innerText = `${data.lat.toFixed(3)}, ${data.lng.toFixed(3)}`;
             });
         }
 
@@ -321,8 +465,8 @@
             const list = document.getElementById('playlist-list');
             list.innerHTML = playlists.map((p, i) => `
                 <div class="sys-card" style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:700; cursor:pointer;" onclick="selectPL('${p.url}')">${p.name}</span>
-                    <button onclick="delPL(${i})" style="background:none; border:none; color:var(--sys-alert); font-weight:700;">DELETE</button>
+                    <span style="font-weight:bold; cursor:pointer; color:var(--sys-accent);" onclick="selectPL('${p.url}')">$ ${p.name}</span>
+                    <button onclick="delPL(${i})" style="background:none; border:none; color:var(--sys-alert); font-weight:700;">rm</button>
                 </div>
             `).join('');
         }
