@@ -9,13 +9,14 @@
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root {
-            --sys-bg: #030405;
-            --sys-surface: #0a0c10;
-            --sys-border: #1a1e23;
-            --sys-accent: #00f2ff; /* BR Neon Cyan */
-            --sys-alert: #ff0055; /* BR Neon Pink/Red */
-            --sys-text: #e0e6ed;
-            --sys-dim: #4a5568;
+            --sys-bg: #0d0f12;
+            --sys-surface: #161b22;
+            --sys-border: #30363d;
+            --sys-accent: #58a6ff; 
+            --sys-alert: #f85149; 
+            --sys-text: #c9d1d9;
+            --sys-dim: #8b949e;
+            --sys-terminal: #3fb950; /* Linux Terminal Green */
             --safe-bottom: env(safe-area-inset-bottom);
         }
 
@@ -25,8 +26,8 @@
             margin: 0; padding: 0;
             background: var(--sys-bg);
             color: var(--sys-text);
-            font-family: -apple-system, "Segoe UI", "Roboto", "Helvetica", sans-serif;
-            font-size: 14px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 13px;
             min-height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
@@ -37,142 +38,117 @@
             inset: 0;
             pointer-events: none;
             z-index: 1;
-            opacity: 0.4;
+            opacity: 0.2; /* Subtle background only */
         }
 
-        .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; text-transform: uppercase; letter-spacing: 1px; }
+        .mono { font-family: "SFMono-Regular", monospace; text-transform: none; letter-spacing: 0; }
 
         .view {
-            display: none; width: 100%; max-width: 540px; margin: 0 auto;
-            padding: 1rem 1.5rem calc(8rem + var(--safe-bottom));
+            display: none; width: 100%; max-width: 600px; margin: 0 auto;
+            padding: 1rem 1rem calc(8rem + var(--safe-bottom));
             flex: 1; overflow-y: auto;
             position: relative; z-index: 10;
         }
 
         .sys-card {
-            background: rgba(10, 12, 16, 0.7);
+            background: rgba(22, 27, 34, 0.85);
             border: 1px solid var(--sys-border);
-            border-left: 3px solid var(--sys-accent);
-            padding: 1.25rem;
+            padding: 1rem;
             margin-bottom: 1rem;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border-radius: 6px;
+            backdrop-filter: blur(10px);
         }
 
         .label {
-            font-family: "SFMono-Regular", monospace;
-            font-size: 10px;
-            color: var(--sys-accent);
+            font-size: 11px;
+            color: var(--sys-terminal);
             margin-bottom: 8px;
             display: block;
-            opacity: 0.8;
+            opacity: 0.9;
         }
+
+        .label::before { content: "user@drs-one:~$ "; opacity: 0.5; }
 
         input {
-            width: 100%; padding: 12px; border: 1px solid var(--sys-border);
-            background: #000; color: #fff; font-size: 13px; margin-bottom: 12px;
-            font-family: "SFMono-Regular", monospace;
+            width: 100%; padding: 10px; border: 1px solid var(--sys-border);
+            background: #010409; color: var(--sys-terminal); font-size: 13px; margin-bottom: 12px;
+            font-family: inherit; border-radius: 4px;
         }
-        input:focus { border-color: var(--sys-accent); outline: none; box-shadow: 0 0 10px rgba(0,242,255,0.2); }
+        input:focus { border-color: var(--sys-accent); outline: none; }
 
         .btn {
-            width: 100%; padding: 14px; border: none; font-size: 12px;
-            font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s; text-transform: uppercase; letter-spacing: 2px;
+            width: 100%; padding: 12px; border: none; font-size: 12px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.2s; font-family: inherit; border-radius: 6px;
         }
-        .btn-primary { background: var(--sys-accent); color: #000; }
+        .btn-primary { background: #238636; color: #fff; }
         .btn-alert { background: var(--sys-alert); color: #fff; }
         .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
+        .btn:active { opacity: 0.7; }
 
         #media-bar {
             position: fixed;
             bottom: calc(4.5rem + var(--safe-bottom));
             left: 50%; transform: translateX(-50%);
-            width: 92%; max-width: 480px;
-            background: rgba(10, 12, 16, 0.9);
+            width: 94%; max-width: 500px;
+            background: rgba(22, 27, 34, 0.95);
             border: 1px solid var(--sys-border);
-            padding: 10px 16px;
+            padding: 8px 16px;
             display: none;
             align-items: center;
             justify-content: space-between;
             z-index: 1001;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border-radius: 8px;
             cursor: pointer;
-            backdrop-filter: blur(15px);
         }
 
         #media-expanded {
             position: fixed; 
             bottom: 0; left: 0; right: 0;
-            height: 65vh;
-            background: #050608; 
+            height: 70vh;
+            background: var(--sys-bg); 
             z-index: 2000;
             display: none; flex-direction: column; 
             padding: 1.5rem;
-            border-top: 2px solid var(--sys-accent);
-            box-shadow: 0 -20px 50px rgba(0,0,0,0.9);
-            animation: slideUp 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+            border-top: 1px solid var(--sys-border);
+            animation: slideUp 0.3s ease-out;
         }
 
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: #000; border-top: 1px solid var(--sys-border);
+            background: #010409; border-top: 1px solid var(--sys-border);
             display: none; grid-template-columns: repeat(3, 1fr);
-            padding: 8px 0 calc(8px + var(--safe-bottom)); z-index: 1000;
+            padding: 5px 0 calc(5px + var(--safe-bottom)); z-index: 1000;
         }
         .nav-item {
-            text-align: center; font-size: 10px; font-family: "SFMono-Regular", monospace;
-            color: var(--sys-dim); cursor: pointer; padding: 10px 0; text-transform: uppercase;
+            text-align: center; font-size: 11px;
+            color: var(--sys-dim); cursor: pointer; padding: 10px 0;
         }
-        .nav-item.active { color: var(--sys-accent); text-shadow: 0 0 8px var(--sys-accent); }
+        .nav-item.active { color: var(--sys-terminal); }
 
-        /* Watcher Dashboard Elements */
-        .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        .stat-val { font-size: 18px; color: #fff; font-weight: bold; margin-top: 4px; }
-        
-        #incoming-cmd {
-            position: fixed; top: 1rem; left: 50%; transform: translateX(-50%);
-            width: 80%; background: var(--sys-alert); color: #fff; 
-            padding: 15px; text-align: center; z-index: 9999;
-            box-shadow: 0 0 30px rgba(255, 0, 85, 0.5); font-weight: bold;
-            display: none; animation: pulse-alert 1s infinite;
-        }
-        @keyframes pulse-alert { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        /* Linux Terminal Pulse for cursor */
+        .cursor-blink { animation: blink 1s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-        .toast {
-            position: fixed; bottom: 6rem; left: 50%; transform: translateX(-50%);
-            background: var(--sys-accent); color: #000; padding: 10px 20px;
-            font-size: 11px; font-weight: 800; z-index: 10001; display: none;
-            text-transform: uppercase;
-        }
-
-        #yt-wrapper {
-            position: absolute;
-            top: -9999px;
-            left: -9999px;
-            width: 1px;
-            height: 1px;
-            overflow: hidden;
-        }
+        #yt-wrapper { position: absolute; top: -9999px; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
     </style>
 </head>
 <body>
 
     <canvas id="digital-rain"></canvas>
-    <div id="incoming-cmd" class="mono">INCOMING COMMAND: <span id="cmd-text">...</span></div>
-
+    
     <div id="view-login" class="view" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
         <div style="width: 100%;">
-            <div style="text-align: center; margin-bottom: 3rem;">
-                <h1 class="mono" style="font-size: 26px; margin: 0; color: var(--sys-accent); text-shadow: 0 0 15px var(--sys-accent);">DRS_OS.V3</h1>
-                <p class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 5px;">JOI_PROTOCOLL_V9</p>
+            <div style="margin-bottom: 2rem;">
+                <div style="color: var(--sys-terminal); margin-bottom: 4px;">DRS(TM) Kernel 5.15.0-generic</div>
+                <div style="color: var(--sys-text);">login as: <span class="cursor-blink">_</span></div>
             </div>
             <div class="sys-card">
-                <span class="label">terminal_auth</span>
-                <input type="password" id="pass-in" placeholder="ENTER ACCESS CODE">
-                <button class="btn btn-primary" id="login-trigger">INITIATE LINK</button>
+                <span class="label">sudo authenticate</span>
+                <input type="password" id="pass-in" placeholder="[password]">
+                <button class="btn btn-primary" id="login-trigger">RUN /bin/bash</button>
             </div>
         </div>
     </div>
@@ -180,95 +156,76 @@
     <!-- Traveler View -->
     <div id="view-home" class="view">
         <div class="sys-card">
-            <span class="label">current_sector</span>
-            <h2 id="loc-display" style="font-size: 20px; font-weight: bold; margin: 0;">SCANNING...</h2>
+            <span class="label">ls /sys/class/location</span>
+            <div id="loc-display" style="color: var(--sys-accent);">searching nodes...</div>
         </div>
         <div class="sys-card" id="audio-card">
-            <span class="label">neuro_audio_link</span>
-            <div id="audio-status" class="mono" style="font-size: 10px; margin-bottom: 10px;">AUTO_INITIALIZING...</div>
-            <div id="active-pl-name" class="mono" style="font-size: 12px; color: var(--sys-accent);">...</div>
+            <span class="label">service audio-engine status</span>
+            <div id="audio-status" style="color: #d29922; margin-bottom: 10px;">[Initializing]</div>
+            <div id="active-pl-name" style="color: var(--sys-terminal); font-size: 11px;">$ null</div>
         </div>
         <div id="yt-wrapper"><div id="yt-player"></div></div>
     </div>
 
     <!-- Watcher Dashboard -->
     <div id="view-monitor" class="view">
-        <h2 class="mono" style="font-size: 16px; color: var(--sys-accent); margin-bottom: 1.5rem; border-bottom: 1px solid var(--sys-border); padding-bottom: 10px;">Command Dashboard</h2>
-        
+        <span class="label">top -n 1 /subjects</span>
         <div id="subject-info" class="sys-card">
-            <span class="label">subject_telemetry</span>
-            <div class="dash-grid">
-                <div><div class="label" style="font-size: 8px;">COORDINATES</div><div id="dash-coords" class="stat-val mono">--</div></div>
-                <div><div class="label" style="font-size: 8px;">LAST_SYNC</div><div id="dash-sync" class="stat-val mono" style="font-size: 12px;">--</div></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div><div class="label" style="font-size: 9px;">GPS_COORDS</div><div id="dash-coords" style="color:#fff;">--</div></div>
+                <div><div class="label" style="font-size: 9px;">LAST_ACK</div><div id="dash-sync" style="color:#fff;">--</div></div>
             </div>
         </div>
 
         <div class="sys-card">
-            <span class="label">uplink_commands</span>
-            <input type="text" id="cmd-input" placeholder="ENCRYPT MESSAGE...">
+            <span class="label">echo "msg" > /dev/ttyS0</span>
+            <input type="text" id="cmd-input" placeholder="command string...">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button class="btn btn-alert" onclick="sendCmd('ALERT')">FORCE_ALERT</button>
-                <button class="btn btn-primary" onclick="sendCmd('MSG')">SEND_DATA</button>
+                <button class="btn btn-alert" onclick="sendCmd('ALERT')">SIGTERM</button>
+                <button class="btn btn-primary" onclick="sendCmd('MSG')">WRITE</button>
             </div>
-            <button class="btn btn-ghost" style="margin-top:10px; font-size: 10px;" onclick="sendCmd('CALL')">REQUEST_CALLBACK</button>
-        </div>
-
-        <div id="live-trace" class="sys-card" style="height: 150px; background: #000; overflow: hidden; position: relative;">
-             <span class="label">scan_trace</span>
-             <div id="trace-line" style="position: absolute; top:0; left:0; width:100%; height:1px; background: var(--sys-accent); opacity: 0.5;"></div>
         </div>
     </div>
 
-    <!-- Config/Uplink hidden in Watcher mode -->
+    <!-- Config -->
     <div id="view-config" class="view">
-        <span class="label">system_registry</span>
+        <span class="label">cat >> /etc/playlists.conf</span>
         <div class="sys-card">
-            <input type="text" id="pl-name-in" placeholder="ALIAS">
-            <input type="text" id="pl-url-in" placeholder="YT_PL_UPLINK">
-            <button class="btn btn-primary" onclick="addPlaylist()">ADD_TO_DB</button>
+            <input type="text" id="pl-name-in" placeholder="alias">
+            <input type="text" id="pl-url-in" placeholder="https://youtube.com/...">
+            <button class="btn btn-primary" onclick="addPlaylist()">mount -a</button>
         </div>
-        <div id="playlist-list" style="margin-top: 1rem;"></div>
-        <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert); margin-top:2rem;">TERMINATE_SESSION</button>
-    </div>
-
-    <div id="view-uplink" class="view">
-        <div class="sys-card" style="text-align: center; padding: 40px 20px;">
-            <button class="btn btn-primary" id="gps-trigger">EMIT_GPS_BURST</button>
-            <p id="ping-ts" class="mono" style="font-size: 10px; color: var(--sys-dim); margin-top: 20px;">STATIONARY</p>
-        </div>
+        <div id="playlist-list"></div>
+        <button class="btn btn-ghost" onclick="logout()" style="color:var(--sys-alert); margin-top:2rem;">shutdown -h now</button>
     </div>
 
     <!-- Media Controls -->
     <div id="media-bar" onclick="openExpanded()">
-        <div class="media-info" style="flex:1;"><div id="track-title" class="mono" style="font-size: 10px; color: var(--sys-accent);">DRS_RADIO</div></div>
-        <div class="media-controls" style="display:flex; gap:10px;">
-            <button class="m-btn" onclick="event.stopPropagation(); player.previousVideo()" style="background:none; border:none; color:#fff;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-            <button class="m-btn" id="m-play" onclick="event.stopPropagation(); togglePlay()" style="background:none; border:none; color:var(--sys-accent);"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-            <button class="m-btn" onclick="event.stopPropagation(); player.nextVideo()" style="background:none; border:none; color:#fff;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+        <div id="track-title" style="font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px;">DRS_PLAYER</div>
+        <div style="display:flex; gap:15px; align-items: center;">
+            <button onclick="event.stopPropagation(); togglePlay()" style="background:none; border:none; color:var(--sys-terminal); cursor:pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
         </div>
     </div>
 
     <div id="media-expanded">
-        <div style="width: 50px; height: 2px; background: var(--sys-border); margin: 0 auto 1.5rem auto;"></div>
-        <div class="art-box" style="width: 100%; aspect-ratio: 1; border: 1px solid var(--sys-border); background: #000; overflow: hidden; margin-bottom: 2rem;">
-            <img id="exp-thumb" src="" style="width:100%; height:100%; object-fit:cover; opacity: 0.7;">
+        <div style="margin-bottom: 1.5rem; color: var(--sys-terminal);">mount /dev/media0 /mnt/audio...</div>
+        <div style="width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--sys-border); margin-bottom: 2rem; border-radius: 4px; overflow: hidden;">
+            <img id="exp-thumb" src="" style="width:100%; height:100%; object-fit:cover;">
         </div>
-        <h3 id="exp-title" class="mono" style="text-align:center; color:#fff; font-size:14px; margin-bottom: 2rem;">...</h3>
-        <div style="display: flex; justify-content: space-around; align-items: center; margin-top: auto; padding-bottom: 2rem;">
-            <button class="m-btn" onclick="player.previousVideo()" style="background:none; border:none; color:#fff;"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-            <button class="m-btn" onclick="togglePlay()" style="background: var(--sys-accent); color:#000; border-radius:50%; width:70px; height:70px; display:flex; align-items:center; justify-content:center; box-shadow: 0 0 20px var(--sys-accent); border:none;"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-            <button class="m-btn" onclick="player.nextVideo()" style="background:none; border:none; color:#fff;"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+        <div id="exp-title" style="color:#fff; font-size:14px; margin-bottom: 2rem;">...</div>
+        <div style="display: flex; justify-content: center; gap: 30px; margin-top: auto; padding-bottom: 3rem;">
+            <button onclick="player.previousVideo()" style="background:none; border:none; color:var(--sys-text); cursor:pointer;"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+            <button onclick="togglePlay()" style="background: var(--sys-terminal); color:#000; border-radius:50%; width:60px; height:60px; display:flex; align-items:center; justify-content:center; border:none; cursor:pointer;"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+            <button onclick="player.nextVideo()" style="background:none; border:none; color:var(--sys-text); cursor:pointer;"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
         </div>
-        <button class="btn btn-ghost" onclick="closeExpanded()" style="margin-top: 1rem;">CLOSE_LINK</button>
+        <button class="btn btn-ghost" onclick="closeExpanded()">umount</button>
     </div>
 
     <nav class="bottom-nav" id="hud">
-        <div class="nav-item active" onclick="nav('home')">status</div>
-        <div class="nav-item" onclick="nav('uplink')">uplink</div>
-        <div class="nav-item" onclick="nav('config')">config</div>
+        <div class="nav-item active" onclick="nav('home')">~/home</div>
+        <div class="nav-item" onclick="nav('monitor')">~/top</div>
+        <div class="nav-item" onclick="nav('config')">~/etc</div>
     </nav>
-
-    <div id="toast" class="toast">LINK_OK</div>
 
     <script>
         const fbConfig = {
@@ -287,26 +244,26 @@
         let playlists = JSON.parse(localStorage.getItem('drs_pl_v3') || '[]');
         let currentPlaylistId = localStorage.getItem('drs_curr_pl');
 
-        // Blade Runner Rain Effect
+        // Reactive Rain Effect
         const canvas = document.getElementById('digital-rain');
         const ctx = canvas.getContext('2d');
         let columns = Math.floor(window.innerWidth / 20);
         let drops = Array(columns).fill(1);
 
         function drawRain() {
-            ctx.fillStyle = 'rgba(3, 4, 5, 0.1)';
+            ctx.fillStyle = 'rgba(13, 15, 18, 0.15)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            ctx.fillStyle = isPlaying ? `rgba(0, 242, 255, ${0.3 + audioIntensity})` : '#003333';
-            ctx.font = '12px monospace';
+            ctx.fillStyle = isPlaying ? `rgba(63, 185, 80, ${0.1 + audioIntensity})` : 'rgba(48, 54, 61, 0.2)';
+            ctx.font = '11px monospace';
 
             for (let i = 0; i < drops.length; i++) {
-                const text = String.fromCharCode(Math.random() * 128);
+                const text = String.fromCharCode(0x30A0 + Math.random() * 96);
                 ctx.fillText(text, i * 20, drops[i] * 20);
                 
-                const speed = isPlaying ? (audioIntensity * 3) : 1;
-                if (drops[i] * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0;
-                drops[i] += speed;
+                const speed = isPlaying ? (1 + audioIntensity * 5) : 1;
+                if (drops[i] * 20 > canvas.height && Math.random() > 0.98) drops[i] = 0;
+                drops[i] += speed * 0.5;
             }
         }
         setInterval(drawRain, 50);
@@ -320,17 +277,10 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Audio Logic
+        // YouTube Logic
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('yt-player', {
-                playerVars: { 
-                    'listType': 'playlist', 
-                    'autoplay': 1, 
-                    'enablejsapi': 1, 
-                    'controls': 0, 
-                    'playsinline': 1,
-                    'mute': 1 // Mute initially to allow autoplay
-                },
+                playerVars: { 'listType': 'playlist', 'autoplay': 1, 'controls': 0, 'playsinline': 1, 'mute': 1 },
                 events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
             });
         }
@@ -341,19 +291,16 @@
                 e.target.cuePlaylist({ list: listId });
                 document.getElementById('media-bar').style.display = 'flex';
                 
-                // Show current playlist name
                 const activePl = playlists.find(p => p.url === currentPlaylistId);
-                if (activePl) document.getElementById('active-pl-name').innerText = activePl.name;
+                if (activePl) document.getElementById('active-pl-name').innerText = `$ ${activePl.name}`;
                 
-                // Set interval to check for autoplay success
                 const checkAutoStart = setInterval(() => {
-                    if (player.getPlayerState() === YT.PlayerState.CUED) {
-                        player.playVideo();
-                    } else if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                    if (player.getPlayerState() === YT.PlayerState.CUED) player.playVideo();
+                    else if (player.getPlayerState() === YT.PlayerState.PLAYING) {
                         clearInterval(checkAutoStart);
-                        document.getElementById('audio-status').innerText = "LINK_ACTIVE";
+                        document.getElementById('audio-status').innerText = "[Active]";
                     }
-                }, 1000);
+                }, 1500);
             }
         }
 
@@ -363,18 +310,18 @@
                 const data = player.getVideoData();
                 document.getElementById('track-title').innerText = data.title;
                 document.getElementById('exp-title').innerText = data.title;
-                document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/maxresdefault.jpg`;
-                document.getElementById('audio-status').innerText = "LINK_ACTIVE";
+                document.getElementById('exp-thumb').src = `https://img.youtube.com/vi/${data.video_id}/mqdefault.jpg`;
+                document.getElementById('audio-status').innerText = "[Active]";
                 simulateAudio();
-            } else if (ev.data === YT.PlayerState.PAUSED) {
-                document.getElementById('audio-status').innerText = "LINK_PAUSED";
+            } else {
+                document.getElementById('audio-status').innerText = "[Paused]";
             }
         }
 
         function simulateAudio() {
             if (!isPlaying) { audioIntensity = 0; return; }
-            audioIntensity = 0.2 + (Math.random() * 0.8);
-            setTimeout(simulateAudio, 150);
+            audioIntensity = 0.1 + (Math.random() * 0.9);
+            setTimeout(simulateAudio, 100);
         }
 
         function togglePlay() {
@@ -383,13 +330,11 @@
         }
 
         function parsePlaylistId(url) {
-            if (url.includes('list=')) {
-                return new URLSearchParams(url.split('?')[1]).get('list');
-            }
+            if (url.includes('list=')) return new URLSearchParams(url.split('?')[1]).get('list');
             return url;
         }
 
-        // Login & Sessions
+        // Sessions
         document.getElementById('login-trigger').onclick = () => {
             const p = document.getElementById('pass-in').value;
             const role = p === '1122' ? 'traveler' : (p === '1212' ? 'watcher' : null);
@@ -401,56 +346,32 @@
 
         function initSession(role) {
             document.getElementById('view-login').style.display = 'none';
-            if (role === 'traveler') {
-                nav('home');
-                document.getElementById('hud').style.display = 'grid';
-                listenForCmds();
-            } else {
-                document.getElementById('view-monitor').style.display = 'block';
-                initWatcher();
-            }
+            document.getElementById('hud').style.display = 'grid';
+            if (role === 'traveler') { nav('home'); } 
+            else { nav('monitor'); initWatcher(); }
             db.ref('trip/presence/' + role).set(true);
             db.ref('trip/presence/' + role).onDisconnect().remove();
         }
 
-        // Dashboard Functions (Watcher)
         function initWatcher() {
             db.ref('trip/location').on('value', snap => {
                 const data = snap.val();
                 if (!data) return;
                 document.getElementById('dash-coords').innerText = `${data.lat.toFixed(3)}, ${data.lng.toFixed(3)}`;
                 document.getElementById('dash-sync').innerText = new Date(data.ts).toLocaleTimeString();
-                document.getElementById('trace-line').style.top = (Math.random() * 100) + '%';
             });
         }
 
         function sendCmd(type) {
             const msg = document.getElementById('cmd-input').value || type;
             db.ref('trip/command').set({ type, msg, ts: Date.now() });
-            showToast("CMD_TRANSMITTED");
         }
 
-        // Command Listener (Traveler)
-        function listenForCmds() {
-            db.ref('trip/command').on('value', snap => {
-                const cmd = snap.val();
-                if (!cmd || Date.now() - cmd.ts > 5000) return;
-                const box = document.getElementById('incoming-cmd');
-                const text = document.getElementById('cmd-text');
-                text.innerText = `${cmd.type}: ${cmd.msg}`;
-                box.style.display = 'block';
-                setTimeout(() => box.style.display = 'none', 5000);
-                if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
-            });
-        }
-
-        // Navigation
         window.nav = (v) => {
             document.querySelectorAll('.view').forEach(e => e.style.display='none');
-            const target = document.getElementById(`view-${v}`);
-            if (target) target.style.display='block';
+            document.getElementById(`view-${v}`).style.display='block';
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(n => n.innerText.toLowerCase() === v);
+            const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(n => n.onclick.toString().includes(v));
             if (activeNav) activeNav.classList.add('active');
             if (v === 'config') renderPL();
         };
@@ -467,9 +388,9 @@
         function renderPL() {
             const list = document.getElementById('playlist-list');
             list.innerHTML = playlists.map((p, i) => `
-                <div class="sys-card" style="display:flex; justify-content:space-between; align-items:center; padding: 10px;">
-                    <span class="mono" style="font-size:11px; cursor:pointer;" onclick="selectPL('${p.url}')">${p.name}</span>
-                    <button onclick="delPL(${i})" style="background:none; border:none; color:var(--sys-alert); font-size:10px;">X</button>
+                <div class="sys-card" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="cursor:pointer; color:var(--sys-terminal);" onclick="selectPL('${p.url}')">${p.name}</span>
+                    <button onclick="delPL(${i})" style="background:none; border:none; color:var(--sys-alert); cursor:pointer;">rm -f</button>
                 </div>
             `).join('');
         }
@@ -492,29 +413,7 @@
 
         function openExpanded() { document.getElementById('media-expanded').style.display='flex'; }
         function closeExpanded() { document.getElementById('media-expanded').style.display='none'; }
-        function showToast(m) {
-            const t = document.getElementById('toast');
-            t.innerText = m; t.style.display='block';
-            setTimeout(()=>t.style.display='none', 2000);
-        }
 
-        // GPS Pulse
-        document.getElementById('gps-trigger').onclick = () => {
-            navigator.geolocation.getCurrentPosition(pos => {
-                db.ref('trip/location').set({
-                    lat: pos.coords.latitude,
-                    lng: pos.coords.longitude,
-                    ts: new Date().toISOString()
-                });
-                document.getElementById('ping-ts').innerText = "SYNC_LOCKED: " + new Date().toLocaleTimeString();
-                document.getElementById('loc-display').innerText = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
-                showToast("BURST_EMITTED");
-            }, err => {
-                showToast("GPS_FAILURE");
-            });
-        };
-
-        // Auto-login if session exists
         const savedRole = localStorage.getItem('drs_role');
         if (savedRole) initSession(savedRole);
     </script>
