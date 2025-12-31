@@ -2,219 +2,310 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SafeJourney | Family Trip Tracker</title>
-    <!-- Firebase v9 Compat Scripts -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>DRS-ONE | Tactical Sync</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         :root {
-            --bg: #020617;
-            --card-bg: #0f172a;
-            --card-border: rgba(255, 255, 255, 0.08);
-            --accent: #38bdf8;
-            --accent-hover: #0ea5e9;
-            --text-main: #f8fafc;
-            --text-dim: #94a3b8;
-            --success: #22c55e;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --drs-black: #000000;
+            --drs-obsidian: #0a0a0c;
+            --drs-glass: rgba(18, 18, 22, 0.8);
+            --drs-accent: #007AFF;
+            --drs-text: #ffffff;
+            --drs-text-dim: #636366;
+            --drs-border: rgba(255, 255, 255, 0.08);
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
 
         body {
             margin: 0; padding: 0;
-            font-family: var(--font-sans);
-            background-color: var(--bg);
-            color: var(--text-main);
+            background: var(--drs-black);
+            color: var(--drs-text);
             min-height: 100vh;
-            display: flex; flex-direction: column;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        #app-loader {
-            position: fixed; inset: 0; background: var(--bg); z-index: 9999;
-            display: flex; align-items: center; justify-content: center;
+        /* Tactical Views */
+        .view {
+            display: none;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: calc(2rem + var(--safe-top)) 1.5rem calc(7rem + var(--safe-bottom));
+            flex: 1;
+            overflow-y: auto;
+            scrollbar-width: none;
         }
 
-        .container {
-            width: 100%; max-width: 500px; margin: 0 auto; padding: 1rem 1rem 5rem 1rem;
-            display: none; animation: fadeIn 0.3s ease-out;
+        /* Precision Components */
+        .drs-card {
+            background: var(--drs-glass);
+            backdrop-filter: blur(40px) saturate(150%);
+            -webkit-backdrop-filter: blur(40px) saturate(150%);
+            border: 1px solid var(--drs-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
         }
 
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .drs-label {
+            font-size: 0.6rem;
+            font-weight: 800;
+            color: var(--drs-text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
 
-        /* Navigation Bar */
+        .drs-value {
+            font-size: 1.4rem;
+            font-weight: 200;
+            letter-spacing: -0.02em;
+        }
+
+        /* Technical Inputs */
+        input {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--drs-border);
+            background: rgba(255, 255, 255, 0.03);
+            color: white;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--drs-accent);
+            outline: none;
+        }
+
+        /* Command Buttons */
+        .btn {
+            width: 100%;
+            padding: 1.1rem;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: var(--drs-accent);
+            color: #fff;
+        }
+
+        .btn-primary:active { opacity: 0.8; transform: translateY(1px); }
+
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            border: 1px solid var(--drs-border);
+        }
+
+        /* Navigation HUD */
         .bottom-nav {
-            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-            width: 100%; max-width: 500px;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(10px);
-            display: none; grid-template-columns: repeat(4, 1fr);
-            border-top: 1px solid var(--card-border);
-            padding: 0.75rem 0; z-index: 900;
+            position: fixed;
+            bottom: calc(1.5rem + var(--safe-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 400px;
+            background: rgba(10, 10, 12, 0.95);
+            border: 1px solid var(--drs-border);
+            border-radius: 12px;
+            display: none;
+            grid-template-columns: repeat(3, 1fr);
+            padding: 0.5rem;
+            z-index: 1000;
         }
 
         .nav-item {
-            display: flex; flex-direction: column; align-items: center;
-            font-size: 0.7rem; color: var(--text-dim); cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.8rem;
+            border-radius: 8px;
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--drs-text-dim);
+            transition: color 0.3s;
         }
 
-        .nav-item.active { color: var(--accent); }
-        .nav-icon { font-size: 1.25rem; margin-bottom: 2px; }
-
-        /* UI Elements */
-        .card {
-            background: var(--card-bg); border-radius: 1.25rem;
-            padding: 1.25rem; border: 1px solid var(--card-border);
-            margin-bottom: 1rem; box-shadow: var(--shadow);
+        .nav-item.active {
+            color: var(--drs-accent);
+            background: rgba(0, 122, 255, 0.05);
         }
 
-        .card-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
-
-        .btn {
-            width: 100%; padding: 0.9rem; border-radius: 0.75rem; border: none;
-            font-weight: 600; cursor: pointer; transition: 0.2s;
-            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        /* Media Frame */
+        .media-frame { 
+            position: relative; 
+            padding-bottom: 56.25%; 
+            height: 0; 
+            border-radius: 4px; 
+            overflow: hidden; 
+            background: #000; 
+            margin-top: 1rem; 
+            border: 1px solid var(--drs-border);
         }
+        .media-frame iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; filter: grayscale(0.2); }
 
-        .btn-primary { background: var(--accent); color: #000; }
-        .btn-ghost { background: #1e293b; color: white; }
-
-        input {
-            width: 100%; padding: 0.8rem 1rem; border-radius: 0.75rem;
-            border: 1px solid var(--card-border); background: #1e293b; color: white;
-            outline: none; margin-bottom: 0.5rem;
-        }
-
-        /* Widgets */
-        .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-        .weather-val { font-size: 1.25rem; font-weight: 700; }
-
-        .video-container {
-            position: relative; padding-bottom: 56.25%; height: 0; border-radius: 0.75rem; overflow: hidden;
-            margin-top: 0.5rem; background: #000;
-        }
-        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-
-        .urgent-alert { border: 2px solid var(--warning); background: #451a03; }
-
-        .toast {
-            position: fixed; top: 2rem; left: 50%; transform: translateX(-50%);
-            background: var(--success); color: white; padding: 0.8rem 1.5rem;
-            border-radius: 2rem; z-index: 10000; display: none; font-weight: 600;
+        #app-loader {
+            position: fixed; inset: 0; background: var(--drs-black); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
         }
 
         .spinner {
-            width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.1);
-            border-top: 2px solid #000; border-radius: 50%; animation: spin 1s linear infinite;
+            width: 20px; height: 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top: 2px solid var(--drs-accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
         }
+
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        .toast {
+            position: fixed; top: calc(1rem + var(--safe-top)); left: 50%; transform: translateX(-50%);
+            background: var(--drs-accent); color: white; padding: 0.7rem 1.4rem;
+            border-radius: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;
+            display: none; z-index: 10001;
+        }
     </style>
 </head>
 <body>
 
     <div id="app-loader">
-        <div class="spinner" style="border-top-color: var(--accent);"></div>
+        <div class="spinner"></div>
     </div>
 
-    <!-- Login View -->
-    <div id="view-login" class="container" style="display: block; margin-top: 15vh;">
-        <div class="card" style="text-align: center; padding: 2.5rem 2rem;">
-            <h1>SafeJourney</h1>
-            <p style="color: var(--text-dim); margin-bottom: 2rem;">Family Travel Companion</p>
-            <input type="text" id="login-user" placeholder="Username (watched/mum)">
-            <input type="password" id="login-pass" placeholder="Password">
-            <button class="btn btn-primary" id="btn-login">Enter System</button>
-            <p id="login-err" style="color: var(--danger); display: none; margin-top: 1rem;">Invalid credentials.</p>
+    <!-- Auth View -->
+    <div id="view-login" class="view" style="display: flex; align-items: center; justify-content: center; height: 100vh; padding-top: 0;">
+        <div style="width: 100%;">
+            <header style="text-align: center; margin-bottom: 3rem;">
+                <h1 style="font-size: 1.8rem; font-weight: 900; letter-spacing: 0.3em; margin: 0; text-indent: 0.3em;">DRS-ONE</h1>
+                <div style="height: 1px; width: 40px; background: var(--drs-accent); margin: 1rem auto;"></div>
+                <p style="color: var(--drs-text-dim); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;">Terminal Access</p>
+            </header>
+            
+            <div class="drs-card">
+                <span class="drs-label">Identity Verify</span>
+                <input type="text" id="user-field" placeholder="USER_ID">
+                <input type="password" id="pass-field" placeholder="SECURE_PASSCODE">
+                <button class="btn btn-primary" id="login-btn">Initialize Connection</button>
+                <p id="login-error" style="color: #FF3B30; font-size: 0.7rem; font-weight: 700; margin-top: 1rem; display: none; text-align: center; text-transform: uppercase;">Auth Failure</p>
+            </div>
         </div>
     </div>
 
-    <!-- Traveler Home Tab -->
-    <div id="view-home" class="container">
-        <header style="margin-bottom: 1.5rem;">
-            <p style="color: var(--text-dim); font-size: 0.85rem;">Good day, traveler</p>
-            <h2>Your Journey</h2>
+    <!-- Traveler Home -->
+    <div id="view-home" class="view">
+        <header style="margin-bottom: 2.5rem;">
+            <span class="drs-label">Active Deployment</span>
+            <h2 id="home-city" style="font-size: 2rem; font-weight: 300; margin: 0; letter-spacing: -0.02em;">AWAITING GPS...</h2>
         </header>
 
-        <div id="traveler-alerts"></div>
+        <div id="traveler-alerts-area"></div>
 
-        <div class="card">
-            <div class="card-label">Current Environment</div>
-            <h3 id="geo-location">Locating...</h3>
-            <div class="weather-grid" style="margin-top: 1rem;">
-                <div><div class="card-label">Temp</div><div class="weather-val" id="weather-temp">--°C</div></div>
-                <div><div class="card-label">Condition</div><div class="weather-val" id="weather-desc">Clear</div></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="drs-card" style="margin-bottom: 0;">
+                <span class="drs-label">Ambient</span>
+                <div id="home-weather" style="font-weight: 700; font-size: 0.9rem; text-transform: uppercase;">SYNCING...</div>
+            </div>
+            <div class="drs-card" style="margin-bottom: 0;">
+                <span class="drs-label">Thermal</span>
+                <div id="home-temp" class="drs-value">--</div>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-label">Media Player</div>
-            <div id="player-placeholder" style="color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 1rem;">
-                No playlist configured. Visit Settings.
-            </div>
-            <div id="player-wrapper" style="display: none;">
-                <div class="video-container">
-                    <iframe id="yt-player" frameborder="0" allowfullscreen></iframe>
+        <div class="drs-card">
+            <span class="drs-label">Communication Stream</span>
+            <div id="media-player-container">
+                <div style="text-align: center; padding: 2rem; border: 1px dashed var(--drs-border); border-radius: 4px;">
+                    <p style="font-size: 0.7rem; font-weight: 700; color: var(--drs-text-dim); text-transform: uppercase;">Media Node Inactive</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Traveler Status Tab -->
-    <div id="view-status" class="container">
-        <h2>Safety Updates</h2>
-        <div class="card" style="text-align: center; padding: 2rem 1.5rem;">
-            <button class="btn btn-primary" id="btn-update-loc" style="height: 60px;">Share Location Now</button>
-            <p id="status-last-loc" class="card-label" style="margin-top: 1rem;">Last shared: Never</p>
+    <!-- Traveler Status -->
+    <div id="view-status" class="view">
+        <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 2rem; text-transform: uppercase; letter-spacing: 0.1em;">Logistics Node</h2>
+        
+        <div class="drs-card" style="text-align: center; padding: 3rem 1.5rem;">
+            <button class="btn btn-primary" id="share-gps-btn" style="height: 60px; font-size: 0.9rem;">
+                Push GPS Coordinates
+            </button>
+            <p id="last-ping-label" style="font-size: 0.6rem; color: var(--drs-text-dim); margin-top: 1.5rem; font-weight: 800; text-transform: uppercase;">Satellite Link Standby</p>
         </div>
-        <div class="card">
-            <div class="card-label">Custom Message</div>
-            <input type="text" id="status-msg" placeholder="e.g. Traffic is heavy...">
-            <button class="btn btn-ghost" id="btn-send-msg">Send Update</button>
+
+        <div class="drs-card">
+            <span class="drs-label">Encrypted Update</span>
+            <input type="text" id="status-text" placeholder="Entry data...">
+            <button class="btn btn-ghost" id="send-status-btn">Commit to Log</button>
         </div>
     </div>
 
-    <!-- Traveler Settings Tab -->
-    <div id="view-settings" class="container">
-        <h2>App Settings</h2>
-        <div class="card">
-            <div class="card-label">YouTube Playlist ID</div>
-            <input type="text" id="setting-playlist" placeholder="PL... (Playlist ID)">
-            <p style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 1rem;">Enter the ID found after 'list=' in a YouTube URL</p>
-            <button class="btn btn-primary" onclick="saveSettings()">Save Configuration</button>
+    <!-- Settings -->
+    <div id="view-settings" class="view">
+        <h2 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 2rem; text-transform: uppercase; letter-spacing: 0.1em;">System Core</h2>
+        
+        <div class="drs-card">
+            <span class="drs-label">API Configuration</span>
+            <input type="text" id="playlist-id-field" placeholder="YOUTUBE_PLAYLIST_ID">
+            <button class="btn btn-primary" id="save-playlist-btn">Sync Node</button>
         </div>
-        <button class="btn btn-ghost" onclick="location.reload()">Log Out</button>
+
+        <button class="btn" style="color: #FF3B30; background: transparent; font-size: 0.7rem; border: 1px solid rgba(255,59,48,0.2);" onclick="appLogout()">Disconnect Session</button>
     </div>
 
-    <!-- Watcher View (Separate) -->
-    <div id="view-watcher" class="container">
-        <header style="margin-bottom: 1rem;">
-            <h2>Trip Monitor</h2>
+    <!-- Watcher View -->
+    <div id="view-watcher" class="view">
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
+            <div>
+                <span class="drs-label">Tactical Monitor</span>
+                <h2 style="font-size: 1.6rem; font-weight: 300; margin: 0;">Remote Stream</h2>
+            </div>
+            <button class="btn btn-ghost" style="width: auto; padding: 0.5rem 1rem; font-size: 0.6rem; border-radius: 4px;" onclick="appLogout()">Close</button>
         </header>
-        <div class="card">
-            <div class="card-label">Alert Traveler</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-                <button class="btn btn-ghost" style="font-size: 0.8rem;" onclick="sendAlert('Call me now')">📞 Call</button>
-                <button class="btn btn-ghost" style="font-size: 0.8rem;" onclick="sendAlert('Message update')">💬 Msg</button>
+
+        <div id="watcher-content">
+            <div class="drs-card" style="text-align: center; color: var(--drs-text-dim); padding: 4rem 1rem;">
+                Awaiting Remote Handshake...
             </div>
         </div>
-        <div id="watcher-data"></div>
     </div>
 
-    <!-- Bottom Nav -->
     <nav class="bottom-nav" id="main-nav">
-        <div class="nav-item" onclick="navTo('home')"><span class="nav-icon">🏠</span>Home</div>
-        <div class="nav-item" onclick="navTo('status')"><span class="nav-icon">📍</span>Status</div>
-        <div class="nav-item" onclick="navTo('settings')"><span class="nav-icon">⚙️</span>Settings</div>
+        <div class="nav-item active" onclick="navTo('home')">Monitor</div>
+        <div class="nav-item" onclick="navTo('status')">Uplink</div>
+        <div class="nav-item" onclick="navTo('settings')">Config</div>
     </nav>
 
-    <div id="toast" class="toast">Update Sent</div>
+    <div id="toast" class="toast">Operation Successful</div>
 
     <script>
-        // --- Firebase & State ---
         const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
             authDomain: "trip-tracker-57ce0.firebaseapp.com",
@@ -228,187 +319,166 @@
 
         const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        let userRole = '';
 
-        // --- Core App Logic ---
-        window.onload = () => {
-            document.getElementById('app-loader').style.display = 'none';
-            if (localStorage.getItem('yt_playlist')) {
-                document.getElementById('setting-playlist').value = localStorage.getItem('yt_playlist');
-            }
-        };
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginBtn = document.getElementById('login-btn');
+            const savedRole = localStorage.getItem('drs_role');
 
-        document.getElementById('btn-login').addEventListener('click', () => {
-            const u = document.getElementById('login-user').value.toLowerCase().trim();
-            const p = document.getElementById('login-pass').trim();
-
-            if (u === 'watched' && p === '1122') {
-                userRole = 'traveler';
-                initTraveler();
-            } else if (u !== '' && p === '1212') {
-                userRole = 'watcher';
-                initWatcher();
+            if (savedRole) {
+                initApp(savedRole);
             } else {
-                document.getElementById('login-err').style.display = 'block';
+                document.getElementById('view-login').style.display = 'flex';
             }
+
+            document.getElementById('app-loader').style.display = 'none';
+
+            loginBtn.addEventListener('click', () => {
+                const u = document.getElementById('user-field').value.toLowerCase().trim();
+                const p = document.getElementById('pass-field').value.trim();
+                const err = document.getElementById('login-error');
+
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<div class="spinner"></div>';
+
+                setTimeout(() => {
+                    if (u === 'watched' && p === '1122') {
+                        localStorage.setItem('drs_role', 'traveler');
+                        initApp('traveler');
+                    } else if (u !== '' && p === '1212') {
+                        localStorage.setItem('drs_role', 'watcher');
+                        initApp('watcher');
+                    } else {
+                        err.style.display = 'block';
+                        loginBtn.disabled = false;
+                        loginBtn.innerHTML = 'Initialize Connection';
+                    }
+                }, 800);
+            });
         });
 
-        // --- Navigation ---
-        function navTo(view) {
-            document.querySelectorAll('.container').forEach(c => c.style.display = 'none');
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            document.getElementById(`view-${view}`).style.display = 'block';
-            const navItems = document.querySelectorAll('.nav-item');
-            if (view === 'home') navItems[0].classList.add('active');
-            if (view === 'status') navItems[1].classList.add('active');
-            if (view === 'settings') navItems[2].classList.add('active');
+        function initApp(role) {
+            document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+            if (role === 'traveler') {
+                navTo('home');
+                document.getElementById('main-nav').style.display = 'grid';
+                loadTraveler();
+            } else {
+                document.getElementById('view-watcher').style.display = 'block';
+                document.getElementById('main-nav').style.display = 'none';
+                loadWatcher();
+            }
         }
 
-        // --- Traveler Functions ---
-        function initTraveler() {
-            navTo('home');
-            document.getElementById('main-nav').style.display = 'grid';
-            refreshEnvironmentalData();
-            loadPlaylist();
+        window.appLogout = () => {
+            localStorage.removeItem('drs_role');
+            location.reload();
+        };
+
+        window.navTo = (v) => {
+            document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
+            const target = document.getElementById(`view-${v}`);
+            target.style.display = 'block';
             
-            // Listen for Watcher Alerts
+            const items = document.querySelectorAll('.nav-item');
+            items.forEach(i => i.classList.remove('active'));
+            const map = { 'home': 0, 'status': 1, 'settings': 2 };
+            if (map[v] !== undefined) items[map[v]].classList.add('active');
+        };
+
+        function loadTraveler() {
+            refreshEnv();
+            syncMedia();
+            
+            const savedId = localStorage.getItem('drs_yt');
+            if (savedId) document.getElementById('playlist-id-field').value = savedId;
+
             db.ref('trip/alerts').on('value', snap => {
-                const container = document.getElementById('traveler-alerts');
-                container.innerHTML = '';
+                const area = document.getElementById('traveler-alerts-area');
+                area.innerHTML = '';
                 const data = snap.val();
                 if (data) {
                     Object.keys(data).forEach(id => {
-                        const alert = data[id];
                         const div = document.createElement('div');
-                        div.className = 'card urgent-alert';
+                        div.className = 'drs-card';
+                        div.style.borderColor = 'var(--drs-accent)';
                         div.innerHTML = `
-                            <div class="card-label" style="color:var(--warning)">Watcher Alert</div>
-                            <div style="font-weight:700;">${alert.text}</div>
-                            <button class="btn btn-primary" style="width:auto; height:30px; padding:0 1rem; font-size:0.7rem; margin-top:0.5rem;" onclick="dismissAlert('${id}')">Got it</button>
+                            <span class="drs-label" style="color:var(--drs-accent)">Incoming Priority</span>
+                            <div style="font-weight:700; font-size:1rem; margin:0.5rem 0;">${data[id].text}</div>
+                            <button class="btn btn-primary" style="height:34px; font-size:0.7rem;" onclick="dismissAlert('${id}')">Acknowledge</button>
                         `;
-                        container.appendChild(div);
-                        if (Notification.permission === "granted") new Notification("New Alert", { body: alert.text });
+                        area.appendChild(div);
                     });
                 }
             });
         }
 
-        async function refreshEnvironmentalData() {
+        async function refreshEnv() {
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const { latitude, longitude } = pos.coords;
-                
-                // 1. Reverse Geocoding (Closest Town) - OpenStreetMap
                 try {
-                    const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                    const geoData = await geo.json();
-                    const city = geoData.address.city || geoData.address.town || geoData.address.village || "Unknown Area";
-                    document.getElementById('geo-location').innerText = `Near ${city}`;
-                } catch(e) { document.getElementById('geo-location').innerText = "Location Unknown"; }
-
-                // 2. Weather Data - Open-Meteo
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+                    const data = await res.json();
+                    document.getElementById('home-temp').innerText = `${Math.round(data.current_weather.temperature)}°C`;
+                    document.getElementById('home-weather').innerText = "Vantage Stable";
+                } catch(e) {}
                 try {
-                    const weather = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-                    const wData = await weather.json();
-                    document.getElementById('weather-temp').innerText = `${wData.current_weather.temperature}°C`;
-                    document.getElementById('weather-desc').innerText = getWeatherDesc(wData.current_weather.weathercode);
-                } catch(e) { console.error("Weather error"); }
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                    const data = await res.json();
+                    document.getElementById('home-city').innerText = (data.address.city || data.address.town || data.address.village || "TRANSMITTING").toUpperCase();
+                } catch(e) {}
             });
         }
 
-        function getWeatherDesc(code) {
-            const map = { 0: 'Clear', 1: 'Mainly Clear', 2: 'Cloudy', 3: 'Overcast', 45: 'Fog', 61: 'Rain', 95: 'Stormy' };
-            return map[code] || 'Stable';
-        }
-
-        function loadPlaylist() {
-            const playlistId = localStorage.getItem('yt_playlist');
-            if (playlistId) {
-                document.getElementById('player-placeholder').style.display = 'none';
-                document.getElementById('player-wrapper').style.display = 'block';
-                document.getElementById('yt-player').src = `https://www.youtube.com/embed/videoseries?list=${playlistId}`;
+        function syncMedia() {
+            const id = localStorage.getItem('drs_yt');
+            const container = document.getElementById('media-player-container');
+            if (id) {
+                container.innerHTML = `<div class="media-frame"><iframe src="https://www.youtube.com/embed/videoseries?list=${id}" frameborder="0"></iframe></div>`;
             }
         }
 
-        function saveSettings() {
-            const id = document.getElementById('setting-playlist').value.trim();
-            localStorage.setItem('yt_playlist', id);
-            loadPlaylist();
-            showToast("Settings Saved");
-        }
+        document.getElementById('save-playlist-btn').addEventListener('click', () => {
+            const id = document.getElementById('playlist-id-field').value.trim();
+            localStorage.setItem('drs_yt', id);
+            syncMedia();
+            showToast("System Synced");
+        });
 
-        async function dismissAlert(id) {
-            await db.ref(`trip/alerts/${id}`).remove();
-        }
-
-        // --- Status Logic ---
-        document.getElementById('btn-update-loc').addEventListener('click', updateLocation);
-        document.getElementById('btn-send-msg').addEventListener('click', sendMessage);
-
-        async function updateLocation() {
-            const btn = document.getElementById('btn-update-loc');
-            btn.innerHTML = '<div class="spinner"></div>';
+        document.getElementById('share-gps-btn').addEventListener('click', function() {
+            this.innerHTML = '<div class="spinner"></div>';
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const ts = new Date().toISOString();
-                const data = {
-                    lat: pos.coords.latitude,
-                    lng: pos.coords.longitude,
-                    timestamp: ts,
-                    mapLink: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
-                };
-                await db.ref('trip/location').set(data);
-                await db.ref('trip/messages').push({ text: "📍 GPS Update Shared", timestamp: ts });
-                document.getElementById('status-last-loc').innerText = "Last shared: " + new Date().toLocaleTimeString();
-                showToast("Location Sync'd");
-                btn.innerHTML = 'Share Location Now';
+                await db.ref('trip/location').set({ lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: ts });
+                await db.ref('trip/log').push({ text: "SAT_PING_INITIALIZED", timestamp: ts });
+                document.getElementById('last-ping-label').innerText = "LAST UPLINK: " + new Date().toLocaleTimeString();
+                this.innerHTML = "Push GPS Coordinates";
+                showToast("Data Sent");
             });
-        }
+        });
 
-        async function sendMessage() {
-            const input = document.getElementById('status-msg');
-            if (!input.value.trim()) return;
-            await db.ref('trip/messages').push({
-                text: input.value,
-                timestamp: new Date().toISOString()
-            });
-            input.value = '';
-            showToast("Message Sent");
-        }
+        document.getElementById('send-status-btn').addEventListener('click', async () => {
+            const inp = document.getElementById('status-text');
+            if (!inp.value.trim()) return;
+            await db.ref('trip/log').push({ text: inp.value, timestamp: new Date().toISOString() });
+            inp.value = '';
+            showToast("Log Committed");
+        });
 
-        // --- Watcher Functions ---
-        function initWatcher() {
-            document.querySelectorAll('.container').forEach(c => c.style.display = 'none');
-            document.getElementById('view-watcher').style.display = 'block';
+        window.dismissAlert = async (id) => { await db.ref(`trip/alerts/${id}`).remove(); };
 
+        function loadWatcher() {
             db.ref('trip').on('value', snap => {
                 const data = snap.val();
                 if (!data) return;
-                
-                let html = `
-                    <div class="card">
-                        <div class="card-label">Last Known Position</div>
-                        <h3>${data.location?.lat.toFixed(4)}, ${data.location?.lng.toFixed(4)}</h3>
-                        <a href="${data.location?.mapLink}" target="_blank" class="btn btn-primary" style="margin-top:1rem;">Open Maps</a>
-                    </div>
-                    <div class="card">
-                        <div class="card-label">Recent Messages</div>
-                `;
-                
-                if (data.messages) {
-                    Object.values(data.messages).reverse().slice(0, 5).forEach(m => {
-                        html += `<div style="padding:0.5rem 0; border-bottom:1px solid #1e293b;">
-                            <div style="font-size:0.9rem;">${m.text}</div>
-                            <div style="font-size:0.7rem; color:var(--text-dim);">${new Date(m.timestamp).toLocaleTimeString()}</div>
-                        </div>`;
-                    });
-                }
-                html += '</div>';
-                document.getElementById('watcher-data').innerHTML = html;
-            });
-        }
 
-        async function sendAlert(txt) {
-            await db.ref('trip/alerts').push({ text: txt, timestamp: new Date().toISOString() });
-            showToast("Alert Broadcasted");
+                const loc = data.location;
+                const logs = data.log ? Object.values(data.log).reverse().slice(0, 6) : [];
+
+                let html = `
+                    <div class="drs-card">
+                        <span class="drs-label">Global Position</span>
+                        <h3 style="margin:0.2rem 0; font-size:1.4rem;">${loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}` : 'SIGNAL LOST'}</h3>
+                        <p style="font-size:0.6rem; color:var(--drs-text-dim); margin-top:0.5rem; font-weight:800            showToast("Alert Broadcasted");
         }
 
         function showToast(txt) {
