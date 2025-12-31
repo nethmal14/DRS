@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DRS-ONE | Secure Kernel</title>
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs - Using Compat for broader compatibility with provided config -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -90,7 +90,6 @@
         .btn-ghost { background: transparent; color: var(--sys-text); border: 1px solid var(--sys-border); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Auth specific */
         .auth-toggle {
             text-align: center; margin-top: 15px; font-size: 11px; color: var(--sys-dim); cursor: pointer;
         }
@@ -234,7 +233,7 @@
     </nav>
 
     <script>
-        // CRITICAL: USER PROVIDED FIREBASE CONFIG
+        // YOUR SPECIFIC CONFIGURATION
         const fbConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
             authDomain: "trip-tracker-57ce0.firebaseapp.com",
@@ -245,15 +244,17 @@
             appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
         };
 
-        firebase.initializeApp(fbConfig);
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(fbConfig);
+        }
+        
         const auth = firebase.auth();
         const db = firebase.database();
         
-        let currentUser = null;
         let isRegistering = false;
         let trackWatchId = null;
 
-        // UI State Management
         const nav = (v) => {
             document.querySelectorAll('.view').forEach(e => e.style.display='none');
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -270,7 +271,6 @@
             }
         };
 
-        // Auth Logic
         document.getElementById('auth-toggle-btn').onclick = () => {
             isRegistering = !isRegistering;
             document.getElementById('auth-label').innerText = isRegistering ? 'CREATE_IDENTITY' : 'SIGN_IN';
@@ -280,8 +280,8 @@
         };
 
         document.getElementById('auth-trigger').onclick = async () => {
-            const email = document.getElementById('auth-email').value;
-            const pass = document.getElementById('auth-pass').value;
+            const email = document.getElementById('auth-email').value.trim();
+            const pass = document.getElementById('auth-pass').value.trim();
             const role = document.getElementById('auth-role').value;
 
             if(!email || !pass) return notify("CREDENTIALS_MISSING", "alert");
@@ -306,7 +306,6 @@
 
         auth.onAuthStateChanged(user => {
             if (user) {
-                currentUser = user;
                 document.getElementById('view-auth').style.display = 'none';
                 document.getElementById('hud').style.display = 'grid';
                 document.getElementById('profile-email').innerText = user.email;
@@ -323,7 +322,6 @@
                     nav('dash');
                 });
             } else {
-                document.getElementById('view-auth').style.display = 'flex';
                 document.getElementById('hud').style.display = 'none';
                 document.querySelectorAll('.view').forEach(e => e.style.display='none');
                 document.getElementById('view-auth').style.display = 'flex';
@@ -341,7 +339,6 @@
             setTimeout(() => toast.remove(), 4000);
         }
 
-        // Traveler Features
         function initTraveler() {
             db.ref(`live/${auth.currentUser.uid}/watchers`).on('value', snap => {
                 const count = snap.numChildren();
@@ -387,7 +384,6 @@
             notify("SIGNAL_TRANSMITTED");
         }
 
-        // Watcher Features
         function linkToTarget() {
             const targetUid = document.getElementById('target-uid-in').value.trim();
             if(!targetUid) return notify("TARGET_ID_REQUIRED", "alert");
@@ -397,7 +393,7 @@
             watcherRef.onDisconnect().remove();
 
             document.getElementById('watcher-monitor').style.display = 'block';
-            document.getElementById('watcher-feed').innerHTML = ''; // Clear old feed
+            document.getElementById('watcher-feed').innerHTML = ''; 
             
             db.ref(`live/${targetUid}/location`).on('value', snap => {
                 const data = snap.val();
@@ -410,7 +406,7 @@
                 }
             });
 
-            db.ref(`live/${targetUid}/messages`).limitToLast(10).off(); // Prevent double listeners
+            db.ref(`live/${targetUid}/messages`).limitToLast(10).off(); 
             db.ref(`live/${targetUid}/messages`).limitToLast(10).on('child_added', snap => {
                 const m = snap.val();
                 const div = document.createElement('div');
