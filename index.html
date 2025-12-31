@@ -122,7 +122,7 @@
                     <div class="card-label">Real-time Telemetry</div>
                     <div id="loc-status" style="font-size: 28px; font-weight: 600; margin-bottom: 5px;">Awaiting GPS...</div>
                     <div id="loc-ts" style="font-size: 11px; color: var(--text-dim);">Last Update: ---</div>
-                    <button onclick="app.updateLocationManual()" style="margin-top: 20px; background: rgba(255,255,255,0.1);">Force Update</button>
+                    <button id="update-loc-btn" onclick="app.updateLocationManual()" style="margin-top: 20px; background: var(--ubuntu-orange);">Update Location</button>
                 </div>
 
                 <div class="card">
@@ -239,6 +239,11 @@
                 this.initFireflies();
                 this.syncCloud();
                 if (role === 'watched') this.startTracking();
+                
+                // Hide location update for watcher
+                if (role === 'watcher') {
+                    document.getElementById('update-loc-btn').style.display = 'none';
+                }
             },
 
             logout: function() { 
@@ -281,7 +286,16 @@
                         this.activePlaylistId = active.pid;
                         document.getElementById('active-stream-title').innerText = active.name;
                         document.getElementById('active-stream-desc').innerText = "Synchronized stream ready for playback.";
-                        this.yt.load(active.pid, false); // Load but don't force immediate UI expansion unless playing
+                        this.yt.load(active.pid, false);
+                    }
+                });
+
+                // Listen for location (Watcher view update)
+                db.ref('trip/location').on('value', snap => {
+                    const data = snap.val();
+                    if (data) {
+                        document.getElementById('loc-status').innerText = data.lat.toFixed(5) + ", " + data.lng.toFixed(5);
+                        document.getElementById('loc-ts').innerText = "Last Update: " + new Date(data.ts).toLocaleTimeString();
                     }
                 });
 
@@ -291,9 +305,9 @@
                     const container = document.getElementById('msg-stream');
                     if (!msgs) return;
                     container.innerHTML = Object.keys(msgs).map(k => `
-                        <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:12px; margin-bottom:8px; border-left:3px solid var(--ubuntu-orange);">
-                            <div style="font-size:10px; color:var(--ubuntu-orange); margin-bottom:4px;">${msgs[k].user}</div>
-                            <div style="font-size:14px;">${msgs[k].text}</div>
+                        <div class="card" style="padding:15px; margin-bottom:10px; border-left:4px solid var(--ubuntu-orange);">
+                            <div style="font-size:10px; color:var(--ubuntu-orange); font-weight:700; margin-bottom:5px; text-transform:uppercase;">${msgs[k].user}</div>
+                            <div style="font-size:14px; line-height:1.4;">${msgs[k].text}</div>
                         </div>
                     `).reverse().join('');
                 });
@@ -314,7 +328,9 @@
 
             startTracking: function() {
                 if (navigator.geolocation) {
-                    navigator.geolocation.watchPosition(this.updateLoc, null, { enableHighAccuracy: true });
+                    navigator.geolocation.watchPosition(this.updateLoc.bind(this), (err) => {
+                        console.error("GPS Error", err);
+                    }, { enableHighAccuracy: true });
                 }
             },
 
@@ -327,14 +343,16 @@
 
             updateLocationManual: function() {
                 if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(this.updateLoc);
+                    navigator.geolocation.getCurrentPosition(this.updateLoc.bind(this), (err) => {
+                        alert("Location access denied or unavailable.");
+                    }, { enableHighAccuracy: true });
                 }
             },
 
             yt: {
                 load: function(pid, forceOpen = true) {
                     document.getElementById('media-container').classList.remove('hidden');
-                    if (app.player) {
+                    if (app.player && typeof app.player.loadPlaylist === 'function') {
                         app.player.loadPlaylist({ list: pid, listType: 'playlist' });
                     } else {
                         app.player = new YT.Player('yt-player-hidden', {
