@@ -146,14 +146,24 @@
             border-radius: 28px;
             transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             opacity: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         .media-container.expanded .song-expansion {
-            max-height: 350px;
+            max-height: 380px;
             opacity: 1;
             padding: 15px;
-            overflow-y: auto;
         }
+
+        .queue-scroll {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 5px;
+        }
+
+        .queue-scroll::-webkit-scrollbar { width: 4px; }
+        .queue-scroll::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
 
         .track-info {
             flex: 1;
@@ -200,14 +210,16 @@
         .setting-row label { font-size: 14px; color: var(--text-secondary); }
         input[type="range"] { width: 150px; margin: 0; }
 
+        /* Important for background play: don't use display:none or 0 height on container */
         #yt-player-container {
             position: fixed;
             top: -100px;
             left: -100px;
-            width: 1px;
-            height: 1px;
-            opacity: 0;
+            width: 10px;
+            height: 10px;
+            opacity: 0.01;
             pointer-events: none;
+            z-index: -1;
         }
 
         .playlist-item {
@@ -222,6 +234,23 @@
         }
         .playlist-item:hover { background: rgba(255,255,255,0.1); }
         .playlist-item.active { background: var(--accent); color: white; }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            margin-bottom: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+        .queue-item:hover { background: rgba(255,255,255,0.08); }
+        .queue-item.active { background: var(--accent); }
+        .queue-item-idx { opacity: 0.4; font-size: 10px; width: 15px; }
+        .queue-item-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .delete-btn {
             position: absolute;
@@ -307,9 +336,12 @@
                 </div>
             </div>
             <div class="song-expansion" id="song-expansion">
-                <div style="font-size: 11px; opacity: 0.5; margin-bottom: 10px; padding: 0 5px;" id="expansion-playlist-name">Current Queue</div>
-                <div id="queue-list">
-                    <!-- Queue list injected here -->
+                <div style="font-size: 11px; opacity: 0.5; margin-bottom: 12px; padding: 0 5px; display: flex; justify-content: space-between;" id="expansion-playlist-name">
+                    <span>Current Queue</span>
+                    <span id="queue-count">0 tracks</span>
+                </div>
+                <div class="queue-scroll" id="queue-list">
+                    <!-- Queue items -->
                 </div>
             </div>
         </div>
@@ -345,6 +377,11 @@
                     <option value="0">Aura (Fluid)</option>
                     <option value="1">Pulse (Geometric)</option>
                     <option value="2">Orbit (Cosmic)</option>
+                    <option value="3">Stardust (Particles)</option>
+                    <option value="4">Lava (Organic Heat)</option>
+                    <option value="5">Matrix (Grids)</option>
+                    <option value="6">Hyperdrive (Tunnel)</option>
+                    <option value="7">Neon Waves (Static)</option>
                 </select>
             </div>
             <div class="setting-row">
@@ -357,7 +394,7 @@
             </div>
             <div class="setting-row">
                 <label>Complexity</label>
-                <input type="range" id="param-complex" min="1.0" max="10.0" step="0.5" value="4.0">
+                <input type="range" id="param-complex" min="1.0" max="15.0" step="0.5" value="4.0">
             </div>
             <div class="setting-row">
                 <label>Hue Shift</label>
@@ -412,6 +449,10 @@
                 return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
             }
 
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+
             void main() {
                 vec2 uv = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
                 float t = time * 0.2 * speed;
@@ -419,7 +460,7 @@
                 
                 vec3 color = vec3(0.0);
 
-                if (mode < 0.5) {
+                if (mode < 0.5) { // Aura
                     vec2 p = uv;
                     for(float i = 1.0; i < complexity; i++){
                         p.x += 0.3 / i * sin(i * 3.0 * p.y + t + reactPulse);
@@ -427,14 +468,14 @@
                     }
                     color = vec3(0.5 + 0.5 * sin(p.x + t), 0.5 + 0.5 * cos(p.y + t), 0.5 + 0.5 * sin(p.x + p.y));
                 } 
-                else if (mode < 1.5) {
+                else if (mode < 1.5) { // Pulse
                     float d = length(uv);
                     d = sin(d * complexity - t * 2.0) + reactPulse;
                     d = abs(d);
                     d = 0.1 / d;
                     color = vec3(d * 0.2, d * 0.5, d);
                 }
-                else {
+                else if (mode < 2.5) { // Orbit
                     for(float i = 1.0; i < complexity; i++){
                         uv.x += 0.2 * sin(t + uv.y * i + reactPulse);
                         uv.y += 0.2 * cos(t + uv.x * i + reactPulse);
@@ -442,9 +483,53 @@
                     float f = 1.0 / length(uv);
                     color = vec3(f * 0.1, f * 0.2, f * 0.4);
                 }
+                else if (mode < 3.5) { // Stardust
+                    vec2 gv = fract(uv * complexity) - 0.5;
+                    vec2 id = floor(uv * complexity);
+                    float m = 0.0;
+                    for(float y=-1.0; y<=1.0; y++) {
+                        for(float x=-1.0; x<=1.0; x++) {
+                            vec2 offs = vec2(x, y);
+                            float n = hash(id + offs);
+                            float size = fract(n * 345.32);
+                            float d = length(gv - offs - vec2(n, fract(n*10.0)) + 0.5);
+                            float star = 0.005 / (d * d);
+                            m += star * size * (sin(t + n * 6.28) * 0.5 + 0.5 + reactPulse);
+                        }
+                    }
+                    color = vec3(m * 0.5, m * 0.8, m);
+                }
+                else if (mode < 4.5) { // Lava
+                    vec2 p = uv * 2.0;
+                    for(float i = 1.0; i < complexity; i++){
+                        p.x += 0.4 / i * sin(i * p.y + t + reactPulse);
+                        p.y += 0.4 / i * cos(i * p.x + t + reactPulse);
+                    }
+                    float f = 0.5 + 0.5 * sin(p.x + p.y);
+                    color = vec3(f, f * 0.2, f * 0.1);
+                }
+                else if (mode < 5.5) { // Matrix
+                    vec2 gv = fract(uv * complexity + vec2(0.0, t)) - 0.5;
+                    float line = smoothstep(0.48, 0.5, 1.0 - abs(gv.x)) + smoothstep(0.48, 0.5, 1.0 - abs(gv.y));
+                    color = vec3(0.0, line * (0.5 + reactPulse), 0.0);
+                }
+                else if (mode < 6.5) { // Hyperdrive
+                    float a = atan(uv.y, uv.x);
+                    float r = length(uv);
+                    float s = complexity / (r + 0.01);
+                    float f = sin(a * 10.0 + t * 5.0 + s) + reactPulse;
+                    color = vec3(f * 0.1, f * 0.3, f * 0.6) / r;
+                }
+                else { // Neon Waves
+                    float f = 0.0;
+                    for(float i=0.0; i<complexity; i++) {
+                        f += 0.01 / abs(uv.y + sin(uv.x * (i + 1.0) + t + reactPulse) * 0.2);
+                    }
+                    color = vec3(f * 0.2, f * 0.4, f);
+                }
 
-                color = mix(vec3(0.02), color, 0.4);
-                vec3 hsv = vec3(fract(hueShift / 6.28 + length(uv)*0.1), 0.5, length(color));
+                color = mix(vec3(0.01), color, 0.5);
+                vec3 hsv = vec3(fract(hueShift / 6.28 + length(uv)*0.05), 0.6, clamp(length(color), 0.0, 1.0));
                 gl_FragColor = vec4(hsv2rgb(hsv), 1.0);
             }
         `;
@@ -452,15 +537,19 @@
         const App = {
             user: null,
             player: null,
-            playlists: [], // Array of { key, id, name }
+            playlists: [],
             activePlaylistName: 'Current Queue',
+            activePlaylistId: null,
             isExpanded: false,
+            trackCache: {}, 
             visuals: { scene: null, camera: null, renderer: null, uniforms: null },
 
             init() {
                 this.initVisuals();
                 this.setupEventListeners();
                 this.checkSavedLogin();
+                this.loadSavedSettings();
+                
                 window.onYouTubeIframeAPIReady = () => this.initYT();
                 const tag = document.createElement('script');
                 tag.src = "https://www.youtube.com/iframe_api";
@@ -508,12 +597,61 @@
                 });
             },
 
+            loadSavedSettings() {
+                const saved = localStorage.getItem('visionary_settings');
+                if (saved) {
+                    try {
+                        const settings = JSON.parse(saved);
+                        Object.keys(settings).forEach(key => {
+                            const val = settings[key];
+                            if (this.visuals.uniforms[key]) {
+                                this.visuals.uniforms[key].value = val;
+                                // Update UI elements
+                                const el = document.getElementById(`param-${key}`);
+                                if (el) el.value = val;
+                            }
+                        });
+                    } catch(e) { console.error("Error loading settings", e); }
+                }
+                
+                // Load last active playlist
+                this.activePlaylistId = localStorage.getItem('visionary_last_playlist_id');
+                this.activePlaylistName = localStorage.getItem('visionary_last_playlist_name') || 'Current Queue';
+            },
+
+            saveSettings() {
+                const settings = {
+                    speed: this.visuals.uniforms.speed.value,
+                    reactivity: this.visuals.uniforms.reactivity.value,
+                    complexity: this.visuals.uniforms.complexity.value,
+                    hueShift: this.visuals.uniforms.hueShift.value,
+                    mode: this.visuals.uniforms.mode.value
+                };
+                localStorage.setItem('visionary_settings', JSON.stringify(settings));
+                
+                if (this.activePlaylistId) {
+                    localStorage.setItem('visionary_last_playlist_id', this.activePlaylistId);
+                    localStorage.setItem('visionary_last_playlist_name', this.activePlaylistName);
+                }
+            },
+
             initYT() {
                 this.player = new YT.Player('player', {
-                    height: '1', width: '1',
-                    playerVars: { 'autoplay': 0, 'controls': 0, 'listType': 'playlist' },
+                    height: '10', width: '10',
+                    playerVars: { 
+                        'autoplay': 0, 
+                        'controls': 0, 
+                        'listType': 'playlist',
+                        'playsinline': 1, // Key for mobile background
+                        'enablejsapi': 1
+                    },
                     events: {
-                        'onReady': () => console.log('YT Ready'),
+                        'onReady': () => {
+                            console.log('YT Ready');
+                            if (this.activePlaylistId) {
+                                this.loadPlaylist(this.activePlaylistId, false); // false = cue only, don't autoplay on load
+                            }
+                        },
                         'onStateChange': (e) => this.onPlayerStateChange(e)
                     }
                 });
@@ -543,6 +681,8 @@
 
             signOut() {
                 localStorage.removeItem('visionary_user');
+                localStorage.removeItem('visionary_last_playlist_id');
+                localStorage.removeItem('visionary_last_playlist_name');
                 location.reload();
             },
 
@@ -580,9 +720,7 @@
 
             deletePlaylist(key, e) {
                 e.stopPropagation();
-                if (confirm('Delete this playlist from library?')) {
-                    db.ref(`users/${this.user}/playlists/${key}`).remove();
-                }
+                db.ref(`users/${this.user}/playlists/${key}`).remove();
             },
 
             renderPlaylists() {
@@ -598,6 +736,8 @@
                     `;
                     div.onclick = () => { 
                         this.activePlaylistName = pl.name;
+                        this.activePlaylistId = pl.id;
+                        this.saveSettings();
                         this.loadPlaylist(pl.id); 
                         this.toggleModal('playlist-modal'); 
                     };
@@ -605,10 +745,14 @@
                 });
             },
 
-            loadPlaylist(id) {
-                this.player.loadPlaylist({ list: id, listType: 'playlist', index: 0, suggestedQuality: 'small' });
-                document.getElementById('track-status').innerText = 'Loading Playlist...';
-                document.getElementById('expansion-playlist-name').innerText = this.activePlaylistName;
+            loadPlaylist(id, autoPlay = true) {
+                if (autoPlay) {
+                    this.player.loadPlaylist({ list: id, listType: 'playlist', index: 0, suggestedQuality: 'small' });
+                } else {
+                    this.player.cuePlaylist({ list: id, listType: 'playlist', index: 0, suggestedQuality: 'small' });
+                }
+                document.getElementById('track-status').innerText = autoPlay ? 'Syncing...' : 'Playlist Loaded';
+                document.getElementById('expansion-playlist-name').innerHTML = `<span>${this.activePlaylistName}</span>`;
             },
 
             onPlayerStateChange(event) {
@@ -616,36 +760,52 @@
                 document.getElementById('play-icon').style.display = (event.data === YT.PlayerState.PLAYING) ? 'none' : 'block';
                 document.getElementById('pause-icon').style.display = (event.data === YT.PlayerState.PLAYING) ? 'block' : 'none';
                 
-                if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.BUFFERING) {
+                if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.BUFFERING || event.data === YT.PlayerState.CUED) {
                     this.updateTrackInfo();
                 }
             },
 
             updateTrackInfo() {
                 const videoData = this.player.getVideoData();
-                if (videoData) {
+                if (videoData && videoData.title) {
                     document.getElementById('current-track-name').innerText = videoData.title;
-                    document.getElementById('track-status').innerText = videoData.author;
+                    document.getElementById('track-status').innerText = videoData.author || this.activePlaylistName;
+                    this.trackCache[videoData.video_id] = videoData.title;
                     this.renderQueue();
                 }
             },
 
             renderQueue() {
-                const list = this.player.getPlaylist();
+                const playlist = this.player.getPlaylist();
+                if (!playlist) return;
+
                 const currentIdx = this.player.getPlaylistIndex();
                 const queueEl = document.getElementById('queue-list');
-                queueEl.innerHTML = '';
+                document.getElementById('queue-count').innerText = `${playlist.length} tracks`;
                 
-                if (list) {
-                    list.forEach((id, i) => {
+                if (queueEl.children.length !== playlist.length) {
+                    queueEl.innerHTML = '';
+                    playlist.forEach((id, i) => {
                         const div = document.createElement('div');
-                        div.className = `playlist-item ${i === currentIdx ? 'active' : ''}`;
-                        div.innerText = `${i + 1}. Track ID: ${id}`;
-                        div.onclick = (e) => {
-                            e.stopPropagation();
-                            this.player.playVideoAt(i);
-                        };
+                        div.className = `queue-item ${i === currentIdx ? 'active' : ''}`;
+                        div.id = `q-item-${i}`;
+                        const title = this.trackCache[id] || `Track ${i + 1}`;
+                        div.innerHTML = `
+                            <div class="queue-item-idx">${i + 1}</div>
+                            <div class="queue-item-title">${title}</div>
+                        `;
+                        div.onclick = (e) => { e.stopPropagation(); this.player.playVideoAt(i); };
                         queueEl.appendChild(div);
+                    });
+                } else {
+                    playlist.forEach((id, i) => {
+                        const div = document.getElementById(`q-item-${i}`);
+                        if (div) {
+                            div.classList.toggle('active', i === currentIdx);
+                            if (this.trackCache[id]) {
+                                div.querySelector('.queue-item-title').innerText = this.trackCache[id];
+                            }
+                        }
                     });
                 }
             },
@@ -684,6 +844,7 @@
                         if (p === 'complex') this.visuals.uniforms.complexity.value = val;
                         if (p === 'hue') this.visuals.uniforms.hueShift.value = val;
                         if (p === 'mode') this.visuals.uniforms.mode.value = val;
+                        this.saveSettings();
                     });
                 });
             }
