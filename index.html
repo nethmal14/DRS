@@ -1,377 +1,232 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sonic Fluid</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <style>
-        :root {
-            --glass: rgba(255, 255, 255, 0.03);
-            --glass-heavy: rgba(255, 255, 255, 0.08);
-            --border: rgba(255, 255, 255, 0.1);
-        }
+<meta charset="UTF-8">
+<title>Liquid Audio Player</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background: #000; color: white; overflow: hidden;
-            font-family: 'Inter', -apple-system, sans-serif;
-        }
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-        /* Reactive Fluid Canvas */
-        #fluid-canvas {
-            position: fixed; inset: 0; z-index: 0;
-            filter: blur(40px) saturate(1.5);
-        }
+<!-- YouTube API -->
+<script src="https://www.youtube.com/iframe_api"></script>
 
-        .glass {
-            background: var(--glass);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border: 1px solid var(--border);
-        }
+<style>
+:root{
+  --glass: rgba(255,255,255,0.14);
+  --border: rgba(255,255,255,0.25);
+}
+html,body{
+  margin:0;
+  height:100%;
+  background:black;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display";
+  overflow:hidden;
+  color:white;
+}
 
-        /* Ultra Compact Player Pod */
-        .compact-pod {
-            width: 280px;
-            border-radius: 40px;
-            padding: 20px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            z-index: 10;
-        }
+/* ===== BACKGROUND ===== */
+#bg{
+  position:fixed;
+  inset:0;
+  filter: blur(50px) saturate(180%);
+  z-index:-1;
+}
+.orb{
+  position:absolute;
+  width:420px;
+  height:420px;
+  border-radius:50%;
+  background:radial-gradient(circle at 30% 30%, #9fdcff, transparent 60%);
+  transition: transform 0.6s ease;
+}
+.orb.pink{background:radial-gradient(circle at 30% 30%, #ff9fdc, transparent 60%)}
+.orb.green{background:radial-gradient(circle at 30% 30%, #9fffcb, transparent 60%)}
 
-        .modal {
-            position: fixed; inset: 0; z-index: 100;
-            display: flex; align-items: center; justify-content: center;
-            background: rgba(0,0,0,0.7);
-            opacity: 0; pointer-events: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .modal.open { opacity: 1; pointer-events: auto; }
-        .modal-content {
-            transform: scale(0.9) translateY(10px);
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .modal.open .modal-content { transform: scale(1) translateY(0); }
+/* ===== LOGIN ===== */
+#login{
+  position:absolute; inset:0;
+  display:flex; justify-content:center; align-items:center;
+  backdrop-filter:blur(30px);
+}
+.card{
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:26px;
+  padding:24px;
+  width:260px;
+}
+input,button{
+  width:100%; margin-top:10px;
+  padding:10px;
+  border-radius:14px;
+  border:none;
+}
 
-        .btn-icon {
-            @apply p-2 rounded-full hover:bg-white/10 transition-all active:scale-90 text-white/40 hover:text-white;
-        }
+/* ===== PLAYER CARD ===== */
+#playerCard{
+  position:absolute;
+  bottom:28px;
+  left:50%;
+  transform:translateX(-50%);
+  width:320px;
+  background:var(--glass);
+  backdrop-filter:blur(25px);
+  border:1px solid var(--border);
+  border-radius:26px;
+  padding:14px;
+  display:none;
+}
+.controls{
+  display:flex;
+  justify-content:space-between;
+}
+.controls button{
+  background:rgba(255,255,255,0.2);
+  color:white;
+}
 
-        .slider {
-            -webkit-appearance: none; width: 100%; height: 2px;
-            background: rgba(255,255,255,0.1); border-radius: 1px;
-            cursor: pointer;
-        }
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 8px; height: 8px;
-            background: white; border-radius: 50%;
-        }
+/* ===== POPUP ===== */
+#popup{
+  position:absolute; inset:0;
+  background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(25px);
+  display:none;
+}
+.popup-card{
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:26px;
+  width:320px;
+  margin:80px auto;
+  padding:20px;
+}
+.playlist div{
+  padding:8px;
+  background:rgba(255,255,255,0.15);
+  border-radius:12px;
+  margin-top:6px;
+  cursor:pointer;
+}
 
-        #yt-player { position: absolute; top: -1000px; left: -1000px; opacity: 0; }
-        
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-
-        .auth-screen {
-            position: fixed; inset: 0; z-index: 200;
-            background: black; display: flex; align-items: center; justify-content: center;
-        }
-    </style>
+/* ===== HIDDEN YT ===== */
+#yt{
+  width:1px;
+  height:1px;
+  opacity:0;
+  pointer-events:none;
+}
+</style>
 </head>
-<body class="flex items-center justify-center">
 
-    <canvas id="fluid-canvas"></canvas>
-    <div id="yt-player"></div>
+<body>
 
-    <!-- Login Screen -->
-    <div id="login-screen" class="auth-screen">
-        <div class="glass compact-pod text-center space-y-6">
-            <h1 class="text-3xl font-thin tracking-[0.3em]">FLUID</h1>
-            <div class="space-y-3">
-                <input id="user-id" type="text" placeholder="Identity" class="w-full bg-white/5 border border-white/10 p-3 rounded-2xl outline-none focus:border-white/30 text-sm">
-                <input id="user-pass" type="password" placeholder="Key" class="w-full bg-white/5 border border-white/10 p-3 rounded-2xl outline-none focus:border-white/30 text-sm">
-                <button id="login-btn" onclick="handleLogin()" class="w-full bg-white text-black p-3 rounded-2xl font-bold text-sm">ENTER</button>
-            </div>
-            <p id="login-err" class="text-red-400 text-[10px] h-2"></p>
-        </div>
-    </div>
+<div id="bg">
+  <div class="orb"></div>
+  <div class="orb pink"></div>
+  <div class="orb green"></div>
+</div>
 
-    <!-- Main Compact Player -->
-    <div id="main-ui" class="opacity-0 pointer-events-none transition-all duration-1000 translate-y-4">
-        <div class="glass compact-pod space-y-4 text-center">
-            <div class="space-y-1">
-                <p id="track-name" class="text-[11px] font-medium truncate px-4 text-white/80">Signal Lost</p>
-                <p id="status-text" class="text-[7px] tracking-widest text-white/20 uppercase">Surface Mode</p>
-            </div>
+<div id="login">
+  <div class="card">
+    <h3>Login</h3>
+    <input id="u" placeholder="username">
+    <input id="p" type="password" placeholder="password">
+    <button onclick="login()">Enter</button>
+  </div>
+</div>
 
-            <!-- Controls -->
-            <div class="flex items-center justify-around px-4">
-                <button onclick="player?.previousVideo()" class="btn-icon">
-                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6V6zm3.5 6L18 6v12l-8.5-6z"/></svg>
-                </button>
-                <button onclick="togglePlay()" class="w-12 h-12 bg-white rounded-full flex items-center justify-center text-black hover:scale-105 active:scale-95 transition-all shadow-xl">
-                    <svg id="play-svg" width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                </button>
-                <button onclick="player?.nextVideo()" class="btn-icon">
-                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-                </button>
-            </div>
+<div id="playerCard">
+  <div class="controls">
+    <button onclick="playPause()">▶︎ / ❚❚</button>
+    <button onclick="next()">⏭</button>
+    <button onclick="openPopup()">🔍</button>
+  </div>
+</div>
 
-            <!-- Progress Bar -->
-            <div class="px-2">
-                <input type="range" id="seek-bar" class="slider" value="0">
-                <div class="flex justify-between text-[7px] font-mono mt-1 text-white/20">
-                    <span id="time-cur">0:00</span>
-                    <span id="time-dur">0:00</span>
-                </div>
-            </div>
+<div id="popup">
+  <div class="popup-card">
+    <input id="plInput" placeholder="YT playlist link">
+    <button onclick="addPlaylist()">Add</button>
+    <div class="playlist" id="list"></div>
+  </div>
+</div>
 
-            <!-- Tiny Footer Tools -->
-            <div class="flex justify-center space-x-6 pt-2 border-t border-white/5">
-                <button onclick="toggleModal('library-modal')" class="btn-icon">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                </button>
-                <button onclick="toggleModal('settings-modal')" class="btn-icon">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-                </button>
-            </div>
-        </div>
-    </div>
+<div id="yt"></div>
 
-    <!-- Compact Modals -->
-    <div id="library-modal" class="modal" onclick="closeModals(event)">
-        <div class="glass compact-pod modal-content flex flex-col h-[350px]" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-[9px] tracking-widest uppercase text-white/40 font-bold">Cloud Streams</h3>
-                <button onclick="toggleModal('library-modal')" class="text-white/20">×</button>
-            </div>
-            <div id="playlist-container" class="flex-1 overflow-y-auto custom-scroll space-y-1 mb-4 pr-1"></div>
-            <div class="pt-3 border-t border-white/10 space-y-2">
-                <input id="yt-input" type="text" placeholder="Playlist ID" class="w-full bg-white/5 p-2 rounded-xl text-[10px] outline-none border border-white/5 focus:border-white/20">
-                <button onclick="savePlaylist()" class="w-full bg-white text-black p-2 rounded-xl text-[9px] font-bold tracking-widest">SYNC</button>
-            </div>
-        </div>
-    </div>
+<script>
+/* ===== FIREBASE ===== */
+firebase.initializeApp({
+  apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
+  authDomain: "trip-tracker-57ce0.firebaseapp.com",
+  databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
+  projectId: "trip-tracker-57ce0"
+});
+const db = firebase.database();
 
-    <div id="settings-modal" class="modal" onclick="closeModals(event)">
-        <div class="glass compact-pod modal-content" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-[9px] tracking-widest uppercase text-white/40 font-bold">Visuals</h3>
-                <button onclick="toggleModal('settings-modal')" class="text-white/20">×</button>
-            </div>
-            <div class="space-y-4">
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="updateTheme(180, 70)" class="p-3 bg-white/5 rounded-2xl text-[8px] border border-white/5">CYAN</button>
-                    <button onclick="updateTheme(280, 60)" class="p-3 bg-white/5 rounded-2xl text-[8px] border border-white/5">PURPLE</button>
-                    <button onclick="updateTheme(20, 80)" class="p-3 bg-white/5 rounded-2xl text-[8px] border border-white/5">EMBER</button>
-                    <button onclick="updateTheme(0, 0)" class="p-3 bg-white/5 rounded-2xl text-[8px] border border-white/5">VOID</button>
-                </div>
-                <button onclick="location.reload()" class="w-full text-red-400 text-[9px] font-bold py-3 hover:bg-red-400/10 rounded-2xl transition-all">LOGOUT</button>
-            </div>
-        </div>
-    </div>
+/* ===== LOGIN ===== */
+const users={apple:"apple",orange:"orange",grape:"grape"};
+let user=null;
+function login(){
+  if(users[u.value]===p.value){
+    user=u.value;
+    login.style.display="none";
+    playerCard.style.display="block";
+    load();
+    askPermission();
+  }else alert("Invalid");
+}
 
-    <script>
-        // --- DATA & CLOUD CONFIG ---
-        const ACCOUNTS = { "apple": "apple", "orange": "orange", "grape": "grape" };
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sonic_fluid_v1';
+/* ===== YOUTUBE ===== */
+let player;
+function onYouTubeIframeAPIReady(){
+  player=new YT.Player("yt",{playerVars:{autoplay:0}});
+}
+function play(link){
+  const id=new URL(link).searchParams.get("list");
+  player.loadPlaylist({list:id});
+}
+function playPause(){
+  player.getPlayerState()==1?player.pauseVideo():player.playVideo();
+}
+function next(){player.nextVideo();}
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
+/* ===== PLAYLISTS ===== */
+function addPlaylist(){
+  db.ref("pl/"+user).push(plInput.value);
+  plInput.value="";
+}
+function load(){
+  db.ref("pl/"+user).on("value",s=>{
+    list.innerHTML="";
+    s.forEach(x=>{
+      const d=document.createElement("div");
+      d.textContent=x.val();
+      d.onclick=()=>{play(x.val());popup.style.display="none";}
+      list.appendChild(d);
+    });
+  });
+}
 
-        let player = null, isPlaying = false, isAuth = false;
+/* ===== POPUP ===== */
+function openPopup(){popup.style.display="block";}
+popup.onclick=e=>{if(e.target==popup)popup.style.display="none";}
 
-        // Secure Cloud Authentication
-        async function initAuth() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await auth.signInWithCustomToken(__initial_auth_token);
-                } else {
-                    await auth.signInAnonymously();
-                }
-                isAuth = true;
-            } catch (e) { console.error("Cloud link failure", e); }
-        }
-        initAuth();
+/* ===== PERMISSION PROMPT ===== */
+function askPermission(){
+  navigator.mediaDevices.getUserMedia({audio:true})
+  .catch(()=>{});
+}
 
-        async function handleLogin() {
-            const u = document.getElementById('user-id').value.trim().toLowerCase();
-            const p = document.getElementById('user-pass').value;
-            const err = document.getElementById('login-err');
-
-            if (!isAuth) {
-                err.innerText = "LINKING CLOUD...";
-                await initAuth();
-            }
-
-            if (ACCOUNTS[u] === p) {
-                document.getElementById('login-screen').style.display = 'none';
-                const main = document.getElementById('main-ui');
-                main.classList.remove('pointer-events-none');
-                main.classList.add('opacity-100', 'translate-y-0');
-                initData();
-            } else {
-                err.innerText = "ACCESS DENIED";
-            }
-        }
-
-        function initData() {
-            const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('playlists');
-            ref.onSnapshot(snap => {
-                const list = document.getElementById('playlist-container');
-                list.innerHTML = "";
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    const el = document.createElement('div');
-                    el.className = "flex justify-between items-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 cursor-pointer text-[9px] transition-all group";
-                    el.innerHTML = `<span class="truncate pr-4 opacity-50 font-mono">${d.id}</span>
-                                   <div class="flex space-x-3">
-                                     <button onclick="playPl('${d.id}', event)" class="text-blue-400 opacity-0 group-hover:opacity-100 font-bold">LOAD</button>
-                                     <button onclick="deletePl('${doc.id}', event)" class="text-white/20 hover:text-red-400">×</button>
-                                   </div>`;
-                    el.onclick = () => playPl(d.id);
-                    list.appendChild(el);
-                });
-            });
-        }
-
-        async function savePlaylist() {
-            const id = document.getElementById('yt-input').value.trim();
-            if(!id || !isAuth) return;
-            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('playlists').add({ id, timestamp: Date.now() });
-            document.getElementById('yt-input').value = "";
-        }
-
-        async function deletePl(id, e) {
-            e.stopPropagation();
-            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('playlists').doc(id).delete();
-        }
-
-        function playPl(id, e) {
-            if(e) e.stopPropagation();
-            player?.loadPlaylist({ list: id, listType: 'playlist' });
-            toggleModal('library-modal');
-        }
-
-        // --- YOUTUBE API ---
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
-
-        window.onYouTubeIframeAPIReady = () => {
-            player = new YT.Player('yt-player', {
-                height: '0', width: '0',
-                playerVars: { 'autoplay': 0, 'controls': 0 },
-                events: {
-                    'onStateChange': (e) => {
-                        isPlaying = (e.data === YT.PlayerState.PLAYING);
-                        const svg = document.getElementById('play-svg');
-                        svg.innerHTML = isPlaying ? `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>` : `<path d="M8 5v14l11-7z"/>`;
-                        if(isPlaying) {
-                            document.getElementById('track-name').innerText = player.getVideoData().title;
-                            document.getElementById('status-text').innerText = "Streaming Active";
-                        }
-                    },
-                    'onReady': () => setInterval(tick, 1000)
-                }
-            });
-        };
-
-        function tick() {
-            if(player?.getCurrentTime) {
-                const cur = player.getCurrentTime(), dur = player.getDuration();
-                if(dur > 0) {
-                    document.getElementById('seek-bar').value = (cur/dur)*100;
-                    document.getElementById('time-cur').innerText = fmt(cur);
-                    document.getElementById('time-dur').innerText = fmt(dur);
-                }
-            }
-        }
-        const fmt = s => Math.floor(s/60) + ":" + Math.floor(s%60).toString().padStart(2, '0');
-        function togglePlay() { isPlaying ? player.pauseVideo() : player.playVideo(); }
-        function toggleModal(id) { document.getElementById(id).classList.toggle('open'); }
-        function closeModals(e) { if(e.target.classList.contains('modal')) e.target.classList.remove('open'); }
-
-        // --- REACTIVE FLUID VISUALS ---
-        const canvas = document.getElementById('fluid-canvas');
-        const ctx = canvas.getContext('2d');
-        let width, height, particles = [];
-        let mouse = { x: -1000, y: -1000 };
-        let currentHue = 200, currentSat = 60;
-
-        class Particle {
-            constructor() { this.init(); }
-            init() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                this.vx = (Math.random() - 0.5) * 1;
-                this.vy = (Math.random() - 0.5) * 1;
-                this.radius = Math.random() * 200 + 100;
-                this.alpha = Math.random() * 0.1 + 0.05;
-            }
-            draw() {
-                const dx = this.x - mouse.x;
-                const dy = this.y - mouse.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                let pulse = 1;
-
-                if (dist < 400) {
-                    pulse = 1 + (1 - dist/400) * 1.5;
-                    this.vx += dx * 0.0001;
-                    this.vy += dy * 0.0001;
-                }
-
-                const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * pulse);
-                grad.addColorStop(0, `hsla(${currentHue}, ${currentSat}%, 50%, ${this.alpha})`);
-                grad.addColorStop(1, 'transparent');
-                
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius * pulse, 0, Math.PI*2);
-                ctx.fill();
-
-                this.x += this.vx; this.y += this.vy;
-                this.vx *= 0.98; this.vy *= 0.98;
-
-                if(this.x < -200 || this.x > width + 200 || this.y < -200 || this.y > height + 200) this.init();
-            }
-        }
-
-        function updateTheme(h, s) { 
-            currentHue = h; currentSat = s; 
-            document.getElementById('settings-modal').classList.remove('open');
-        }
-
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-            particles = Array(15).fill().map(() => new Particle());
-        }
-
-        function animate() {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0,0,width,height);
-            particles.forEach(p => p.draw());
-            requestAnimationFrame(animate);
-        }
-
-        window.onresize = resize;
-        window.onmousemove = e => { mouse.x = e.clientX; mouse.y = e.clientY; };
-        window.ontouchmove = e => { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; };
-        
-        resize();
-        animate();
-
-        document.getElementById('seek-bar').oninput = (e) => {
-            if(player) player.seekTo((e.target.value/100) * player.getDuration());
-        };
-    </script>
+/* ===== PSEUDO AUDIO REACTIVE ENGINE ===== */
+setInterval(()=>{
+  const energy=player?.getPlayerState()==1?1.4:1;
+  document.querySelectorAll(".orb").forEach(o=>{
+    o.style.transform=
+      `translate(${Math.random()*200}px,${Math.random()*200}px) scale(${energy})`;
+  });
+},500);
+</script>
 </body>
 </html>
-
