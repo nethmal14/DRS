@@ -81,7 +81,6 @@
         }
 
         select option { background: #1a1a1a; color: white; }
-
         input:focus { background: rgba(255, 255, 255, 0.1); border-color: var(--accent); }
 
         button {
@@ -109,13 +108,22 @@
             transition: opacity 1s ease;
         }
 
-        /* Glass Media Card */
-        .media-controller {
+        /* Expandable Media Controller */
+        .media-container {
             position: fixed;
             bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
-            width: 420px;
+            width: calc(100% - 40px);
+            max-width: 420px;
+            z-index: 50;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 12px;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .media-controller {
             height: 100px;
             background: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
@@ -126,7 +134,25 @@
             padding: 0 24px;
             justify-content: space-between;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            z-index: 50;
+            cursor: pointer;
+        }
+
+        .song-expansion {
+            max-height: 0;
+            overflow: hidden;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            opacity: 0;
+        }
+
+        .media-container.expanded .song-expansion {
+            max-height: 350px;
+            opacity: 1;
+            padding: 15px;
+            overflow-y: auto;
         }
 
         .track-info {
@@ -143,7 +169,7 @@
         .control-btn:hover { opacity: 1; }
         .control-btn svg { width: 24px; height: 24px; fill: currentColor; }
 
-        /* Popups */
+        /* Modals */
         .modal {
             position: fixed;
             inset: 0;
@@ -159,7 +185,8 @@
             background: rgba(30, 30, 30, 0.8);
             backdrop-filter: var(--glass-blur);
             border: 1px solid var(--glass-border);
-            width: 450px;
+            width: calc(100% - 40px);
+            max-width: 450px;
             max-height: 80vh;
             border-radius: 28px;
             padding: 24px;
@@ -169,12 +196,10 @@
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .close-btn { cursor: pointer; opacity: 0.6; }
 
-        /* Settings specific */
         .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
         .setting-row label { font-size: 14px; color: var(--text-secondary); }
         input[type="range"] { width: 150px; margin: 0; }
 
-        /* Hidden YT Player */
         #yt-player-container {
             position: fixed;
             top: -100px;
@@ -192,13 +217,27 @@
             margin-bottom: 8px;
             cursor: pointer;
             transition: 0.2s;
+            font-size: 13px;
+            position: relative;
         }
         .playlist-item:hover { background: rgba(255,255,255,0.1); }
+        .playlist-item.active { background: var(--accent); color: white; }
+
+        .delete-btn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+            color: #ff453a;
+            font-weight: bold;
+        }
+        .delete-btn:hover { opacity: 1; }
 
         .gear-btn {
             position: fixed;
             top: 30px;
-            right: 30px;
+            right: 20px;
             background: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
             border: 1px solid var(--glass-border);
@@ -215,7 +254,7 @@
         .browse-btn {
             position: fixed;
             top: 30px;
-            left: 30px;
+            left: 20px;
             background: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
             border: 1px solid var(--glass-border);
@@ -242,28 +281,36 @@
     </div>
 
     <div id="app-ui">
-        <div class="browse-btn" onclick="App.toggleModal('playlist-modal')">Library & Queue</div>
+        <div class="browse-btn" onclick="App.toggleModal('playlist-modal')">Library</div>
         
         <div class="gear-btn" onclick="App.toggleModal('settings-modal')">
             <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.81,11.69,4.81,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.5c-1.93,0-3.5-1.57-3.5-3.5 s1.57-3.5,3.5-3.5s3.5,1.57,3.5,3.5S13.93,15.5,12,15.5z"/></svg>
         </div>
 
-        <div class="media-controller">
-            <div class="controls">
-                <button class="control-btn" onclick="App.prev()">
-                    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
-                </button>
-                <button class="control-btn" id="play-pause-btn" onclick="App.togglePlayback()">
-                    <svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5v14l11-7z"/></svg>
-                    <svg viewBox="0 0 24 24" id="pause-icon" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                </button>
-                <button class="control-btn" onclick="App.next()">
-                    <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-                </button>
+        <div class="media-container" id="media-container">
+            <div class="media-controller" onclick="App.toggleExpansion()">
+                <div class="controls" onclick="event.stopPropagation()">
+                    <button class="control-btn" onclick="App.prev()">
+                        <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                    </button>
+                    <button class="control-btn" id="play-pause-btn" onclick="App.togglePlayback()">
+                        <svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5v14l11-7z"/></svg>
+                        <svg viewBox="0 0 24 24" id="pause-icon" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </button>
+                    <button class="control-btn" onclick="App.next()">
+                        <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                    </button>
+                </div>
+                <div class="track-info">
+                    <div class="track-title" id="current-track-name">No track selected</div>
+                    <div class="track-status" id="track-status">Open Library to begin</div>
+                </div>
             </div>
-            <div class="track-info">
-                <div class="track-title" id="current-track-name">No track selected</div>
-                <div class="track-status" id="track-status">Select a playlist to begin</div>
+            <div class="song-expansion" id="song-expansion">
+                <div style="font-size: 11px; opacity: 0.5; margin-bottom: 10px; padding: 0 5px;" id="expansion-playlist-name">Current Queue</div>
+                <div id="queue-list">
+                    <!-- Queue list injected here -->
+                </div>
             </div>
         </div>
     </div>
@@ -275,16 +322,13 @@
                 <h2>Library</h2>
                 <div class="close-btn" onclick="App.toggleModal('playlist-modal')">✕</div>
             </div>
-            <div style="margin-bottom: 20px;">
-                <input type="text" id="playlist-url" placeholder="Paste YouTube Playlist URL">
-                <button onclick="App.addPlaylist()">Add Playlist</button>
+            <div style="margin-bottom: 25px; display: flex; flex-direction: column; gap: 8px;">
+                <input type="text" id="playlist-name" placeholder="Playlist Name (e.g. Focus Beats)">
+                <input type="text" id="playlist-url" placeholder="YouTube Playlist URL">
+                <button onclick="App.addPlaylist()">Add to Library</button>
             </div>
             <div id="playlist-list">
                 <!-- User playlists -->
-            </div>
-            <h3 style="margin: 20px 0 10px;">Queue</h3>
-            <div id="queue-list">
-                <!-- Current queue -->
             </div>
         </div>
     </div>
@@ -319,7 +363,7 @@
                 <label>Hue Shift</label>
                 <input type="range" id="param-hue" min="0" max="6.28" step="0.1" value="0">
             </div>
-            <button style="background: rgba(255,50,50,0.2); color: #ff453a; margin-top: 20px;" onclick="location.reload()">Sign Out</button>
+            <button style="background: rgba(255,50,50,0.2); color: #ff453a; margin-top: 20px;" onclick="App.signOut()">Sign Out</button>
         </div>
     </div>
 
@@ -375,7 +419,7 @@
                 
                 vec3 color = vec3(0.0);
 
-                if (mode < 0.5) { // MODE 0: AURA (Original Fluid)
+                if (mode < 0.5) {
                     vec2 p = uv;
                     for(float i = 1.0; i < complexity; i++){
                         p.x += 0.3 / i * sin(i * 3.0 * p.y + t + reactPulse);
@@ -383,15 +427,14 @@
                     }
                     color = vec3(0.5 + 0.5 * sin(p.x + t), 0.5 + 0.5 * cos(p.y + t), 0.5 + 0.5 * sin(p.x + p.y));
                 } 
-                else if (mode < 1.5) { // MODE 1: PULSE (Geometric)
+                else if (mode < 1.5) {
                     float d = length(uv);
-                    float angle = atan(uv.y, uv.x);
                     d = sin(d * complexity - t * 2.0) + reactPulse;
                     d = abs(d);
                     d = 0.1 / d;
                     color = vec3(d * 0.2, d * 0.5, d);
                 }
-                else { // MODE 2: ORBIT (Cosmic)
+                else {
                     for(float i = 1.0; i < complexity; i++){
                         uv.x += 0.2 * sin(t + uv.y * i + reactPulse);
                         uv.y += 0.2 * cos(t + uv.x * i + reactPulse);
@@ -400,32 +443,24 @@
                     color = vec3(f * 0.1, f * 0.2, f * 0.4);
                 }
 
-                // Global Apple-style Softening
                 color = mix(vec3(0.02), color, 0.4);
-                
-                // Final Hue adjustment
                 vec3 hsv = vec3(fract(hueShift / 6.28 + length(uv)*0.1), 0.5, length(color));
                 gl_FragColor = vec4(hsv2rgb(hsv), 1.0);
             }
         `;
 
-        // --- Core App Logic ---
         const App = {
             user: null,
             player: null,
-            playlists: [],
-            currentQueue: [],
-            currentIndex: -1,
-            visuals: {
-                scene: null,
-                camera: null,
-                renderer: null,
-                uniforms: null
-            },
+            playlists: [], // Array of { key, id, name }
+            activePlaylistName: 'Current Queue',
+            isExpanded: false,
+            visuals: { scene: null, camera: null, renderer: null, uniforms: null },
 
             init() {
                 this.initVisuals();
                 this.setupEventListeners();
+                this.checkSavedLogin();
                 window.onYouTubeIframeAPIReady = () => this.initYT();
                 const tag = document.createElement('script');
                 tag.src = "https://www.youtube.com/iframe_api";
@@ -437,7 +472,6 @@
                 this.visuals.scene = new THREE.Scene();
                 this.visuals.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
                 this.visuals.camera.position.z = 1;
-
                 this.visuals.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
                 this.visuals.renderer.setPixelRatio(window.devicePixelRatio);
                 this.visuals.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -453,14 +487,12 @@
                     mode: { value: 0.0 }
                 };
 
-                const geometry = new THREE.PlaneGeometry(2, 2);
                 const material = new THREE.ShaderMaterial({
                     uniforms: this.visuals.uniforms,
                     vertexShader,
                     fragmentShader
                 });
-
-                const mesh = new THREE.Mesh(geometry, material);
+                const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
                 this.visuals.scene.add(mesh);
 
                 const animate = () => {
@@ -478,14 +510,21 @@
 
             initYT() {
                 this.player = new YT.Player('player', {
-                    height: '1',
-                    width: '1',
+                    height: '1', width: '1',
                     playerVars: { 'autoplay': 0, 'controls': 0, 'listType': 'playlist' },
                     events: {
                         'onReady': () => console.log('YT Ready'),
                         'onStateChange': (e) => this.onPlayerStateChange(e)
                     }
                 });
+            },
+
+            checkSavedLogin() {
+                const saved = localStorage.getItem('visionary_user');
+                if (saved) {
+                    this.user = saved;
+                    this.enterApp();
+                }
             },
 
             login() {
@@ -495,75 +534,90 @@
 
                 if (validUsers[u] && validUsers[u] === p) {
                     this.user = u;
-                    document.getElementById('login-screen').style.opacity = '0';
-                    setTimeout(() => {
-                        document.getElementById('login-screen').style.display = 'none';
-                        document.getElementById('app-ui').style.display = 'block';
-                        setTimeout(() => document.getElementById('app-ui').style.opacity = '1', 50);
-                    }, 800);
-                    this.loadUserData();
+                    localStorage.setItem('visionary_user', u);
+                    this.enterApp();
                 } else {
                     document.getElementById('login-error').style.display = 'block';
                 }
             },
 
+            signOut() {
+                localStorage.removeItem('visionary_user');
+                location.reload();
+            },
+
+            enterApp() {
+                document.getElementById('login-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('app-ui').style.display = 'block';
+                    setTimeout(() => document.getElementById('app-ui').style.opacity = '1', 50);
+                }, 800);
+                this.loadUserData();
+            },
+
             loadUserData() {
-                const userRef = db.ref(`users/${this.user}/playlists`);
-                userRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    this.playlists = data ? Object.values(data) : [];
+                db.ref(`users/${this.user}/playlists`).on('value', (snap) => {
+                    const data = snap.val();
+                    this.playlists = data ? Object.entries(data).map(([key, val]) => ({ key, ...val })) : [];
                     this.renderPlaylists();
                 });
             },
 
             addPlaylist() {
+                const name = document.getElementById('playlist-name').value || "Untitled Playlist";
                 const url = document.getElementById('playlist-url').value;
                 const match = url.match(/[&?]list=([^&]+)/);
                 if (match) {
-                    const listId = match[1];
-                    db.ref(`users/${this.user}/playlists`).push({ id: listId, name: 'Loading...' });
+                    db.ref(`users/${this.user}/playlists`).push({ 
+                        id: match[1],
+                        name: name
+                    });
+                    document.getElementById('playlist-name').value = '';
                     document.getElementById('playlist-url').value = '';
+                }
+            },
+
+            deletePlaylist(key, e) {
+                e.stopPropagation();
+                if (confirm('Delete this playlist from library?')) {
+                    db.ref(`users/${this.user}/playlists/${key}`).remove();
                 }
             },
 
             renderPlaylists() {
                 const list = document.getElementById('playlist-list');
                 list.innerHTML = '';
-                this.playlists.forEach((pl, idx) => {
+                this.playlists.forEach((pl) => {
                     const div = document.createElement('div');
                     div.className = 'playlist-item';
-                    div.innerHTML = `<strong>Playlist ${idx + 1}</strong><br><small>${pl.id}</small>`;
-                    div.onclick = () => this.loadPlaylist(pl.id);
+                    div.innerHTML = `
+                        <strong>${pl.name}</strong><br>
+                        <small style="opacity:0.5">${pl.id}</small>
+                        <span class="delete-btn" onclick="App.deletePlaylist('${pl.key}', event)">✕</span>
+                    `;
+                    div.onclick = () => { 
+                        this.activePlaylistName = pl.name;
+                        this.loadPlaylist(pl.id); 
+                        this.toggleModal('playlist-modal'); 
+                    };
                     list.appendChild(div);
                 });
             },
 
             loadPlaylist(id) {
-                this.player.loadPlaylist({
-                    list: id,
-                    listType: 'playlist',
-                    index: 0,
-                    startSeconds: 0,
-                    suggestedQuality: 'small'
-                });
-                this.toggleModal('playlist-modal');
-                document.getElementById('track-status').innerText = 'Buffering...';
+                this.player.loadPlaylist({ list: id, listType: 'playlist', index: 0, suggestedQuality: 'small' });
+                document.getElementById('track-status').innerText = 'Loading Playlist...';
+                document.getElementById('expansion-playlist-name').innerText = this.activePlaylistName;
             },
 
             onPlayerStateChange(event) {
-                const state = event.data;
-                const playIcon = document.getElementById('play-icon');
-                const pauseIcon = document.getElementById('pause-icon');
-
-                if (state === YT.PlayerState.PLAYING) {
-                    playIcon.style.display = 'none';
-                    pauseIcon.style.display = 'block';
-                    this.visuals.uniforms.isPlaying.value = 1.0;
+                this.visuals.uniforms.isPlaying.value = (event.data === YT.PlayerState.PLAYING) ? 1.0 : 0.0;
+                document.getElementById('play-icon').style.display = (event.data === YT.PlayerState.PLAYING) ? 'none' : 'block';
+                document.getElementById('pause-icon').style.display = (event.data === YT.PlayerState.PLAYING) ? 'block' : 'none';
+                
+                if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.BUFFERING) {
                     this.updateTrackInfo();
-                } else {
-                    playIcon.style.display = 'block';
-                    pauseIcon.style.display = 'none';
-                    this.visuals.uniforms.isPlaying.value = 0.0;
                 }
             },
 
@@ -578,25 +632,38 @@
 
             renderQueue() {
                 const list = this.player.getPlaylist();
-                const idx = this.player.getPlaylistIndex();
+                const currentIdx = this.player.getPlaylistIndex();
                 const queueEl = document.getElementById('queue-list');
                 queueEl.innerHTML = '';
                 
                 if (list) {
-                    list.slice(idx, idx + 5).forEach((item, i) => {
+                    list.forEach((id, i) => {
                         const div = document.createElement('div');
-                        div.className = 'playlist-item';
-                        div.style.opacity = i === 0 ? '1' : '0.6';
-                        div.innerText = (i === 0 ? "▶ " : "") + "Video ID: " + item;
+                        div.className = `playlist-item ${i === currentIdx ? 'active' : ''}`;
+                        div.innerText = `${i + 1}. Track ID: ${id}`;
+                        div.onclick = (e) => {
+                            e.stopPropagation();
+                            this.player.playVideoAt(i);
+                        };
                         queueEl.appendChild(div);
                     });
                 }
             },
 
+            toggleExpansion() {
+                this.isExpanded = !this.isExpanded;
+                const container = document.getElementById('media-container');
+                if (this.isExpanded) {
+                    container.classList.add('expanded');
+                    this.renderQueue(); 
+                } else {
+                    container.classList.remove('expanded');
+                }
+            },
+
             togglePlayback() {
-                const state = this.player.getPlayerState();
-                if (state === YT.PlayerState.PLAYING) this.player.pauseVideo();
-                else this.player.playVideo();
+                const s = this.player.getPlayerState();
+                s === YT.PlayerState.PLAYING ? this.player.pauseVideo() : this.player.playVideo();
             },
 
             next() { this.player.nextVideo(); },
@@ -608,8 +675,7 @@
             },
 
             setupEventListeners() {
-                const params = ['speed', 'react', 'complex', 'hue', 'mode'];
-                params.forEach(p => {
+                ['speed', 'react', 'complex', 'hue', 'mode'].forEach(p => {
                     const el = document.getElementById(`param-${p}`);
                     el.addEventListener('input', (e) => {
                         const val = parseFloat(e.target.value);
@@ -618,9 +684,6 @@
                         if (p === 'complex') this.visuals.uniforms.complexity.value = val;
                         if (p === 'hue') this.visuals.uniforms.hueShift.value = val;
                         if (p === 'mode') this.visuals.uniforms.mode.value = val;
-                    });
-                    el.addEventListener('change', (e) => {
-                        if (p === 'mode') this.visuals.uniforms.mode.value = parseFloat(e.target.value);
                     });
                 });
             }
