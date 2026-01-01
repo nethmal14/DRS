@@ -24,8 +24,8 @@
 
         #canvas-bg {
             position: fixed; inset: 0; z-index: 0;
-            filter: blur(70px) saturate(2);
-            opacity: 0.85;
+            filter: blur(80px) saturate(2.5);
+            opacity: 0.9;
         }
 
         .glass-panel {
@@ -35,22 +35,22 @@
             border: 1px solid var(--glass-border);
             border-radius: 48px;
             box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8);
-            transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .reactive-surface { position: relative; overflow: hidden; }
 
         .proximity-glow {
-            position: absolute; width: 300px; height: 300px;
+            position: absolute; width: 350px; height: 350px;
             background: radial-gradient(circle, var(--liquid-glow) 0%, transparent 70%);
             pointer-events: none; border-radius: 50%;
             transform: translate(-50%, -50%); opacity: 0;
-            transition: opacity 0.4s ease; z-index: 1;
+            transition: opacity 0.5s ease; z-index: 1;
         }
 
         .input-glass {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
             border-radius: 26px;
             padding: 18px 24px;
             outline: none; width: 100%; color: white;
@@ -58,36 +58,40 @@
         }
 
         .input-glass:focus {
-            background: rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.1);
             border-color: rgba(255,255,255,0.3);
         }
 
         .ripple {
             position: absolute; border-radius: 50%;
-            background: rgba(255,255,255,0.2);
-            transform: scale(0); animation: fluid-ripple 1.2s cubic-bezier(0, 0.2, 0.5, 1);
+            background: rgba(255,255,255,0.15);
+            transform: scale(0); animation: fluid-ripple 1.4s cubic-bezier(0.1, 0.2, 0.3, 1);
             pointer-events: none;
         }
-        @keyframes fluid-ripple { to { transform: scale(8); opacity: 0; } }
+        @keyframes fluid-ripple { to { transform: scale(10); opacity: 0; } }
 
         .expandable {
             max-height: 0; opacity: 0; overflow: hidden;
             transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .expandable.open { max-height: 450px; opacity: 1; margin-top: 2rem; }
+        .expandable.open { max-height: 500px; opacity: 1; margin-top: 2rem; }
 
         .liquid-slider {
             -webkit-appearance: none; width: 100%; height: 2px;
             background: rgba(255,255,255,0.1); border-radius: 1px;
+            cursor: pointer;
         }
         .liquid-slider::-webkit-slider-thumb {
             -webkit-appearance: none; width: 24px; height: 24px;
             background: #fff; border-radius: 50%;
-            box-shadow: 0 0 25px rgba(255,255,255,0.6); border: 6px solid #000;
+            box-shadow: 0 0 20px rgba(255,255,255,0.4); border: 6px solid #000;
         }
 
         .tracking-ultra { letter-spacing: 0.6em; }
-        #youtube-player { position: absolute; visibility: hidden; }
+        #youtube-player { position: absolute; visibility: hidden; pointer-events: none; }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body>
@@ -101,23 +105,23 @@
             <div class="proximity-glow"></div>
             <div class="space-y-3">
                 <h1 class="text-5xl font-extralight tracking-ultra">FLUID</h1>
-                <p class="text-[9px] tracking-ultra text-white/20 uppercase">Aural Fluidity System</p>
+                <p class="text-[9px] tracking-ultra text-white/20 uppercase">Surface Authentication</p>
             </div>
             <div class="space-y-4">
-                <input id="auth-name" type="text" placeholder="Identity" class="input-glass">
+                <input id="auth-name" type="text" placeholder="Identity (e.g. apple)" class="input-glass">
                 <input id="auth-pswd" type="password" placeholder="Pass-key" class="input-glass">
             </div>
-            <button id="btn-login" class="w-full py-5 glass-panel bg-white/5 border-white/20 text-[10px] tracking-ultra uppercase hover:bg-white/10 active:scale-95 transition-transform">Initialize</button>
-            <p id="auth-error" class="text-[10px] text-white/30 font-mono h-2"></p>
+            <button id="btn-login" class="w-full py-5 glass-panel bg-white/5 border-white/20 text-[10px] tracking-ultra uppercase hover:bg-white/10 active:scale-95 transition-all">Initialize Stream</button>
+            <p id="auth-error" class="text-[10px] text-red-500/50 font-mono h-2 mt-2"></p>
         </div>
     </div>
 
     <!-- Player Interface -->
-    <div id="main-player" class="fixed inset-0 flex flex-col items-center justify-center p-6 opacity-0 pointer-events-none transition-all duration-1000 scale-105">
+    <div id="main-player" class="fixed inset-0 flex flex-col items-center justify-center p-6 opacity-0 pointer-events-none transition-all duration-1000 translate-y-8">
         <div class="text-center mb-16 space-y-4">
             <h2 id="track-title" class="text-4xl font-light tracking-tight px-6 truncate max-w-xs md:max-w-md">Surface Static</h2>
             <div class="flex items-center justify-center space-x-2">
-                <span id="status-dot" class="w-1 h-1 rounded-full bg-white/20"></span>
+                <span id="status-dot" class="w-1 h-1 rounded-full bg-white/20 animate-pulse"></span>
                 <p id="status-label" class="text-[9px] tracking-ultra text-white/20 uppercase">Atmosphere Ready</p>
             </div>
         </div>
@@ -126,11 +130,15 @@
             <div class="proximity-glow"></div>
             
             <div class="flex items-center justify-between px-4">
-                <button id="btn-prev" class="p-4 text-white/20 hover:text-white"><svg width="24" height="24" fill="currentColor"><path d="M6 6h2v12H6V6zm3.5 6L18 6v12l-8.5-6z"/></svg></button>
-                <button id="btn-play" class="w-24 h-24 rounded-full flex items-center justify-center bg-white/5 border border-white/10 shadow-2xl">
+                <button id="btn-prev" class="p-4 text-white/20 hover:text-white transition-colors">
+                    <svg width="24" height="24" fill="currentColor"><path d="M6 6h2v12H6V6zm3.5 6L18 6v12l-8.5-6z"/></svg>
+                </button>
+                <button id="btn-play" class="w-24 h-24 rounded-full flex items-center justify-center bg-white/5 border border-white/10 shadow-2xl hover:bg-white/10 active:scale-90 transition-all">
                     <svg id="play-icon" width="32" height="32" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <button id="btn-next" class="p-4 text-white/20 hover:text-white"><svg width="24" height="24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+                <button id="btn-next" class="p-4 text-white/20 hover:text-white transition-colors">
+                    <svg width="24" height="24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                </button>
             </div>
 
             <div class="space-y-4">
@@ -142,12 +150,12 @@
             </div>
 
             <div class="relative z-10">
-                <button id="btn-expand" class="w-full text-[9px] tracking-ultra text-white/10 py-3 border-t border-white/5 hover:text-white/40">ARCHIVE</button>
+                <button id="btn-expand" class="w-full text-[9px] tracking-ultra text-white/10 py-3 border-t border-white/5 hover:text-white/40 transition-colors">ARCHIVE</button>
                 <div id="playlist-area" class="expandable space-y-6">
                     <div id="playlist-list" class="space-y-3 max-h-40 overflow-y-auto pr-2 scrollbar-hide"></div>
                     <div class="flex gap-2">
                         <input id="yt-url" type="text" placeholder="YouTube List URL" class="input-glass py-3 text-[10px]">
-                        <button id="btn-add" class="glass-panel w-12 h-12 flex-shrink-0 flex items-center justify-center text-xl">+</button>
+                        <button id="btn-add" class="glass-panel w-12 h-12 flex-shrink-0 flex items-center justify-center text-xl hover:bg-white/10 transition-colors">+</button>
                     </div>
                 </div>
             </div>
@@ -155,6 +163,7 @@
     </div>
 
     <script>
+        // --- CONFIG ---
         const STATIC_USERS = [
             { name: 'apple', pswd: 'apple', id: 'user_apple' },
             { name: 'orange', pswd: 'orange', id: 'user_orange' },
@@ -173,10 +182,10 @@
         const db = firebase.firestore();
         const APP_ID = "sonic_fluid_v1";
 
-        let player, isPlaying = false, activeUser = null;
+        let player, isPlaying = false, activeUser = null, unsubscribe = null;
         let pointer = { x: -1000, y: -1000 };
 
-        // Visualizer
+        // --- BACKGROUND CANVAS ---
         const canvas = document.getElementById('canvas-bg');
         const ctx = canvas.getContext('2d');
         const clouds = Array(6).fill().map(() => ({
@@ -194,7 +203,7 @@
                 if(c.x<0 || c.x>innerWidth) c.vx*=-1;
                 if(c.y<0 || c.y>innerHeight) c.vy*=-1;
                 const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r + beat);
-                g.addColorStop(0, `hsla(${c.hue}, 60%, 50%, 0.2)`);
+                g.addColorStop(0, `hsla(${c.hue}, 60%, 50%, 0.15)`);
                 g.addColorStop(1, 'transparent');
                 ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c.x, c.y, c.r + beat, 0, Math.PI*2); ctx.fill();
             });
@@ -203,21 +212,28 @@
         canvas.width = innerWidth; canvas.height = innerHeight;
         draw();
 
-        // Proximity Logic
+        // --- UI LOGIC (PROXIMITY) ---
         function handleProximity() {
             const surfaces = document.querySelectorAll('.reactive-surface');
             surfaces.forEach(surface => {
                 const glow = surface.querySelector('.proximity-glow');
                 const rect = surface.getBoundingClientRect();
-                if (pointer.x > rect.left - 100 && pointer.x < rect.right + 100 &&
-                    pointer.y > rect.top - 100 && pointer.y < rect.bottom + 100) {
+                const margin = 100;
+
+                if (pointer.x > rect.left - margin && pointer.x < rect.right + margin &&
+                    pointer.y > rect.top - margin && pointer.y < rect.bottom + margin) {
+                    
                     const localX = pointer.x - rect.left, localY = pointer.y - rect.top;
                     if (glow) { glow.style.opacity = '1'; glow.style.left = localX + 'px'; glow.style.top = localY + 'px'; }
-                    const p = 1 - (Math.sqrt(Math.pow(localX-rect.width/2, 2) + Math.pow(localY-rect.height/2, 2)) / rect.width);
-                    surface.style.transform = `scale(${1 + Math.max(0, p) * 0.02})`;
+                    
+                    const distToCenter = Math.sqrt(Math.pow(localX-rect.width/2, 2) + Math.pow(localY-rect.height/2, 2));
+                    const p = 1 - (distToCenter / (rect.width * 1.2));
+                    surface.style.transform = `scale(${1 + Math.max(0, p) * 0.03})`;
+                    surface.style.borderColor = `rgba(255,255,255, ${0.08 + Math.max(0, p) * 0.15})`;
                 } else {
                     if (glow) glow.style.opacity = '0';
                     surface.style.transform = `scale(1)`;
+                    surface.style.borderColor = `rgba(255,255,255,0.08)`;
                 }
             });
             requestAnimationFrame(handleProximity);
@@ -233,18 +249,24 @@
         window.addEventListener('touchmove', updatePointer);
         window.addEventListener('touchend', () => { pointer.x = -1000; pointer.y = -1000; });
 
-        // Static Login Logic
+        // --- LOGIN FLOW ---
         document.getElementById('btn-login').onclick = async () => {
-            const name = document.getElementById('auth-name').value.trim().toLowerCase();
-            const pswd = document.getElementById('auth-pswd').value;
+            const nameInput = document.getElementById('auth-name').value.trim().toLowerCase();
+            const pswdInput = document.getElementById('auth-pswd').value;
             const err = document.getElementById('auth-error');
             
-            const user = STATIC_USERS.find(u => u.name === name && u.pswd === pswd);
+            const match = STATIC_USERS.find(u => u.name === nameInput && u.pswd === pswdInput);
             
-            if (user) {
-                // Anonymous auth just to talk to Firebase securely if needed
-                if (!auth.currentUser) await auth.signInAnonymously();
-                enterApp(user);
+            if (match) {
+                err.innerText = "AUTHENTICATING...";
+                try {
+                    // Sign in anonymously to enable Firestore access
+                    await auth.signInAnonymously();
+                    enterApp(match);
+                } catch (e) {
+                    err.innerText = "FIREBASE ERROR";
+                    console.error(e);
+                }
             } else {
                 err.innerText = "IDENTITY UNKNOWN";
             }
@@ -258,83 +280,133 @@
                 al.style.display = 'none';
                 const main = document.getElementById('main-player');
                 main.classList.remove('pointer-events-none');
-                main.style.opacity = '1'; main.style.transform = 'scale(1)';
+                main.style.opacity = '1'; 
+                main.style.transform = 'translateY(0) scale(1)';
             }, 1000);
 
-            // Fetch playlists based on static user ID
+            // Path rule: /artifacts/{appId}/users/{userId}/{collectionName}
             const ref = db.collection('artifacts').doc(APP_ID).collection('users').doc(user.id);
-            ref.onSnapshot(s => {
-                if(!s.exists) ref.set({ playlists: [] });
-                renderPlaylists(s.data()?.playlists || []);
+            
+            // Listen for data
+            unsubscribe = ref.onSnapshot(s => {
+                if(!s.exists) {
+                    ref.set({ playlists: [] });
+                } else {
+                    renderPlaylists(s.data()?.playlists || []);
+                }
+            }, (error) => {
+                console.error("Firestore Listen Error:", error);
             });
         }
 
-        // YT Logic
+        // --- YOUTUBE API ---
         window.onYouTubeIframeAPIReady = () => {
             player = new YT.Player('youtube-player', {
+                height: '0', width: '0',
+                playerVars: { 'autoplay': 0, 'controls': 0 },
                 events: { 
                     'onStateChange': (e) => {
                         isPlaying = e.data === YT.PlayerState.PLAYING;
-                        document.getElementById('play-icon').innerHTML = isPlaying ? 
+                        const icon = document.getElementById('play-icon');
+                        icon.innerHTML = isPlaying ? 
                             `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>` : `<path d="M8 5v14l11-7z"/>`;
-                        if(isPlaying) document.getElementById('track-title').innerText = player.getVideoData().title;
+                        
+                        if(isPlaying) {
+                            const data = player.getVideoData();
+                            document.getElementById('track-title').innerText = data.title || "Flowing...";
+                            document.getElementById('status-label').innerText = "Streaming Active";
+                            document.getElementById('status-dot').classList.add('bg-blue-400');
+                        } else {
+                            document.getElementById('status-label').innerText = "Stream Paused";
+                            document.getElementById('status-dot').classList.remove('bg-blue-400');
+                        }
                     },
-                    'onReady': () => setInterval(tick, 500)
+                    'onReady': () => {
+                        setInterval(tick, 500);
+                        console.log("Player Ready");
+                    }
                 }
             });
         };
 
         function tick() {
-            if(player?.getCurrentTime) {
+            if(player && typeof player.getCurrentTime === 'function') {
                 const cur = player.getCurrentTime(), dur = player.getDuration();
-                document.getElementById('seek-bar').value = (cur/dur)*100 || 0;
+                if (dur > 0) {
+                    document.getElementById('seek-bar').value = (cur/dur)*100;
+                }
                 document.getElementById('cur-time').innerText = fmt(cur);
                 document.getElementById('dur-time').innerText = fmt(dur);
             }
         }
-        const fmt = s => `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+        const fmt = s => {
+            if(!s || isNaN(s)) return "0:00";
+            return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+        };
 
+        // --- PLAYLIST OPS ---
         document.getElementById('btn-add').onclick = async () => {
             const url = document.getElementById('yt-url').value;
             const lid = url.match(/[&?]list=([^&]+)/)?.[1];
             if(!lid || !activeUser) return;
-            await db.collection('artifacts').doc(APP_ID).collection('users').doc(activeUser.id)
-                  .update({ playlists: firebase.firestore.FieldValue.arrayUnion({ id: lid, name: "Flow "+Date.now().toString().slice(-4) }) });
+            
+            const ref = db.collection('artifacts').doc(APP_ID).collection('users').doc(activeUser.id);
+            await ref.update({ 
+                playlists: firebase.firestore.FieldValue.arrayUnion({ 
+                    id: lid, 
+                    name: "Stream " + Math.floor(Math.random()*1000)
+                }) 
+            });
             document.getElementById('yt-url').value = "";
         };
 
         function renderPlaylists(pls) {
             const list = document.getElementById('playlist-list');
             list.innerHTML = "";
+            if (pls.length === 0) {
+                list.innerHTML = `<p class="text-[9px] text-white/10 text-center py-4 tracking-widest">ARCHIVE EMPTY</p>`;
+            }
             pls.forEach(p => {
                 const d = document.createElement('div');
-                d.className = "glass-panel px-6 py-4 flex justify-between items-center bg-white/5 hover:bg-white/10 cursor-pointer text-[10px] tracking-widest uppercase";
-                d.innerHTML = `<span class="truncate">${p.name}</span><span class="del opacity-20">×</span>`;
+                d.className = "glass-panel px-6 py-4 flex justify-between items-center bg-white/5 hover:bg-white/10 cursor-pointer text-[10px] tracking-widest uppercase group transition-all";
+                d.innerHTML = `<span class="truncate pr-4">${p.name}</span><span class="del opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-opacity">×</span>`;
                 d.onclick = (e) => {
                     if(e.target.classList.contains('del')) {
-                        db.collection('artifacts').doc(APP_ID).collection('users').doc(activeUser.id)
-                          .update({ playlists: firebase.firestore.FieldValue.arrayRemove(p) });
-                    } else { player.loadPlaylist({ list: p.id, listType: 'playlist' }); }
+                        const ref = db.collection('artifacts').doc(APP_ID).collection('users').doc(activeUser.id);
+                        ref.update({ playlists: firebase.firestore.FieldValue.arrayRemove(p) });
+                    } else { 
+                        player.loadPlaylist({ list: p.id, listType: 'playlist', index: 0 }); 
+                    }
                 };
                 list.appendChild(d);
             });
         }
 
-        document.getElementById('btn-play').onclick = () => isPlaying ? player.pauseVideo() : player.playVideo();
-        document.getElementById('btn-next').onclick = () => player.nextVideo();
-        document.getElementById('btn-prev').onclick = () => player.previousVideo();
+        // --- BUTTON BINDINGS ---
+        document.getElementById('btn-play').onclick = () => {
+            if (!player) return;
+            isPlaying ? player.pauseVideo() : player.playVideo();
+        };
+        document.getElementById('btn-next').onclick = () => player?.nextVideo();
+        document.getElementById('btn-prev').onclick = () => player?.previousVideo();
         document.getElementById('btn-expand').onclick = () => document.getElementById('playlist-area').classList.toggle('open');
-        document.getElementById('seek-bar').oninput = (e) => player.seekTo((e.target.value/100)*player.getDuration());
+        document.getElementById('seek-bar').oninput = (e) => {
+            if (player && player.getDuration() > 0) {
+                player.seekTo((e.target.value/100)*player.getDuration());
+            }
+        };
 
+        // Visceral Interaction
         window.addEventListener('mousedown', (e) => {
             const r = document.createElement('div');
             r.className = 'ripple';
             r.style.left = e.clientX + 'px'; r.style.top = e.clientY + 'px';
             r.style.width = r.style.height = '40px';
             document.body.appendChild(r);
-            setTimeout(() => r.remove(), 1200);
+            setTimeout(() => r.remove(), 1400);
         });
 
+        // Load API
         const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
         document.head.appendChild(tag);
     </script>
