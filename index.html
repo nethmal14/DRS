@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sonic Fluid</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
         :root {
             --glass-bg: rgba(255, 255, 255, 0.02);
@@ -163,21 +160,14 @@
     </div>
 
     <script>
-        // --- CONFIG ---
+        // --- DATA STATE (Local) ---
         const STATIC_USERS = [
-            { name: 'apple', pswd: 'apple', id: 'user_apple' },
-            { name: 'orange', pswd: 'orange', id: 'user_orange' },
-            { name: 'grape', pswd: 'grape', id: 'user_grape' }
+            { name: 'apple', pswd: 'apple', playlists: [{ id: 'PLXh0YjUvCqf8u1I9_Q8x9nC_6L0xXyZ0k', name: 'Chill Mix' }] },
+            { name: 'orange', pswd: 'orange', playlists: [] },
+            { name: 'grape', pswd: 'grape', playlists: [] }
         ];
 
-        const firebaseConfig = JSON.parse('{"apiKey": "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A", "authDomain": "trip-tracker-57ce0.firebaseapp.com", "projectId": "trip-tracker-57ce0", "appId": "1:236146303848:web:933f1e79e8a97687db6cdd"}');
-
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sonic_fluid_v1';
-
-        let player, isPlaying = false, activeUser = null, unsubscribe = null;
+        let player, isPlaying = false, activeUser = null;
         let pointer = { x: -1000, y: -1000 };
 
         // --- BACKGROUND CANVAS ---
@@ -207,7 +197,7 @@
         canvas.width = innerWidth; canvas.height = innerHeight;
         draw();
 
-        // --- UI LOGIC (PROXIMITY) ---
+        // --- UI LOGIC ---
         function handleProximity() {
             const surfaces = document.querySelectorAll('.reactive-surface');
             surfaces.forEach(surface => {
@@ -245,7 +235,7 @@
         window.addEventListener('touchend', () => { pointer.x = -1000; pointer.y = -1000; });
 
         // --- LOGIN FLOW ---
-        document.getElementById('btn-login').onclick = async () => {
+        document.getElementById('btn-login').onclick = () => {
             const nameInput = document.getElementById('auth-name').value.trim().toLowerCase();
             const pswdInput = document.getElementById('auth-pswd').value;
             const err = document.getElementById('auth-error');
@@ -253,26 +243,14 @@
             const match = STATIC_USERS.find(u => u.name === nameInput && u.pswd === pswdInput);
             
             if (match) {
-                err.innerText = "INITIALIZING SECURE LINK...";
-                try {
-                    // Rule 3: Auth Before Queries
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await auth.signInWithCustomToken(__initial_auth_token);
-                    } else {
-                        await auth.signInAnonymously();
-                    }
-                    enterApp(match);
-                } catch (e) {
-                    err.innerText = "ACCESS DENIED: FIREBASE LINK FAILED";
-                    console.error("Firebase Auth Error:", e);
-                }
+                activeUser = match;
+                enterApp();
             } else {
                 err.innerText = "IDENTITY UNKNOWN";
             }
         };
 
-        function enterApp(user) {
-            activeUser = user;
+        function enterApp() {
             const al = document.getElementById('auth-layer');
             al.style.opacity = '0';
             setTimeout(() => {
@@ -281,22 +259,8 @@
                 main.classList.remove('pointer-events-none');
                 main.style.opacity = '1'; 
                 main.style.transform = 'translateY(0) scale(1)';
+                renderPlaylists();
             }, 1000);
-
-            // Path rule: /artifacts/{appId}/public/data/{collectionName}
-            const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(user.id);
-            
-            // Listen for data
-            unsubscribe = ref.onSnapshot(s => {
-                if(!s.exists) {
-                    ref.set({ playlists: [] });
-                } else {
-                    renderPlaylists(s.data()?.playlists || []);
-                }
-            }, (error) => {
-                console.error("Firestore Listen Error:", error);
-                document.getElementById('auth-error').innerText = "DATA SYNC ERROR";
-            });
         }
 
         // --- YOUTUBE API ---
@@ -344,35 +308,34 @@
         };
 
         // --- PLAYLIST OPS ---
-        document.getElementById('btn-add').onclick = async () => {
+        document.getElementById('btn-add').onclick = () => {
             const url = document.getElementById('yt-url').value;
             const lid = url.match(/[&?]list=([^&]+)/)?.[1];
-            if(!lid || !activeUser || !auth.currentUser) return;
+            if(!lid || !activeUser) return;
             
-            const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(activeUser.id);
-            await ref.update({ 
-                playlists: firebase.firestore.FieldValue.arrayUnion({ 
-                    id: lid, 
-                    name: "Stream " + Math.floor(Math.random()*1000)
-                }) 
+            activeUser.playlists.push({ 
+                id: lid, 
+                name: "Stream " + (activeUser.playlists.length + 1)
             });
             document.getElementById('yt-url').value = "";
+            renderPlaylists();
         };
 
-        function renderPlaylists(pls) {
+        function renderPlaylists() {
             const list = document.getElementById('playlist-list');
             list.innerHTML = "";
+            const pls = activeUser.playlists;
             if (pls.length === 0) {
                 list.innerHTML = `<p class="text-[9px] text-white/10 text-center py-4 tracking-widest">ARCHIVE EMPTY</p>`;
             }
-            pls.forEach(p => {
+            pls.forEach((p, index) => {
                 const d = document.createElement('div');
                 d.className = "glass-panel px-6 py-4 flex justify-between items-center bg-white/5 hover:bg-white/10 cursor-pointer text-[10px] tracking-widest uppercase group transition-all";
                 d.innerHTML = `<span class="truncate pr-4">${p.name}</span><span class="del opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-opacity">×</span>`;
                 d.onclick = (e) => {
                     if(e.target.classList.contains('del')) {
-                        const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(activeUser.id);
-                        ref.update({ playlists: firebase.firestore.FieldValue.arrayRemove(p) });
+                        activeUser.playlists.splice(index, 1);
+                        renderPlaylists();
                     } else { 
                         player.loadPlaylist({ list: p.id, listType: 'playlist', index: 0 }); 
                     }
@@ -395,7 +358,7 @@
             }
         };
 
-        // Visceral Interaction
+        // Interaction
         window.addEventListener('mousedown', (e) => {
             const r = document.createElement('div');
             r.className = 'ripple';
@@ -405,7 +368,7 @@
             setTimeout(() => r.remove(), 1400);
         });
 
-        // Load API
+        // Load YouTube
         const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api";
         document.head.appendChild(tag);
     </script>
