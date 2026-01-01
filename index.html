@@ -3,252 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Liquid Glass OS</title>
-    <!-- Tailwind CSS for layout -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Three.js for Shader Background -->
+    <title>Visionary Audio</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-
         :root {
             --glass-bg: rgba(255, 255, 255, 0.1);
             --glass-border: rgba(255, 255, 255, 0.2);
-            --glass-blur: blur(25px) saturate(180%);
+            --glass-blur: blur(25px);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --accent: #007AFF;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
         }
 
         body, html {
-            margin: 0;
-            padding: 0;
             width: 100%;
             height: 100%;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden;
-            background: #050505;
-            color: white;
+            background: #000;
+            color: var(--text-primary);
         }
 
-        #canvas-container {
+        #bg-canvas {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
         }
 
-        .glass-card {
+        /* Login Screen */
+        #login-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(40px);
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .login-card {
             background: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
             border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            padding: 40px;
+            border-radius: 32px;
+            width: 360px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
         }
 
-        .input-glass {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .login-card h1 { font-weight: 300; margin-bottom: 30px; letter-spacing: -0.5px; }
+
+        input, select {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 12px;
             border-radius: 12px;
-            padding: 12px 16px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.05);
             color: white;
             outline: none;
-            transition: all 0.3s ease;
+            transition: 0.3s;
         }
 
-        .input-glass:focus {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
+        select option { background: #1a1a1a; color: white; }
 
-        .btn-apple {
-            background: white;
-            color: black;
-            font-weight: 500;
+        input:focus { background: rgba(255, 255, 255, 0.1); border-color: var(--accent); }
+
+        button {
+            width: 100%;
+            padding: 14px;
             border-radius: 12px;
-            padding: 12px 24px;
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            background: #fff;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
         }
 
-        .btn-apple:active {
-            transform: scale(0.96);
+        button:active { transform: scale(0.97); opacity: 0.8; }
+
+        /* Main App UI */
+        #app-ui {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            display: none;
+            opacity: 0;
+            transition: opacity 1s ease;
         }
 
+        /* Glass Media Card */
+        .media-controller {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 420px;
+            height: 100px;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            justify-content: space-between;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 50;
+        }
+
+        .track-info {
+            flex: 1;
+            margin-left: 15px;
+            overflow: hidden;
+        }
+
+        .track-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .track-status { font-size: 12px; color: var(--text-secondary); }
+
+        .controls { display: flex; align-items: center; gap: 20px; }
+        .control-btn { background: none; border: none; color: white; cursor: pointer; padding: 5px; opacity: 0.8; width: auto; }
+        .control-btn:hover { opacity: 1; }
+        .control-btn svg { width: 24px; height: 24px; fill: currentColor; }
+
+        /* Popups */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-content {
+            background: rgba(30, 30, 30, 0.8);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            width: 450px;
+            max-height: 80vh;
+            border-radius: 28px;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-btn { cursor: pointer; opacity: 0.6; }
+
+        /* Settings specific */
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+        .setting-row label { font-size: 14px; color: var(--text-secondary); }
+        input[type="range"] { width: 150px; margin: 0; }
+
+        /* Hidden YT Player */
         #yt-player-container {
-            position: absolute;
+            position: fixed;
+            top: -100px;
+            left: -100px;
             width: 1px;
             height: 1px;
             opacity: 0;
             pointer-events: none;
         }
 
-        .modal-overlay {
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(10px);
-            z-index: 100;
+        .playlist-item {
+            padding: 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .playlist-item:hover { background: rgba(255,255,255,0.1); }
+
+        .gear-btn {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 60;
         }
 
-        .hidden-section { display: none !important; }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        .browse-btn {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--glass-border);
+            padding: 10px 20px;
+            border-radius: 22px;
+            cursor: pointer;
+            z-index: 60;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
 
-    <div id="canvas-container"></div>
+    <canvas id="bg-canvas"></canvas>
 
-    <!-- LOGIN SYSTEM -->
-    <div id="login-screen" class="fixed inset-0 flex items-center justify-center z-50">
-        <div class="glass-card w-full max-w-md p-10 flex flex-col items-center gap-8 animate-fade-in">
-            <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
-                <i data-lucide="lock" class="text-white/80"></i>
-            </div>
-            <h1 class="text-3xl font-semibold tracking-tight">Liquid Glass</h1>
-            <div class="w-full space-y-4">
-                <input type="text" id="username" placeholder="Username" class="input-glass w-full">
-                <input type="password" id="password" placeholder="Password" class="input-glass w-full">
-            </div>
-            <button id="login-btn" class="btn-apple w-full">Unlock Experience</button>
-            <p id="login-error" class="text-red-400 text-sm opacity-0 transition-opacity">Invalid credentials</p>
+    <div id="login-screen">
+        <div class="login-card">
+            <h1>Visionary</h1>
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="App.login()">Sign In</button>
+            <p id="login-error" style="color: #ff453a; font-size: 12px; margin-top: 15px; display: none;">Invalid credentials</p>
         </div>
     </div>
 
-    <!-- MAIN APP UI -->
-    <div id="main-app" class="fixed inset-0 hidden-section flex flex-col p-8">
-        <!-- Top Bar -->
-        <div class="flex justify-between items-start w-full">
-            <div class="glass-card px-6 py-3 flex items-center gap-4">
-                <div id="user-avatar" class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500"></div>
-                <span id="display-name" class="font-medium opacity-90">User</span>
-            </div>
-            <button id="browse-btn" class="glass-card p-4 hover:bg-white/10 transition-colors">
-                <i data-lucide="search"></i>
-            </button>
+    <div id="app-ui">
+        <div class="browse-btn" onclick="App.toggleModal('playlist-modal')">Library & Queue</div>
+        
+        <div class="gear-btn" onclick="App.toggleModal('settings-modal')">
+            <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.81,11.69,4.81,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.5c-1.93,0-3.5-1.57-3.5-3.5 s1.57-3.5,3.5-3.5s3.5,1.57,3.5,3.5S13.93,15.5,12,15.5z"/></svg>
         </div>
 
-        <!-- Media Control Card -->
-        <div class="mt-auto self-center w-full max-w-lg mb-8">
-            <div class="glass-card p-6 flex flex-col gap-4 relative">
-                <div class="flex items-center gap-4">
-                    <div id="track-art" class="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden">
-                        <i data-lucide="music" class="opacity-20"></i>
-                    </div>
-                    <div class="flex-1 overflow-hidden">
-                        <h2 id="track-title" class="font-semibold truncate">Not Playing</h2>
-                        <p id="track-artist" class="text-sm opacity-60 truncate">Add a playlist to start</p>
-                    </div>
-                    <button id="settings-btn" class="p-2 opacity-60 hover:opacity-100 transition-opacity">
-                        <i data-lucide="settings"></i>
-                    </button>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                    <div id="progress-bar" class="bg-white/80 h-full w-0 transition-all duration-300"></div>
-                </div>
-
-                <!-- Controls -->
-                <div class="flex justify-center items-center gap-10">
-                    <button id="prev-btn" class="opacity-80 hover:opacity-100 transition-all active:scale-90">
-                        <i data-lucide="skip-back" size="24"></i>
-                    </button>
-                    <button id="play-pause-btn" class="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
-                        <i data-lucide="play" fill="black" size="28"></i>
-                    </button>
-                    <button id="next-btn" class="opacity-80 hover:opacity-100 transition-all active:scale-90">
-                        <i data-lucide="skip-forward" size="24"></i>
-                    </button>
-                </div>
+        <div class="media-controller">
+            <div class="controls">
+                <button class="control-btn" onclick="App.prev()">
+                    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                </button>
+                <button class="control-btn" id="play-pause-btn" onclick="App.togglePlayback()">
+                    <svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5v14l11-7z"/></svg>
+                    <svg viewBox="0 0 24 24" id="pause-icon" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <button class="control-btn" onclick="App.next()">
+                    <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                </button>
+            </div>
+            <div class="track-info">
+                <div class="track-title" id="current-track-name">No track selected</div>
+                <div class="track-status" id="track-status">Select a playlist to begin</div>
             </div>
         </div>
     </div>
 
-    <!-- BROWSE / PLAYLIST POPUP -->
-    <div id="browse-modal" class="fixed inset-0 modal-overlay hidden-section flex items-center justify-center p-6">
-        <div class="glass-card w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
-            <div class="p-6 border-b border-white/10 flex justify-between items-center">
-                <h3 class="text-xl font-medium">Playlists & Queue</h3>
-                <button class="close-modal"><i data-lucide="x"></i></button>
+    <!-- Modals -->
+    <div id="playlist-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Library</h2>
+                <div class="close-btn" onclick="App.toggleModal('playlist-modal')">✕</div>
             </div>
-            <div class="p-6 flex flex-col gap-6 overflow-y-auto">
-                <div class="space-y-2">
-                    <label class="text-xs uppercase tracking-widest opacity-50 font-bold">Add New Playlist</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="playlist-url" placeholder="YouTube Playlist URL" class="input-glass flex-1">
-                        <button id="add-playlist-btn" class="btn-apple px-6">Add</button>
-                    </div>
-                </div>
-                <div class="space-y-4">
-                    <label class="text-xs uppercase tracking-widest opacity-50 font-bold">Your Library</label>
-                    <div id="playlist-list" class="grid grid-cols-1 gap-2">
-                        <!-- Playlists go here -->
-                        <div class="text-center py-8 opacity-40 italic">No playlists saved yet.</div>
-                    </div>
-                </div>
+            <div style="margin-bottom: 20px;">
+                <input type="text" id="playlist-url" placeholder="Paste YouTube Playlist URL">
+                <button onclick="App.addPlaylist()">Add Playlist</button>
+            </div>
+            <div id="playlist-list">
+                <!-- User playlists -->
+            </div>
+            <h3 style="margin: 20px 0 10px;">Queue</h3>
+            <div id="queue-list">
+                <!-- Current queue -->
             </div>
         </div>
     </div>
 
-    <!-- SETTINGS POPUP -->
-    <div id="settings-modal" class="fixed inset-0 modal-overlay hidden-section flex items-center justify-center p-6">
-        <div class="glass-card w-full max-w-md p-6 space-y-8">
-            <div class="flex justify-between items-center">
-                <h3 class="text-xl font-medium">Shader Settings</h3>
-                <button class="close-modal"><i data-lucide="x"></i></button>
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Visual Settings</h2>
+                <div class="close-btn" onclick="App.toggleModal('settings-modal')">✕</div>
             </div>
-            
-            <div class="space-y-6">
-                <div class="space-y-3">
-                    <label class="flex justify-between text-sm">
-                        <span>Motion Speed</span>
-                        <span id="val-speed">1.0</span>
-                    </label>
-                    <input type="range" id="set-speed" min="0.1" max="5" step="0.1" value="1" class="w-full accent-white">
-                </div>
-
-                <div class="space-y-3">
-                    <label class="flex justify-between text-sm">
-                        <span>Shader Intensity</span>
-                        <span id="val-intensity">1.0</span>
-                    </label>
-                    <input type="range" id="set-intensity" min="0.1" max="3" step="0.1" value="1" class="w-full accent-white">
-                </div>
-
-                <div class="space-y-3">
-                    <label class="flex justify-between text-sm">
-                        <span>Color Shift</span>
-                        <span id="val-hue">0°</span>
-                    </label>
-                    <input type="range" id="set-hue" min="0" max="360" step="1" value="0" class="w-full accent-white">
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <span class="text-sm">Vignette Layer</span>
-                    <input type="checkbox" id="set-vignette" checked class="w-5 h-5 accent-white">
-                </div>
+            <div class="setting-row">
+                <label>Effect Mode</label>
+                <select id="param-mode" style="width: 150px; margin:0;">
+                    <option value="0">Aura (Fluid)</option>
+                    <option value="1">Pulse (Geometric)</option>
+                    <option value="2">Orbit (Cosmic)</option>
+                </select>
             </div>
-
-            <button class="close-modal btn-apple w-full">Done</button>
+            <div class="setting-row">
+                <label>Flow Speed</label>
+                <input type="range" id="param-speed" min="0.1" max="5.0" step="0.1" value="1.0">
+            </div>
+            <div class="setting-row">
+                <label>Reactivity</label>
+                <input type="range" id="param-react" min="0.0" max="2.0" step="0.1" value="1.0">
+            </div>
+            <div class="setting-row">
+                <label>Complexity</label>
+                <input type="range" id="param-complex" min="1.0" max="10.0" step="0.5" value="4.0">
+            </div>
+            <div class="setting-row">
+                <label>Hue Shift</label>
+                <input type="range" id="param-hue" min="0" max="6.28" step="0.1" value="0">
+            </div>
+            <button style="background: rgba(255,50,50,0.2); color: #ff453a; margin-top: 20px;" onclick="location.reload()">Sign Out</button>
         </div>
     </div>
 
-    <!-- Hidden YouTube Player -->
     <div id="yt-player-container">
         <div id="player"></div>
     </div>
 
     <script>
-        /**
-         * 1. INITIALIZATION & CONFIG
-         */
+        // --- Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
             authDomain: "trip-tracker-57ce0.firebaseapp.com",
@@ -259,66 +339,10 @@
             appId: "1:236146303848:web:933f1e79e8a97687db6cdd",
             measurementId: "G-ZBPCS6QPR5"
         };
-
-        const VALID_USERS = {
-            "apple": "apple",
-            "orange": "orange",
-            "grape": "grape"
-        };
-
-        let appState = {
-            user: null,
-            isPlaying: false,
-            currentPlaylistId: null,
-            playlistQueue: [],
-            currentIndex: 0,
-            shaderSettings: {
-                speed: 1.0,
-                intensity: 1.0,
-                hue: 0.0,
-                vignette: true
-            }
-        };
-
-        /**
-         * 2. FIREBASE MODULE
-         */
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        async function savePlaylist(playlistId) {
-            if (!appState.user) return;
-            const ref = db.ref(`playlists/${appState.user}`);
-            await ref.push({ id: playlistId, addedAt: Date.now() });
-            loadPlaylists();
-        }
-
-        function loadPlaylists() {
-            if (!appState.user) return;
-            const ref = db.ref(`playlists/${appState.user}`);
-            ref.on('value', (snapshot) => {
-                const listEl = document.getElementById('playlist-list');
-                listEl.innerHTML = '';
-                const data = snapshot.val();
-                if (!data) {
-                    listEl.innerHTML = `<div class="text-center py-8 opacity-40 italic">No saved playlists.</div>`;
-                    return;
-                }
-                Object.values(data).forEach(pl => {
-                    const btn = document.createElement('div');
-                    btn.className = 'input-glass flex justify-between items-center hover:bg-white/10 cursor-pointer transition-all';
-                    btn.innerHTML = `<span class="truncate">Playlist: ${pl.id}</span> <i data-lucide="play-circle" size="18"></i>`;
-                    btn.onclick = () => playPlaylist(pl.id);
-                    listEl.appendChild(btn);
-                });
-                lucide.createIcons();
-            });
-        }
-
-        /**
-         * 3. SHADER BACKGROUND (THREE.JS)
-         */
-        let scene, camera, renderer, material, mesh;
+        // --- Shader Source ---
         const vertexShader = `
             varying vec2 vUv;
             void main() {
@@ -326,13 +350,16 @@
                 gl_Position = vec4(position, 1.0);
             }
         `;
+
         const fragmentShader = `
             uniform float time;
             uniform vec2 resolution;
-            uniform float intensity;
             uniform float speed;
+            uniform float reactivity;
+            uniform float complexity;
             uniform float hueShift;
             uniform float isPlaying;
+            uniform float mode;
             varying vec2 vUv;
 
             vec3 hsv2rgb(vec3 c) {
@@ -342,247 +369,264 @@
             }
 
             void main() {
-                vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+                vec2 uv = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
                 float t = time * 0.2 * speed;
+                float reactPulse = (isPlaying > 0.5) ? (sin(time * 6.0) * 0.1 * reactivity) : 0.0;
                 
-                for(int i=1; i<4; i++){
-                    vec2 newp = p;
-                    newp.x += 0.5/float(i)*sin(float(i)*p.y+t+cos(t/20.0)*0.5);
-                    newp.y += 0.5/float(i)*cos(float(i)*p.x+t+sin(t/30.0)*0.5);
-                    p = newp;
-                }
-                
-                float pulse = 0.5 + 0.5 * sin(time * 0.5) * isPlaying;
-                vec3 col = 0.5 + 0.5*cos(t + p.xyx + vec3(0,2,4));
-                col *= (0.5 + 0.5 * sin(p.x + p.y));
-                
-                // Interaction with settings
-                col *= intensity;
-                
-                // Hue shift
-                vec3 hsv = vec3(hueShift/360.0, 0.6, 0.15); 
-                // Mix base liquid color with user hue
-                vec3 finalCol = mix(col * 0.2, hsv2rgb(vec3(fract(hueShift/360.0 + col.r*0.2), 0.7, 0.5)), 0.6);
-                
-                // Vignette
-                float dist = length(vUv - 0.5);
-                finalCol *= smoothstep(0.8, 0.2, dist * 0.7);
+                vec3 color = vec3(0.0);
 
-                gl_FragColor = vec4(finalCol, 1.0);
+                if (mode < 0.5) { // MODE 0: AURA (Original Fluid)
+                    vec2 p = uv;
+                    for(float i = 1.0; i < complexity; i++){
+                        p.x += 0.3 / i * sin(i * 3.0 * p.y + t + reactPulse);
+                        p.y += 0.3 / i * cos(i * 3.0 * p.x + t + reactPulse);
+                    }
+                    color = vec3(0.5 + 0.5 * sin(p.x + t), 0.5 + 0.5 * cos(p.y + t), 0.5 + 0.5 * sin(p.x + p.y));
+                } 
+                else if (mode < 1.5) { // MODE 1: PULSE (Geometric)
+                    float d = length(uv);
+                    float angle = atan(uv.y, uv.x);
+                    d = sin(d * complexity - t * 2.0) + reactPulse;
+                    d = abs(d);
+                    d = 0.1 / d;
+                    color = vec3(d * 0.2, d * 0.5, d);
+                }
+                else { // MODE 2: ORBIT (Cosmic)
+                    for(float i = 1.0; i < complexity; i++){
+                        uv.x += 0.2 * sin(t + uv.y * i + reactPulse);
+                        uv.y += 0.2 * cos(t + uv.x * i + reactPulse);
+                    }
+                    float f = 1.0 / length(uv);
+                    color = vec3(f * 0.1, f * 0.2, f * 0.4);
+                }
+
+                // Global Apple-style Softening
+                color = mix(vec3(0.02), color, 0.4);
+                
+                // Final Hue adjustment
+                vec3 hsv = vec3(fract(hueShift / 6.28 + length(uv)*0.1), 0.5, length(color));
+                gl_FragColor = vec4(hsv2rgb(hsv), 1.0);
             }
         `;
 
-        function initShader() {
-            scene = new THREE.Scene();
-            camera = new THREE.Camera();
-            camera.position.z = 1;
+        // --- Core App Logic ---
+        const App = {
+            user: null,
+            player: null,
+            playlists: [],
+            currentQueue: [],
+            currentIndex: -1,
+            visuals: {
+                scene: null,
+                camera: null,
+                renderer: null,
+                uniforms: null
+            },
 
-            const geometry = new THREE.PlaneBufferGeometry(2, 2);
-            material = new THREE.ShaderMaterial({
-                uniforms: {
-                    time: { value: 1.0 },
-                    resolution: { value: new THREE.Vector2() },
-                    intensity: { value: 1.0 },
+            init() {
+                this.initVisuals();
+                this.setupEventListeners();
+                window.onYouTubeIframeAPIReady = () => this.initYT();
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                document.head.appendChild(tag);
+            },
+
+            initVisuals() {
+                const canvas = document.getElementById('bg-canvas');
+                this.visuals.scene = new THREE.Scene();
+                this.visuals.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+                this.visuals.camera.position.z = 1;
+
+                this.visuals.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+                this.visuals.renderer.setPixelRatio(window.devicePixelRatio);
+                this.visuals.renderer.setSize(window.innerWidth, window.innerHeight);
+
+                this.visuals.uniforms = {
+                    time: { value: 0 },
+                    resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
                     speed: { value: 1.0 },
+                    reactivity: { value: 1.0 },
+                    complexity: { value: 4.0 },
                     hueShift: { value: 0.0 },
-                    isPlaying: { value: 0.0 }
-                },
-                vertexShader,
-                fragmentShader
-            });
+                    isPlaying: { value: 0.0 },
+                    mode: { value: 0.0 }
+                };
 
-            mesh = new THREE.Mesh(geometry, material);
-            scene.add(mesh);
+                const geometry = new THREE.PlaneGeometry(2, 2);
+                const material = new THREE.ShaderMaterial({
+                    uniforms: this.visuals.uniforms,
+                    vertexShader,
+                    fragmentShader
+                });
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
+                const mesh = new THREE.Mesh(geometry, material);
+                this.visuals.scene.add(mesh);
 
-            onWindowResize();
-            window.addEventListener('resize', onWindowResize);
-            animate();
-        }
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    this.visuals.uniforms.time.value += 0.016;
+                    this.visuals.renderer.render(this.visuals.scene, this.visuals.camera);
+                };
+                animate();
 
-        function onWindowResize() {
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            material.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
-        }
+                window.addEventListener('resize', () => {
+                    this.visuals.renderer.setSize(window.innerWidth, window.innerHeight);
+                    this.visuals.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+                });
+            },
 
-        function animate() {
-            requestAnimationFrame(animate);
-            material.uniforms.time.value += 0.01;
-            material.uniforms.isPlaying.value = THREE.MathUtils.lerp(material.uniforms.isPlaying.value, appState.isPlaying ? 1.0 : 0.0, 0.05);
-            renderer.render(scene, camera);
-        }
+            initYT() {
+                this.player = new YT.Player('player', {
+                    height: '1',
+                    width: '1',
+                    playerVars: { 'autoplay': 0, 'controls': 0, 'listType': 'playlist' },
+                    events: {
+                        'onReady': () => console.log('YT Ready'),
+                        'onStateChange': (e) => this.onPlayerStateChange(e)
+                    }
+                });
+            },
 
-        /**
-         * 4. YOUTUBE PLAYER MODULE
-         */
-        let player;
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('player', {
-                height: '1',
-                width: '1',
-                videoId: '',
-                playerVars: {
-                    'autoplay': 0,
-                    'controls': 0,
-                    'disablekb': 1,
-                    'fs': 0,
-                    'modestbranding': 1
-                },
-                events: {
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange
+            login() {
+                const u = document.getElementById('username').value.toLowerCase();
+                const p = document.getElementById('password').value;
+                const validUsers = { 'apple': 'apple', 'orange': 'orange', 'grape': 'grape' };
+
+                if (validUsers[u] && validUsers[u] === p) {
+                    this.user = u;
+                    document.getElementById('login-screen').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('login-screen').style.display = 'none';
+                        document.getElementById('app-ui').style.display = 'block';
+                        setTimeout(() => document.getElementById('app-ui').style.opacity = '1', 50);
+                    }, 800);
+                    this.loadUserData();
+                } else {
+                    document.getElementById('login-error').style.display = 'block';
                 }
-            });
-        }
+            },
 
-        function onPlayerReady(event) {
-            console.log("Player Ready");
-        }
+            loadUserData() {
+                const userRef = db.ref(`users/${this.user}/playlists`);
+                userRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    this.playlists = data ? Object.values(data) : [];
+                    this.renderPlaylists();
+                });
+            },
 
-        function onPlayerStateChange(event) {
-            // YT.PlayerState.PLAYING = 1
-            if (event.data === YT.PlayerState.PLAYING) {
-                appState.isPlaying = true;
-                updateUI();
-            } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-                appState.isPlaying = false;
-                updateUI();
-            }
-            
-            // Auto update track info when playing starts
-            if (event.data === YT.PlayerState.PLAYING) {
-                const data = player.getVideoData();
-                document.getElementById('track-title').innerText = data.title;
-                document.getElementById('track-artist').innerText = data.author || "YouTube Artist";
-            }
-        }
-
-        function playPlaylist(id) {
-            appState.currentPlaylistId = id;
-            player.loadPlaylist({
-                list: id,
-                listType: 'playlist',
-                index: 0,
-                startSeconds: 0
-            });
-            document.getElementById('browse-modal').classList.add('hidden-section');
-        }
-
-        function togglePlay() {
-            if (appState.isPlaying) {
-                player.pauseVideo();
-            } else {
-                player.playVideo();
-            }
-        }
-
-        /**
-         * 5. UI CONTROLS & LOGIC
-         */
-        function updateUI() {
-            const btn = document.getElementById('play-pause-btn');
-            btn.innerHTML = appState.isPlaying ? '<i data-lucide="pause" fill="black"></i>' : '<i data-lucide="play" fill="black"></i>';
-            lucide.createIcons();
-        }
-
-        setInterval(() => {
-            if (player && player.getDuration) {
-                const dur = player.getDuration();
-                const cur = player.getCurrentTime();
-                if (dur > 0) {
-                    const perc = (cur / dur) * 100;
-                    document.getElementById('progress-bar').style.width = perc + '%';
+            addPlaylist() {
+                const url = document.getElementById('playlist-url').value;
+                const match = url.match(/[&?]list=([^&]+)/);
+                if (match) {
+                    const listId = match[1];
+                    db.ref(`users/${this.user}/playlists`).push({ id: listId, name: 'Loading...' });
+                    document.getElementById('playlist-url').value = '';
                 }
-            }
-        }, 1000);
+            },
 
-        // Login Logic
-        document.getElementById('login-btn').addEventListener('click', () => {
-            const u = document.getElementById('username').value.toLowerCase();
-            const p = document.getElementById('password').value;
+            renderPlaylists() {
+                const list = document.getElementById('playlist-list');
+                list.innerHTML = '';
+                this.playlists.forEach((pl, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'playlist-item';
+                    div.innerHTML = `<strong>Playlist ${idx + 1}</strong><br><small>${pl.id}</small>`;
+                    div.onclick = () => this.loadPlaylist(pl.id);
+                    list.appendChild(div);
+                });
+            },
 
-            if (VALID_USERS[u] && VALID_USERS[u] === p) {
-                appState.user = u;
-                document.getElementById('login-screen').classList.add('hidden-section');
-                document.getElementById('main-app').classList.remove('hidden-section');
-                document.getElementById('display-name').innerText = u.charAt(0).toUpperCase() + u.slice(1);
-                loadPlaylists();
-            } else {
-                const err = document.getElementById('login-error');
-                err.style.opacity = '1';
-                setTimeout(() => err.style.opacity = '0', 2000);
-            }
-        });
+            loadPlaylist(id) {
+                this.player.loadPlaylist({
+                    list: id,
+                    listType: 'playlist',
+                    index: 0,
+                    startSeconds: 0,
+                    suggestedQuality: 'small'
+                });
+                this.toggleModal('playlist-modal');
+                document.getElementById('track-status').innerText = 'Buffering...';
+            },
 
-        // App Navigation
-        document.getElementById('browse-btn').addEventListener('click', () => {
-            document.getElementById('browse-modal').classList.remove('hidden-section');
-        });
+            onPlayerStateChange(event) {
+                const state = event.data;
+                const playIcon = document.getElementById('play-icon');
+                const pauseIcon = document.getElementById('pause-icon');
 
-        document.getElementById('settings-btn').addEventListener('click', () => {
-            document.getElementById('settings-modal').classList.remove('hidden-section');
-        });
+                if (state === YT.PlayerState.PLAYING) {
+                    playIcon.style.display = 'none';
+                    pauseIcon.style.display = 'block';
+                    this.visuals.uniforms.isPlaying.value = 1.0;
+                    this.updateTrackInfo();
+                } else {
+                    playIcon.style.display = 'block';
+                    pauseIcon.style.display = 'none';
+                    this.visuals.uniforms.isPlaying.value = 0.0;
+                }
+            },
 
-        document.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden-section'));
-            });
-        });
+            updateTrackInfo() {
+                const videoData = this.player.getVideoData();
+                if (videoData) {
+                    document.getElementById('current-track-name').innerText = videoData.title;
+                    document.getElementById('track-status').innerText = videoData.author;
+                    this.renderQueue();
+                }
+            },
 
-        // Player Buttons
-        document.getElementById('play-pause-btn').addEventListener('click', togglePlay);
-        document.getElementById('next-btn').addEventListener('click', () => player.nextVideo());
-        document.getElementById('prev-btn').addEventListener('click', () => player.previousVideo());
+            renderQueue() {
+                const list = this.player.getPlaylist();
+                const idx = this.player.getPlaylistIndex();
+                const queueEl = document.getElementById('queue-list');
+                queueEl.innerHTML = '';
+                
+                if (list) {
+                    list.slice(idx, idx + 5).forEach((item, i) => {
+                        const div = document.createElement('div');
+                        div.className = 'playlist-item';
+                        div.style.opacity = i === 0 ? '1' : '0.6';
+                        div.innerText = (i === 0 ? "▶ " : "") + "Video ID: " + item;
+                        queueEl.appendChild(div);
+                    });
+                }
+            },
 
-        // Add Playlist
-        document.getElementById('add-playlist-btn').addEventListener('click', () => {
-            const url = document.getElementById('playlist-url').value;
-            const match = url.match(/[?&]list=([^#\&\?]+)/);
-            if (match && match[1]) {
-                savePlaylist(match[1]);
-                document.getElementById('playlist-url').value = '';
-            }
-        });
+            togglePlayback() {
+                const state = this.player.getPlayerState();
+                if (state === YT.PlayerState.PLAYING) this.player.pauseVideo();
+                else this.player.playVideo();
+            },
 
-        // Settings Listeners
-        document.getElementById('set-speed').addEventListener('input', (e) => {
-            const v = parseFloat(e.target.value);
-            material.uniforms.speed.value = v;
-            document.getElementById('val-speed').innerText = v.toFixed(1);
-        });
+            next() { this.player.nextVideo(); },
+            prev() { this.player.previousVideo(); },
 
-        document.getElementById('set-intensity').addEventListener('input', (e) => {
-            const v = parseFloat(e.target.value);
-            material.uniforms.intensity.value = v;
-            document.getElementById('val-intensity').innerText = v.toFixed(1);
-        });
+            toggleModal(id) {
+                const m = document.getElementById(id);
+                m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+            },
 
-        document.getElementById('set-hue').addEventListener('input', (e) => {
-            const v = parseInt(e.target.value);
-            material.uniforms.hueShift.value = v;
-            document.getElementById('val-hue').innerText = v + '°';
-        });
-
-        // Load YT API
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-        // Init App
-        window.onload = () => {
-            initShader();
-            lucide.createIcons();
-            
-            // Request permissions for extensibility
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ audio: true }).catch(e => console.log("Microphone access declined."));
+            setupEventListeners() {
+                const params = ['speed', 'react', 'complex', 'hue', 'mode'];
+                params.forEach(p => {
+                    const el = document.getElementById(`param-${p}`);
+                    el.addEventListener('input', (e) => {
+                        const val = parseFloat(e.target.value);
+                        if (p === 'speed') this.visuals.uniforms.speed.value = val;
+                        if (p === 'react') this.visuals.uniforms.reactivity.value = val;
+                        if (p === 'complex') this.visuals.uniforms.complexity.value = val;
+                        if (p === 'hue') this.visuals.uniforms.hueShift.value = val;
+                        if (p === 'mode') this.visuals.uniforms.mode.value = val;
+                    });
+                    el.addEventListener('change', (e) => {
+                        if (p === 'mode') this.visuals.uniforms.mode.value = parseFloat(e.target.value);
+                    });
+                });
             }
         };
 
+        window.onload = () => App.init();
     </script>
 </body>
 </html>
