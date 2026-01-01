@@ -746,24 +746,32 @@
             },
 
             loadPlaylist(id, autoPlay = true) {
-                if (autoPlay) {
-                    this.player.loadPlaylist({ list: id, listType: 'playlist', index: 0, suggestedQuality: 'small' });
-                } else {
-                    this.player.cuePlaylist({ list: id, listType: 'playlist', index: 0, suggestedQuality: 'small' });
-                }
-                document.getElementById('track-status').innerText = autoPlay ? 'Syncing...' : 'Playlist Loaded';
-                document.getElementById('expansion-playlist-name').innerHTML = `<span>${this.activePlaylistName}</span>`;
-            },
-
+    if (autoPlay) {
+        this.player.loadPlaylist({ list: id, listType: 'playlist', index: 0, suggestedQuality: 'small' });
+    } else {
+        this.player.cuePlaylist({ list: id, listType: 'playlist', index: 0, suggestedQuality: 'small' });
+    }
+    document.getElementById('track-status').innerText = autoPlay ? 'Syncing...' : 'Playlist Loaded';
+    document.getElementById('expansion-playlist-name').innerHTML = `<span>${this.activePlaylistName}</span>`;
+}
+,
             onPlayerStateChange(event) {
-                this.visuals.uniforms.isPlaying.value = (event.data === YT.PlayerState.PLAYING) ? 1.0 : 0.0;
-                document.getElementById('play-icon').style.display = (event.data === YT.PlayerState.PLAYING) ? 'none' : 'block';
-                document.getElementById('pause-icon').style.display = (event.data === YT.PlayerState.PLAYING) ? 'block' : 'none';
-                
-                if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.BUFFERING || event.data === YT.PlayerState.CUED) {
-                    this.updateTrackInfo();
-                }
-            },
+            const state = event.data;
+    this.visuals.uniforms.isPlaying.value = (state === YT.PlayerState.PLAYING) ? 1.0 : 0.0;
+    document.getElementById('play-icon').style.display = (state === YT.PlayerState.PLAYING) ? 'none' : 'block';
+    document.getElementById('pause-icon').style.display = (state === YT.PlayerState.PLAYING) ? 'block' : 'none';
+
+    // Update current track info when playing or buffering
+    if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING || state === YT.PlayerState.CUED) {
+        this.updateTrackInfo();
+    }
+
+    // Automatically play next video if current one ended
+    if (state === YT.PlayerState.ENDED) {
+        this.next();
+    }
+}
+
 
             updateTrackInfo() {
                 const videoData = this.player.getVideoData();
