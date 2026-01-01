@@ -170,17 +170,12 @@
             { name: 'grape', pswd: 'grape', id: 'user_grape' }
         ];
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
-            authDomain: "trip-tracker-57ce0.firebaseapp.com",
-            projectId: "trip-tracker-57ce0",
-            appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
-        };
+        const firebaseConfig = JSON.parse('{"apiKey": "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A", "authDomain": "trip-tracker-57ce0.firebaseapp.com", "projectId": "trip-tracker-57ce0", "appId": "1:236146303848:web:933f1e79e8a97687db6cdd"}');
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-        const APP_ID = "sonic_fluid_v1";
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sonic_fluid_v1';
 
         let player, isPlaying = false, activeUser = null, unsubscribe = null;
         let pointer = { x: -1000, y: -1000 };
@@ -258,14 +253,18 @@
             const match = STATIC_USERS.find(u => u.name === nameInput && u.pswd === pswdInput);
             
             if (match) {
-                err.innerText = "AUTHENTICATING...";
+                err.innerText = "INITIALIZING SECURE LINK...";
                 try {
-                    // Sign in anonymously to enable Firestore access
-                    await auth.signInAnonymously();
+                    // Rule 3: Auth Before Queries
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await auth.signInWithCustomToken(__initial_auth_token);
+                    } else {
+                        await auth.signInAnonymously();
+                    }
                     enterApp(match);
                 } catch (e) {
-                    err.innerText = "FIREBASE ERROR";
-                    console.error(e);
+                    err.innerText = "ACCESS DENIED: FIREBASE LINK FAILED";
+                    console.error("Firebase Auth Error:", e);
                 }
             } else {
                 err.innerText = "IDENTITY UNKNOWN";
@@ -284,8 +283,8 @@
                 main.style.transform = 'translateY(0) scale(1)';
             }, 1000);
 
-            // Path rule: /artifacts/{appId}/users/{userId}/{collectionName}
-            const ref = db.collection('artifacts').doc(APP_ID).collection('users').doc(user.id);
+            // Path rule: /artifacts/{appId}/public/data/{collectionName}
+            const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(user.id);
             
             // Listen for data
             unsubscribe = ref.onSnapshot(s => {
@@ -296,6 +295,7 @@
                 }
             }, (error) => {
                 console.error("Firestore Listen Error:", error);
+                document.getElementById('auth-error').innerText = "DATA SYNC ERROR";
             });
         }
 
@@ -323,7 +323,6 @@
                     },
                     'onReady': () => {
                         setInterval(tick, 500);
-                        console.log("Player Ready");
                     }
                 }
             });
@@ -348,9 +347,9 @@
         document.getElementById('btn-add').onclick = async () => {
             const url = document.getElementById('yt-url').value;
             const lid = url.match(/[&?]list=([^&]+)/)?.[1];
-            if(!lid || !activeUser) return;
+            if(!lid || !activeUser || !auth.currentUser) return;
             
-            const ref = db.collection('artifacts').doc(APP_ID).collection('users').doc(activeUser.id);
+            const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(activeUser.id);
             await ref.update({ 
                 playlists: firebase.firestore.FieldValue.arrayUnion({ 
                     id: lid, 
@@ -372,7 +371,7 @@
                 d.innerHTML = `<span class="truncate pr-4">${p.name}</span><span class="del opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-opacity">×</span>`;
                 d.onclick = (e) => {
                     if(e.target.classList.contains('del')) {
-                        const ref = db.collection('artifacts').doc(APP_ID).collection('users').doc(activeUser.id);
+                        const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('users').doc(activeUser.id);
                         ref.update({ playlists: firebase.firestore.FieldValue.arrayRemove(p) });
                     } else { 
                         player.loadPlaylist({ list: p.id, listType: 'playlist', index: 0 }); 
