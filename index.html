@@ -3,189 +3,220 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MORSE-TECH // NETWORK_V1.0</title>
+    <title>Real-Time Morse Terminal</title>
     <style>
         :root {
-            --bg-color: #0a0e14;
-            --panel-color: #1a222d;
-            --neon-green: #39ff14;
-            --neon-cyan: #00f3ff;
-            --alert-red: #ff3131;
-            --font-main: 'Courier New', Courier, monospace;
+            --bg: #0a0a0c;
+            --panel: #16161e;
+            --accent: #bb9af7;
+            --danger: #f7768e;
+            --success: #73daca;
+            --text: #c0caf5;
+            --muted: #565f89;
         }
 
         * {
             box-sizing: border-box;
+            user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--neon-green);
-            font-family: var(--font-main);
+        body, html {
             margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
+            padding: 0;
+            height: 100%;
             overflow: hidden;
-            text-transform: uppercase;
+            background: var(--bg);
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            color: var(--text);
         }
 
-        #login-screen, #app-screen, #full-screen {
-            display: none;
-            flex-direction: column;
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
             width: 100%;
-            max-width: 500px;
-            border: 2px solid var(--neon-green);
-            padding: 20px;
-            background: var(--panel-color);
-            box-shadow: 0 0 15px rgba(57, 255, 20, 0.2);
+            height: 100%;
         }
 
-        h1 {
-            font-size: 1.2rem;
-            margin: 0 0 20px 0;
-            text-align: center;
-            border-bottom: 2px solid var(--neon-green);
-            padding-bottom: 10px;
-        }
-
-        .status-bar {
+        .overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(10, 10, 12, 0.9);
             display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-            margin-bottom: 15px;
-            color: var(--neon-cyan);
-        }
-
-        .callsign-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-
-        .btn {
-            background: transparent;
-            border: 2px solid var(--neon-green);
-            color: var(--neon-green);
-            font-family: var(--font-main);
-            padding: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.2s;
-        }
-
-        .btn:active:not(:disabled) {
-            background: var(--neon-green);
-            color: var(--bg-color);
-        }
-
-        .btn:disabled {
-            border-color: #444;
-            color: #444;
-            cursor: not-allowed;
-        }
-
-        .btn-lock {
-            border-color: var(--neon-cyan);
-            color: var(--neon-cyan);
-        }
-
-        .btn-lock.active {
-            background: var(--neon-cyan);
-            color: var(--bg-color);
-        }
-
-        #transmit-btn {
-            height: 150px;
-            margin: 20px 0;
-            font-size: 1.5rem;
-            background: rgba(57, 255, 20, 0.05);
-        }
-
-        #transmit-btn.active {
-            background: var(--neon-green);
-            color: var(--bg-color);
-            box-shadow: 0 0 30px var(--neon-green);
-        }
-
-        .monitor {
-            background: #000;
-            border: 1px inset var(--neon-green);
-            padding: 10px;
-            height: 100px;
-            overflow-y: auto;
-            font-size: 0.9rem;
-            margin-bottom: 15px;
-            color: var(--neon-cyan);
-        }
-
-        .alert {
-            color: var(--alert-red);
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .blink {
-            animation: blinker 1s linear infinite;
-        }
-
-        @keyframes blinker {
-            50% { opacity: 0; }
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
         }
 
         .hidden { display: none !important; }
+
+        .panel {
+            background: var(--panel);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        h1 { margin: 0 0 1.5rem; font-size: 1.2rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
+
+        .callsign-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text);
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            font-weight: bold;
+        }
+
+        .btn:hover:not(:disabled) { background: rgba(255,255,255,0.15); border-color: var(--accent); }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .main-ui {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .status-box {
+            background: var(--panel);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+        .value { font-size: 1rem; font-weight: bold; display: block; }
+
+        .transmit-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #key-button {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            border: 8px solid var(--accent);
+            background: transparent;
+            color: var(--accent);
+            font-size: 1.5rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 0 20px rgba(187, 154, 247, 0.2);
+            text-transform: uppercase;
+        }
+
+        #key-button.active {
+            transform: scale(0.92);
+            background: var(--accent);
+            color: var(--bg);
+            box-shadow: 0 0 50px rgba(187, 154, 247, 0.6);
+        }
+
+        #key-button:disabled {
+            border-color: var(--muted);
+            color: var(--muted);
+            box-shadow: none;
+            opacity: 0.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            padding-bottom: 20px;
+        }
+
+        .indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            background: #333;
+        }
+        .indicator.on { background: var(--success); box-shadow: 0 0 10px var(--success); }
+
+        .lock-btn { min-width: 140px; }
+        .locked-border { border-color: var(--danger) !important; color: var(--danger) !important; }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN SCREEN -->
-    <div id="login-screen" style="display: flex;">
-        <h1>NET_GATEWAY v1.0</h1>
-        <p>SELECT OPERATOR CALLSIGN:</p>
-        <div id="callsign-list" class="callsign-grid">
-            <!-- Buttons injected by JS -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Selection Screen -->
+    <div id="selection-screen" class="overlay">
+        <div class="panel">
+            <h1>Select Operator</h1>
+            <div id="callsign-container" class="callsign-list">
+                <!-- Buttons injected here -->
+            </div>
+            <p id="full-msg" class="hidden" style="color:var(--danger); margin-top:15px;">CHANNEL FULL</p>
         </div>
     </div>
 
-    <!-- APP SCREEN -->
-    <div id="app-screen">
-        <div class="status-bar">
-            <div>ID: <span id="my-callsign">--</span></div>
-            <div id="lock-status">UNLOCKED</div>
+    <!-- Main UI -->
+    <div id="app-ui" class="main-ui hidden">
+        <div class="header">
+            <div class="status-box">
+                <span class="label">Operator</span>
+                <span id="my-callsign" class="value">--</span>
+            </div>
+            <div class="status-box" id="channel-status-box">
+                <span class="label">Channel Status</span>
+                <span id="channel-state" class="value">OPEN</span>
+            </div>
         </div>
 
-        <div class="monitor" id="log">
-            SYSTEM INITIALIZED...<br>
-            AWAITING SIGNAL...
+        <div class="transmit-container">
+            <button id="key-button">Transmit</button>
         </div>
 
-        <div class="status-bar">
-            <div>TX: <span id="current-tx">IDLE</span></div>
+        <div id="keyed-by-display" style="text-align: center; margin-bottom: 20px; height: 24px;">
+            <span class="label" id="keyed-by-text" style="color:var(--success)"></span>
         </div>
 
-        <button id="transmit-btn" class="btn">TRANSMIT</button>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <button id="lock-btn" class="btn btn-lock">LOCK CH</button>
-            <button id="unlock-btn" class="btn btn-lock" disabled>RELEASE</button>
+        <div class="controls">
+            <button id="lock-toggle" class="btn lock-btn">Lock Channel</button>
         </div>
-    </div>
-
-    <!-- CHANNEL FULL SCREEN -->
-    <div id="full-screen">
-        <h1 class="alert">ACCESS DENIED</h1>
-        <p class="alert blink">CHANNEL FULL</p>
-        <p style="text-align: center; font-size: 0.8rem;">ALL CALLSIGNS (NG, VD, ST) ARE CURRENTLY ASSIGNED.</p>
-        <button onclick="location.reload()" class="btn" style="margin-top: 20px;">RETRY CONNECTION</button>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update, onDisconnect, serverTimestamp, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+        import { getDatabase, ref, set, onValue, update, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
@@ -200,202 +231,266 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-
-        // App State
-        let myCallsign = null;
-        const availableCallsigns = ["NG", "VD", "ST"];
-        const DOT_DURATION = 120;
-        const DASH_DURATION = 360;
         
-        // Audio Logic
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let oscillator = null;
-        let gainNode = null;
+        const CALLSIGNS = ['NG', 'VD', 'ST'];
+        let myCallsign = null;
+        let isPressed = false;
+        let channelData = { lockedBy: null, activeKeyer: null };
 
-        function playTone(duration) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            const osc = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-            
-            // Envelope to prevent clicks
-            g.gain.setValueAtTime(0, audioCtx.currentTime);
-            g.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.01);
-            g.gain.setValueAtTime(0.1, audioCtx.currentTime + (duration/1000) - 0.01);
-            g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + (duration/1000));
-            
-            osc.connect(g);
-            g.connect(audioCtx.destination);
-            
-            osc.start();
-            osc.stop(audioCtx.currentTime + (duration/1000));
-        }
-
-        // UI Selectors
-        const loginScreen = document.getElementById('login-screen');
-        const appScreen = document.getElementById('app-screen');
-        const fullScreen = document.getElementById('full-screen');
-        const callsignList = document.getElementById('callsign-list');
-        const transmitBtn = document.getElementById('transmit-btn');
-        const lockBtn = document.getElementById('lock-btn');
-        const unlockBtn = document.getElementById('unlock-btn');
-        const log = document.getElementById('log');
-        const currentTxDisplay = document.getElementById('current-tx');
-        const lockStatusDisplay = document.getElementById('lock-status');
-
-        // Logic variables
-        let isTransmitting = false;
-        let pressStartTime = 0;
-        let channelState = {
-            transmitter: null,
-            lockedBy: null,
-            signal: null // { type: 'DOT'|'DASH', ts: timestamp }
+        // Audio Engine
+        const AudioEngine = {
+            ctx: null,
+            osc: null,
+            gain: null,
+            freq: 600,
+            init() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            },
+            start() {
+                if (!this.ctx) this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                
+                this.osc = this.ctx.createOscillator();
+                this.gain = this.ctx.createGain();
+                
+                this.osc.type = 'sine';
+                this.osc.frequency.setValueAtTime(this.freq, this.ctx.currentTime);
+                
+                this.gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                this.gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 0.005);
+                
+                this.osc.connect(this.gain);
+                this.gain.connect(this.ctx.destination);
+                this.osc.start();
+            },
+            stop() {
+                if (!this.gain) return;
+                const ct = this.ctx.currentTime;
+                this.gain.gain.setValueAtTime(this.gain.gain.value, ct);
+                this.gain.gain.linearRampToValueAtTime(0, ct + 0.005);
+                setTimeout(() => {
+                    if (this.osc) {
+                        this.osc.stop();
+                        this.osc.disconnect();
+                        this.gain.disconnect();
+                    }
+                }, 10);
+            }
         };
 
-        // Initialize Users / Occupancy
-        onValue(ref(db, 'users'), (snapshot) => {
-            const users = snapshot.val() || {};
-            callsignList.innerHTML = '';
-            let takenCount = 0;
+        // UI References
+        const selectionScreen = document.getElementById('selection-screen');
+        const callsignContainer = document.getElementById('callsign-container');
+        const appUi = document.getElementById('app-ui');
+        const keyBtn = document.getElementById('key-button');
+        const lockBtn = document.getElementById('lock-toggle');
+        const channelStateEl = document.getElementById('channel-state');
+        const keyedByText = document.getElementById('keyed-by-text');
 
-            availableCallsigns.forEach(cs => {
-                const isTaken = users[cs] && users[cs].online;
-                if (isTaken) takenCount++;
+        // Render Callsign Selection
+        onValue(ref(db, 'operators'), (snapshot) => {
+            const data = snapshot.val() || {};
+            callsignContainer.innerHTML = '';
+            let availableCount = 0;
 
+            CALLSIGNS.forEach(cs => {
+                const isTaken = data[cs] && (Date.now() - data[cs].lastSeen < 10000);
                 const btn = document.createElement('button');
                 btn.className = 'btn';
-                btn.innerText = cs + (isTaken ? ' (BUSY)' : ' (OPEN)');
+                btn.innerText = cs;
                 btn.disabled = isTaken;
+                if (!isTaken) availableCount++;
+                
                 btn.onclick = () => selectCallsign(cs);
-                callsignList.appendChild(btn);
+                callsignContainer.appendChild(btn);
             });
 
-            if (takenCount === 3 && !myCallsign) {
-                loginScreen.style.display = 'none';
-                fullScreen.style.display = 'flex';
-            }
+            document.getElementById('full-msg').classList.toggle('hidden', availableCount > 0);
         });
 
         async function selectCallsign(cs) {
             myCallsign = cs;
-            const userRef = ref(db, `users/${cs}`);
-            await set(userRef, { online: true, lastSeen: serverTimestamp() });
-            onDisconnect(userRef).set({ online: false });
+            const opRef = ref(db, `operators/${cs}`);
+            await set(opRef, { lastSeen: serverTimestamp() });
+            onDisconnect(opRef).remove();
+            
+            // Start heartbeat
+            setInterval(() => {
+                update(opRef, { lastSeen: serverTimestamp() });
+            }, 5000);
 
+            selectionScreen.classList.add('hidden');
+            appUi.classList.remove('hidden');
             document.getElementById('my-callsign').innerText = cs;
-            loginScreen.style.display = 'none';
-            appScreen.style.display = 'flex';
-            initMainListeners();
+            AudioEngine.init();
         }
 
-        function initMainListeners() {
-            // Channel State Sync
-            onValue(ref(db, 'channel'), (snapshot) => {
-                const data = snapshot.val() || {};
-                channelState = data;
+        // Firebase Sync
+        onValue(ref(db, 'channel'), (snapshot) => {
+            const data = snapshot.val() || { lockedBy: null, activeKeyer: null };
+            channelData = data;
 
-                // Update UI
-                currentTxDisplay.innerText = data.transmitter || 'IDLE';
-                if (data.lockedBy) {
-                    lockStatusDisplay.innerText = `LOCKED BY ${data.lockedBy}`;
-                    lockStatusDisplay.style.color = 'var(--neon-cyan)';
-                    lockBtn.disabled = true;
-                    unlockBtn.disabled = data.lockedBy !== myCallsign;
-                } else {
-                    lockStatusDisplay.innerText = `UNLOCKED`;
-                    lockStatusDisplay.style.color = 'var(--neon-green)';
-                    lockBtn.disabled = false;
-                    unlockBtn.disabled = true;
-                }
+            // Handle Lock State
+            if (data.lockedBy) {
+                channelStateEl.innerText = `LOCKED BY ${data.lockedBy}`;
+                channelStateEl.style.color = 'var(--danger)';
+                lockBtn.innerText = data.lockedBy === myCallsign ? "Release Channel" : "Locked";
+                lockBtn.disabled = data.lockedBy !== myCallsign;
+                keyBtn.disabled = data.lockedBy !== myCallsign;
+            } else {
+                channelStateEl.innerText = "OPEN";
+                channelStateEl.style.color = 'var(--success)';
+                lockBtn.innerText = "Lock Channel";
+                lockBtn.disabled = false;
+                keyBtn.disabled = false;
+            }
 
-                // Global Disabled State for Transmit
-                const canTransmit = !data.transmitter || data.transmitter === myCallsign;
-                const isLockedByOther = data.lockedBy && data.lockedBy !== myCallsign;
-                
-                transmitBtn.disabled = (data.transmitter && data.transmitter !== myCallsign) || isLockedByOther;
-            });
-
-            // Signal Listener for Audio
-            onValue(ref(db, 'signal'), (snapshot) => {
-                const sig = snapshot.val();
-                if (sig && sig.sender !== myCallsign) {
-                    const dur = sig.type === 'DOT' ? DOT_DURATION : DASH_DURATION;
-                    playTone(dur);
-                    const line = document.createElement('div');
-                    line.innerText = `> ${sig.sender}: ${sig.type}`;
-                    log.prepend(line);
-                }
-            });
-        }
-
-        // Transmit Interaction
-        const startTransmit = (e) => {
-            e.preventDefault();
-            if (transmitBtn.disabled || isTransmitting) return;
-            
-            isTransmitting = true;
-            pressStartTime = Date.now();
-            transmitBtn.classList.add('active');
-            
-            // Tell DB we are transmitting
-            update(ref(db, 'channel'), { transmitter: myCallsign });
-        };
-
-        const endTransmit = (e) => {
-            e.preventDefault();
-            if (!isTransmitting) return;
-
-            const duration = Date.now() - pressStartTime;
-            const type = duration > 200 ? 'DASH' : 'DOT';
-            const audioDur = type === 'DOT' ? DOT_DURATION : DASH_DURATION;
-
-            // Trigger local audio
-            playTone(audioDur);
-            
-            // Update Log
-            const line = document.createElement('div');
-            line.innerText = `< YOU: ${type}`;
-            log.prepend(line);
-
-            // Broadcast Signal
-            set(ref(db, 'signal'), {
-                type: type,
-                sender: myCallsign,
-                ts: serverTimestamp()
-            });
-
-            // Clear Transmitter Status
-            setTimeout(() => {
-                update(ref(db, 'channel'), { transmitter: null });
-                isTransmitting = false;
-                transmitBtn.classList.remove('active');
-            }, audioDur);
-        };
-
-        // Desktop
-        transmitBtn.onmousedown = startTransmit;
-        window.onmouseup = endTransmit;
-        // Mobile
-        transmitBtn.ontouchstart = startTransmit;
-        window.ontouchend = endTransmit;
-
-        // Lock Buttons
-        lockBtn.onclick = () => {
-            update(ref(db, 'channel'), { lockedBy: myCallsign });
-        };
-
-        unlockBtn.onclick = () => {
-            update(ref(db, 'channel'), { lockedBy: null });
-        };
-
-        // Auto-scroll log
-        const observer = new MutationObserver(() => {
-            log.scrollTop = 0;
+            // Handle Keying Audio
+            if (data.activeKeyer && data.activeKeyer !== myCallsign) {
+                AudioEngine.start();
+                keyedByText.innerText = `RECEIVING FROM ${data.activeKeyer}...`;
+                updateVisualPulse(true);
+            } else if (!isPressed) {
+                AudioEngine.stop();
+                keyedByText.innerText = "";
+                updateVisualPulse(false);
+            }
         });
-        observer.observe(log, { childList: true });
+
+        // Keying Logic
+        const handleDown = () => {
+            if (isPressed || keyBtn.disabled) return;
+            isPressed = true;
+            keyBtn.classList.add('active');
+            AudioEngine.start();
+            update(ref(db, 'channel'), { activeKeyer: myCallsign });
+            updateVisualPulse(true);
+        };
+
+        const handleUp = () => {
+            if (!isPressed) return;
+            isPressed = false;
+            keyBtn.classList.remove('active');
+            AudioEngine.stop();
+            update(ref(db, 'channel'), { activeKeyer: null });
+            updateVisualPulse(false);
+        };
+
+        keyBtn.addEventListener('mousedown', handleDown);
+        window.addEventListener('mouseup', handleUp);
+        keyBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleDown(); });
+        window.addEventListener('touchend', handleUp);
+
+        lockBtn.onclick = () => {
+            if (channelData.lockedBy === myCallsign) {
+                update(ref(db, 'channel'), { lockedBy: null });
+            } else if (!channelData.lockedBy) {
+                update(ref(db, 'channel'), { lockedBy: myCallsign });
+            }
+        };
+
+        // --- WEBGL BACKGROUND ---
+        const canvas = document.getElementById('bg-canvas');
+        const gl = canvas.getContext('webgl');
+
+        const vertShaderSource = `
+            attribute vec2 position;
+            void main() {
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        `;
+
+        const fragShaderSource = `
+            precision mediump float;
+            uniform float u_time;
+            uniform vec2 u_resolution;
+            uniform float u_pulse;
+
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+                uv -= 0.5;
+                uv.x *= u_resolution.x / u_resolution.y;
+
+                vec3 color = vec3(0.05, 0.05, 0.1);
+                
+                for(float i = 0.0; i < 40.0; i++) {
+                    float h = hash(vec2(i, 1.0));
+                    float speed = 0.1 + h * 0.2;
+                    float radius = 0.5 + h * 2.0;
+                    
+                    vec2 pos = vec2(
+                        cos(u_time * speed + i) * radius,
+                        sin(u_time * speed * 0.5 + i) * radius
+                    );
+
+                    float dist = length(uv - pos);
+                    float brightness = 0.001 / dist;
+                    
+                    // Modulate by pulse
+                    brightness *= (1.0 + u_pulse * 5.0 * h);
+                    
+                    vec3 pColor = vec3(0.5, 0.4, 0.8) * h;
+                    if(u_pulse > 0.1) pColor = vec3(0.4, 0.9, 0.8);
+                    
+                    color += pColor * brightness;
+                }
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            return shader;
+        }
+
+        const program = gl.createProgram();
+        gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vertShaderSource));
+        gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fragShaderSource));
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        const posBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+
+        const posAttrib = gl.getAttribLocation(program, 'position');
+        gl.enableVertexAttribArray(posAttrib);
+        gl.vertexAttribPointer(posAttrib, 2, gl.FLOAT, false, 0, 0);
+
+        const uTime = gl.getUniformLocation(program, 'u_time');
+        const uRes = gl.getUniformLocation(program, 'u_resolution');
+        const uPulse = gl.getUniformLocation(program, 'u_pulse');
+
+        let pulseVal = 0;
+        function updateVisualPulse(active) {
+            pulseVal = active ? 1.0 : 0.0;
+        }
+
+        function render(time) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+
+            gl.uniform1f(uTime, time * 0.001);
+            gl.uniform2f(uRes, canvas.width, canvas.height);
+            gl.uniform1f(uPulse, pulseVal);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
 
     </script>
 </body>
