@@ -3,334 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SECURE COMM-LINK | PROJECT MORSE</title>
+    <title>TERMINAL 95 | SECURE COMM-LINK</title>
     <style>
         :root {
-            --crt-amber: #ffb000;
-            --crt-green: #33ff33;
-            --bg-dark: #0a0c0a;
-            --panel-olive: #2b3020;
-            --glow: 0 0 10px rgba(255, 176, 0, 0.5);
+            --win-bg: #000033;
+            --win-gray: #c0c0c0;
+            --win-blue: #000080;
+            --neon-green: #00ff00;
+            --neon-cyan: #00ffff;
+            --danger: #ff0000;
         }
 
         @font-face {
-            font-family: 'Terminal';
+            font-family: 'Pixel';
             src: local('Courier New'), local('Courier'), monospace;
         }
 
         * { 
             box-sizing: border-box; 
-            cursor: crosshair; 
+            font-family: 'Pixel', monospace;
             -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
 
         body {
-            background-color: var(--bg-dark);
-            color: var(--crt-amber);
-            font-family: 'Terminal', monospace;
+            background-color: var(--win-bg);
+            color: var(--neon-green);
             margin: 0;
             height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             overflow: hidden;
-            text-transform: uppercase;
         }
 
-        /* CRT Overlay Effects */
-        .crt-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 3px, 3px 100%;
-            pointer-events: none;
-            z-index: 1000;
-        }
-
-        .crt-scanline {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(0deg, rgba(0,0,0,0) 0%, rgba(255,176,0,0.05) 50%, rgba(0,0,0,0) 100%);
-            background-size: 100% 20px;
-            animation: scanline 8s linear infinite;
-            pointer-events: none;
-            z-index: 1001;
-        }
-
-        @keyframes scanline {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100%); }
-        }
-
-        /* Selector Panel */
+        /* Login Screen */
         #selector-overlay {
             position: fixed;
             inset: 0;
-            background: var(--bg-dark);
+            background: var(--win-bg);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 2000;
-            border: 2px solid var(--panel-olive);
             padding: 20px;
-            text-align: center;
+        }
+
+        .win-panel {
+            background: var(--win-gray);
+            border: 2px solid #ffffff;
+            border-right-color: #808080;
+            border-bottom-color: #808080;
+            padding: 4px;
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+        }
+
+        .win-title {
+            background: var(--win-blue);
+            color: white;
+            padding: 4px 8px;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
         }
 
         .callsign-btn {
-            background: transparent;
-            border: 2px solid var(--crt-amber);
-            color: var(--crt-amber);
-            padding: 20px 40px;
-            margin: 10px;
+            background: var(--win-gray);
+            border: 2px solid #ffffff;
+            border-right-color: #808080;
+            border-bottom-color: #808080;
+            color: #000;
+            padding: 15px;
+            margin: 10px 0;
             font-size: 20px;
-            width: 100%;
-            max-width: 300px;
-            transition: all 0.2s;
+            width: 250px;
+            font-weight: bold;
         }
 
-        .callsign-btn:not(:disabled):hover {
-            background: var(--crt-amber);
-            color: var(--bg-dark);
-            box-shadow: var(--glow);
+        .callsign-btn:active:not(:disabled) {
+            border: 2px solid #808080;
+            border-right-color: #ffffff;
+            border-bottom-color: #ffffff;
         }
 
         .callsign-btn:disabled {
-            border-color: #444;
-            color: #444;
-            opacity: 0.5;
+            color: #808080;
+            background: #d4d4d4;
         }
 
         /* Main Console */
         #console {
-            width: 800px;
-            max-width: 95vw;
-            height: 90vh;
-            border: 4px solid #1a1c1a;
-            background: #151815;
-            padding: 15px;
-            box-shadow: inset 0 0 50px rgba(0,0,0,1);
-            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            max-height: 900px;
+            padding: 10px;
             display: none;
-            overflow-y: auto;
+            flex-direction: column;
         }
 
-        .header {
+        .status-bar {
+            background: var(--win-gray);
+            color: #000;
+            padding: 5px;
+            font-size: 12px;
             display: flex;
             justify-content: space-between;
-            border-bottom: 2px solid var(--crt-amber);
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-            font-size: 12px;
+            border: 1px solid #808080;
+            margin-bottom: 10px;
         }
 
-        /* Status Panel */
-        .status-panel {
+        .display-area {
+            flex: 1;
+            background: #000;
+            border: 2px inset #808080;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
-            background: rgba(0,0,0,0.4);
-            padding: 10px;
-            border: 1px solid var(--panel-olive);
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
-        .status-box {
-            border-left: 3px solid var(--crt-amber);
-            padding-left: 8px;
-            font-size: 10px;
+        .info-box {
+            border: 1px solid var(--neon-cyan);
+            padding: 8px;
+            font-size: 11px;
         }
 
-        .status-val {
-            font-size: 16px;
-            font-weight: bold;
-            display: block;
-            margin-top: 3px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        .label { color: var(--neon-cyan); display: block; margin-bottom: 4px; }
+        .val { font-size: 16px; font-weight: bold; }
 
-        .status-val.locked { color: #ff4444; }
-        .status-val.open { color: var(--crt-green); }
-
-        /* Transmitter Section */
-        .comm-center {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .lamp-container {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: #111;
-            border: 4px solid #333;
+        .signal-indicator {
+            width: 100%;
+            height: 60px;
+            border: 1px solid var(--neon-green);
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
         }
 
-        #signal-lamp {
+        #lamp {
             width: 40px;
             height: 40px;
-            border-radius: 50%;
-            background: #220000;
-            transition: background 0.05s;
+            background: #003300;
+            border-radius: 4px;
         }
 
-        #signal-lamp.active {
-            background: #ff0000;
-            box-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000;
+        #lamp.active {
+            background: var(--neon-green);
+            box-shadow: 0 0 20px var(--neon-green);
         }
 
-        .btn-group {
+        /* Controls */
+        .controls {
             display: flex;
-            gap: 10px;
-            width: 100%;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        .mech-btn {
-            flex: 1;
-            padding: 15px 10px;
-            background: var(--panel-olive);
-            border: 3px solid #3a412b;
-            border-bottom: 6px solid #1a1e12;
-            color: var(--crt-amber);
-            font-family: 'Terminal', monospace;
-            font-size: 14px;
+        .btn {
+            background: var(--win-gray);
+            border: 3px solid #ffffff;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+            color: #000;
             font-weight: bold;
-            text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
-            transition: all 0.1s;
+            padding: 20px;
+            font-size: 16px;
             touch-action: manipulation;
         }
 
-        .mech-btn:active:not(:disabled) {
-            transform: translateY(4px);
-            border-bottom: 2px solid #1a1e12;
+        .btn:active:not(:disabled) {
+            border: 3px solid #404040;
+            border-right-color: #ffffff;
+            border-bottom-color: #ffffff;
+            transform: translateY(2px);
         }
 
-        .mech-btn:disabled {
-            opacity: 0.3;
-            filter: grayscale(1);
+        .btn:disabled {
+            opacity: 0.5;
+            color: #666;
         }
 
         #transmit-btn {
-            background: #4a543a;
-            font-size: 20px;
-            width: 100%;
-            padding: 30px;
+            height: 150px;
+            font-size: 24px;
+            background: #808080;
+            color: #fff;
         }
 
         #transmit-btn.active {
-            background: #ffb000;
+            background: var(--neon-green);
             color: #000;
         }
 
-        .footer {
-            margin-top: 20px;
-            font-size: 9px;
-            opacity: 0.5;
-            text-align: center;
-            letter-spacing: 1px;
+        .lock-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
 
-        .log-display {
-            height: 50px;
-            background: rgba(0,0,0,0.8);
-            border: 1px solid var(--panel-olive);
-            margin-top: 15px;
-            padding: 8px;
-            font-size: 11px;
-            color: var(--crt-green);
-            overflow: hidden;
-        }
-
-        @media (min-width: 600px) {
-            #console { padding: 30px; }
-            .header { font-size: 14px; }
-            .status-box { font-size: 12px; }
-            .status-val { font-size: 20px; }
-            .lamp-container { width: 120px; height: 120px; }
-            #signal-lamp { width: 60px; height: 60px; }
-            .mech-btn { font-size: 18px; padding: 25px; }
-            .log-display { height: 60px; font-size: 12px; }
+        #log {
+            height: 100px;
+            font-size: 10px;
+            color: #008800;
+            overflow-y: auto;
+            border-top: 1px solid #333;
+            margin-top: auto;
+            padding-top: 10px;
         }
     </style>
 </head>
 <body>
-    <div class="crt-overlay"></div>
-    <div class="crt-scanline"></div>
-
-    <!-- Callsign Selection -->
+    <!-- Selector -->
     <div id="selector-overlay">
-        <h1 style="letter-spacing: 5px; margin-bottom: 20px; font-size: 24px;">SELECT OPERATOR ID</h1>
-        <div id="loading-msg">INITIALIZING ENCRYPTION...</div>
-        <div id="buttons-container" style="display: none; width: 100%; display: flex; flex-direction: column; align-items: center;">
-            <button class="callsign-btn" id="btn-NG" onclick="selectCallsign('NG')">CALLSIGN: NG</button>
-            <button class="callsign-btn" id="btn-VD" onclick="selectCallsign('VD')">CALLSIGN: VD</button>
-            <button class="callsign-btn" id="btn-ST" onclick="selectCallsign('ST')">CALLSIGN: ST</button>
+        <div class="win-panel">
+            <div class="win-title">
+                <span>LOGIN_PROMPT.EXE</span>
+                <span>[X]</span>
+            </div>
+            <div style="padding: 10px; color: #000;">
+                IDENTIFY OPERATOR CALLSIGN:
+                <div id="buttons-container" style="display: flex; flex-direction: column; margin-top: 15px;">
+                    <button class="callsign-btn" id="btn-NG" onclick="selectCallsign('NG')">NG</button>
+                    <button class="callsign-btn" id="btn-VD" onclick="selectCallsign('VD')">VD</button>
+                    <button class="callsign-btn" id="btn-ST" onclick="selectCallsign('ST')">ST</button>
+                </div>
+                <div id="occupied-msg" style="display: none; color: red; margin-top: 10px; font-weight: bold;">CHANNEL FULL - SLOTS OCCUPIED</div>
+            </div>
         </div>
-        <div id="occupied-msg" style="display: none; color: #ff4444; margin-top: 20px; font-size: 18px;">CHANNEL OCCUPIED - ALL SLOTS TAKEN</div>
     </div>
 
-    <!-- Main Interface -->
-    <div id="console">
-        <div class="header">
-            <div>STATION: <span id="my-callsign">--</span></div>
-            <div>STATUS: <span id="conn-status">ENCRYPTED</span></div>
+    <!-- Main -->
+    <div id="console" class="win-panel">
+        <div class="win-title">
+            <span>NETSCAPE_COMM_V4.1 - [SESSION: ENCRYPTED]</span>
+            <span>[?] [_] [X]</span>
+        </div>
+        
+        <div class="status-bar">
+            <span>CALLSIGN: <b id="my-id">--</b></span>
+            <span>SND: LIVE_RELAY</span>
+            <span>LATENCY: <span id="ping">--</span>ms</span>
         </div>
 
-        <div class="status-panel">
-            <div class="status-box">
-                CHANNEL STATUS
-                <span id="channel-lock-text" class="status-val open">OPEN</span>
+        <div class="display-area">
+            <div class="info-grid">
+                <div class="info-box">
+                    <span class="label">CHANNEL LOCK</span>
+                    <span id="lock-status" class="val">OPEN</span>
+                </div>
+                <div class="info-box">
+                    <span class="label">LOCK OWNER</span>
+                    <span id="lock-by" class="val">NONE</span>
+                </div>
+                <div class="info-box">
+                    <span class="label">LAST SIGNAL</span>
+                    <span id="last-sig" class="val">IDLE</span>
+                </div>
+                <div class="info-box">
+                    <span class="label">OPERATORS</span>
+                    <span id="online-count" class="val">0/3</span>
+                </div>
             </div>
-            <div class="status-box">
-                LOCK HOLDER
-                <span id="lock-holder-text" class="status-val">NONE</span>
+
+            <div class="signal-indicator">
+                <div id="lamp"></div>
             </div>
-            <div class="status-box">
-                ACTIVE TX
-                <span id="tx-holder-text" class="status-val">IDLE</span>
-            </div>
-            <div class="status-box">
-                SIGNAL STRENGTH
-                <span class="status-val" style="color: var(--crt-green)">98.4% CLR</span>
+
+            <div id="log">
+                [SYSTEM] CONNECTED TO GLOBAL RELAY NETWORK...<br>
+                [SYSTEM] LISTENING FOR INCOMING SIGNALS...
             </div>
         </div>
 
-        <div class="comm-center">
-            <div class="lamp-container">
-                <div id="signal-lamp"></div>
-            </div>
-
-            <button id="transmit-btn" class="mech-btn" onmousedown="startTransmit()" onmouseup="stopTransmit()" onmouseleave="stopTransmit()" ontouchstart="event.preventDefault(); startTransmit()" ontouchend="event.preventDefault(); stopTransmit()">
-                TRANSMIT [KEY]
+        <div class="controls">
+            <button id="transmit-btn" class="btn" ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)" onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)">
+                TRANSMIT SIGNAL
             </button>
-
-            <div class="btn-group">
-                <button id="lock-btn" class="mech-btn" onclick="toggleChannelLock()">LOCK</button>
-                <button id="release-btn" class="mech-btn" onclick="releaseChannel()" disabled>RELEASE</button>
+            <div class="lock-group">
+                <button id="lock-btn" class="btn" onclick="toggleLock(true)">LOCK CH</button>
+                <button id="release-btn" class="btn" onclick="toggleLock(false)" disabled>RELEASE</button>
             </div>
-        </div>
-
-        <div class="log-display" id="log">
-            SYSTEM STANDBY... READY FOR INPUT.
-        </div>
-
-        <div class="footer">
-            PROPERTY OF UNITED STATES GOVERNMENT - CLASSIFIED - 1984
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update, onDisconnect, serverTimestamp, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+        import { getDatabase, ref, set, push, onValue, update, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
@@ -345,22 +317,22 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        
-        // State
+
         let myCallsign = null;
-        let isTransmitting = false;
         let audioCtx = null;
         let oscillator = null;
         let gainNode = null;
+        let isDown = false;
+        let pressStartTime = 0;
 
-        // DB Refs
+        // Refs
         const presenceRef = ref(db, 'presence');
-        const channelRef = ref(db, 'channel');
         const lockRef = ref(db, 'channel/lock');
-        const txRef = ref(db, 'channel/transmission');
+        const signalsRef = ref(db, 'signals');
+        const activeTxRef = ref(db, 'channel/active_tx');
 
         // Audio Setup
-        function initAudio() {
+        const initAudio = () => {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             gainNode = audioCtx.createGain();
@@ -369,140 +341,154 @@
             
             oscillator = audioCtx.createOscillator();
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(700, audioCtx.currentTime);
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
             oscillator.connect(gainNode);
             oscillator.start();
-        }
+        };
 
-        function playBeep(active) {
-            if (!gainNode) initAudio();
+        const playBeep = (active) => {
+            if (!gainNode) return;
             const now = audioCtx.currentTime;
-            gainNode.gain.setTargetAtTime(active ? 0.2 : 0, now, 0.01);
+            gainNode.gain.setTargetAtTime(active ? 0.3 : 0, now, 0.015);
+            document.getElementById('lamp').classList.toggle('active', active);
+        };
+
+        // Presence Logic
+        onValue(presenceRef, (snap) => {
+            const data = snap.val() || {};
+            const online = Object.values(data).map(u => u.callsign);
+            ['NG', 'VD', 'ST'].forEach(id => {
+                const btn = document.getElementById(`btn-${id}`);
+                btn.disabled = online.includes(id) && id !== myCallsign;
+            });
+            document.getElementById('online-count').innerText = `${online.length}/3`;
+            document.getElementById('occupied-msg').style.display = (online.length >= 3 && !myCallsign) ? 'block' : 'none';
+        });
+
+        // Channel Status
+        onValue(lockRef, (snap) => {
+            const lock = snap.val() || { locked: false, by: "NONE" };
+            const statusEl = document.getElementById('lock-status');
+            const byEl = document.getElementById('lock-by');
+            
+            statusEl.innerText = lock.locked ? "LOCKED" : "OPEN";
+            statusEl.style.color = lock.locked ? "red" : "var(--neon-green)";
+            byEl.innerText = lock.by;
+
+            const isLockedByOther = lock.locked && lock.by !== myCallsign;
+            document.getElementById('lock-btn').disabled = lock.locked;
+            document.getElementById('release-btn').disabled = !lock.locked || lock.by !== myCallsign;
+            
+            updateTxPermissions(isLockedByOther);
+        });
+
+        // Broadcast Audio Logic
+        onValue(activeTxRef, (snap) => {
+            const tx = snap.val() || { active: false, by: "NONE" };
+            if (tx.by !== myCallsign) {
+                playBeep(tx.active);
+                document.getElementById('last-sig').innerText = tx.active ? tx.by : "IDLE";
+                if (tx.active) {
+                    addLog(`[SIGNAL] INCOMING FROM ${tx.by}...`);
+                }
+            }
+            updateTxPermissions(null, tx);
+        });
+
+        function updateTxPermissions(lockedByOther = null, currentTx = null) {
+            const txBtn = document.getElementById('transmit-btn');
+            // We'll re-check state
+            getDatabase(); // dummy
         }
 
-        // Monitoring Presence and Locks
-        onValue(presenceRef, (snapshot) => {
-            const data = snapshot.val() || {};
-            const taken = Object.values(data).map(p => p.callsign);
+        // Transmission Handling
+        window.handleMouseDown = (e) => { if (e.button === 0) startPress(); };
+        window.handleMouseUp = (e) => { if (e.button === 0) endPress(); };
+        window.handleTouchStart = (e) => { e.preventDefault(); startPress(); };
+        window.handleTouchEnd = (e) => { e.preventDefault(); endPress(); };
+
+        async function startPress() {
+            if (isDown) return;
+            const txBtn = document.getElementById('transmit-btn');
+            if (txBtn.disabled) return;
+
+            isDown = true;
+            pressStartTime = Date.now();
+            txBtn.classList.add('active');
             
-            ['NG', 'VD', 'ST'].forEach(call => {
-                const btn = document.getElementById(`btn-${call}`);
-                if (taken.includes(call) && call !== myCallsign) {
-                    btn.disabled = true;
-                    btn.innerText = `[${call}] IN USE`;
-                } else {
-                    btn.disabled = false;
-                    btn.innerText = `CALLSIGN: ${call}`;
-                }
+            // Broadcast start
+            set(activeTxRef, { active: true, by: myCallsign });
+            playBeep(true);
+        }
+
+        async function endPress() {
+            if (!isDown) return;
+            isDown = false;
+            const duration = Date.now() - pressStartTime;
+            document.getElementById('transmit-btn').classList.remove('active');
+            
+            // Broadcast stop
+            set(activeTxRef, { active: false, by: myCallsign });
+            playBeep(false);
+
+            // Log signal type
+            const type = duration < 200 ? "dot" : "dash";
+            push(signalsRef, {
+                by: myCallsign,
+                type: type,
+                duration: duration,
+                timestamp: serverTimestamp()
+            });
+        }
+
+        window.selectCallsign = async (call) => {
+            myCallsign = call;
+            initAudio();
+            
+            const userRef = ref(db, `presence/${call}`);
+            await set(userRef, { callsign: call, login: serverTimestamp() });
+            onDisconnect(userRef).remove();
+
+            // Auto-release lock and tx on disconnect
+            onDisconnect(lockRef).get().then(s => {
+                if (s.val()?.by === call) onDisconnect(lockRef).set({ locked: false, by: "NONE" });
+            });
+            onDisconnect(activeTxRef).get().then(s => {
+                if (s.val()?.by === call) onDisconnect(activeTxRef).set({ active: false, by: "NONE" });
             });
 
-            const allTaken = ['NG', 'VD', 'ST'].every(c => taken.includes(c));
-            document.getElementById('occupied-msg').style.display = (allTaken && !myCallsign) ? 'block' : 'none';
-            document.getElementById('buttons-container').style.display = 'flex';
-            document.getElementById('loading-msg').style.display = 'none';
-        });
-
-        onValue(channelRef, (snapshot) => {
-            const data = snapshot.val() || {};
-            const lock = data.lock || { locked: false, by: "NONE" };
-            const tx = data.transmission || { active: false, by: "NONE" };
-
-            // UI Updates
-            const lockStatus = document.getElementById('channel-lock-text');
-            const holderText = document.getElementById('lock-holder-text');
-            const txText = document.getElementById('tx-holder-text');
-            const lamp = document.getElementById('signal-lamp');
-            const transmitBtn = document.getElementById('transmit-btn');
-            const lockBtn = document.getElementById('lock-btn');
-            const releaseBtn = document.getElementById('release-btn');
-
-            // Lock Logic
-            if (lock.locked) {
-                lockStatus.innerText = "LOCKED";
-                lockStatus.className = "status-val locked";
-                holderText.innerText = lock.by;
-            } else {
-                lockStatus.innerText = "OPEN";
-                lockStatus.className = "status-val open";
-                holderText.innerText = "NONE";
-            }
-
-            // TX Logic
-            if (tx.active) {
-                txText.innerText = tx.by;
-                lamp.classList.add('active');
-                if (tx.by !== myCallsign) playBeep(true);
-            } else {
-                txText.innerText = "IDLE";
-                lamp.classList.remove('active');
-                playBeep(false);
-            }
-
-            // Controls Blocking
-            const isAnotherLocking = lock.locked && lock.by !== myCallsign;
-            const isAnotherTransmitting = tx.active && tx.by !== myCallsign;
-
-            transmitBtn.disabled = isAnotherLocking || isAnotherTransmitting;
-            lockBtn.disabled = lock.locked;
-            releaseBtn.disabled = !lock.locked || lock.by !== myCallsign;
-
-            if (isAnotherLocking) document.getElementById('log').innerText = `CHANNEL LOCKED BY ${lock.by}... STAND BY.`;
-            else if (isAnotherTransmitting) document.getElementById('log').innerText = `INCOMING SIGNAL FROM ${tx.by}...`;
-            else document.getElementById('log').innerText = "CHANNEL CLEAR. READY.";
-        });
-
-        // Global functions (exposed to window for HTML attributes)
-        window.selectCallsign = async function(call) {
-            myCallsign = call;
-            const userRef = ref(db, `presence/${call}`);
-            
-            // Register presence
-            await set(userRef, { callsign: call, timestamp: serverTimestamp() });
-            onDisconnect(userRef).remove();
-            
-            // Switch UI
             document.getElementById('selector-overlay').style.display = 'none';
-            document.getElementById('console').style.display = 'block';
-            document.getElementById('my-callsign').innerText = call;
+            document.getElementById('console').style.display = 'flex';
+            document.getElementById('my-id').innerText = call;
+            addLog(`[USER] SIGNED IN AS ${call}`);
+        };
+
+        window.toggleLock = (state) => {
+            set(lockRef, { locked: state, by: state ? myCallsign : "NONE" });
+            addLog(`[SYSTEM] CHANNEL ${state ? 'LOCKED' : 'RELEASED'} BY ${myCallsign}`);
+        };
+
+        function addLog(msg) {
+            const log = document.getElementById('log');
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            log.innerHTML += `<div>[${time}] ${msg}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Block transmit if others are using it
+        onValue(ref(db, 'channel'), (snap) => {
+            const data = snap.val() || {};
+            const lock = data.lock || { locked: false, by: "NONE" };
+            const tx = data.active_tx || { active: false, by: "NONE" };
+
+            const isLockedByOther = lock.locked && lock.by !== myCallsign;
+            const isTxByOther = tx.active && tx.by !== myCallsign;
+
+            document.getElementById('transmit-btn').disabled = isLockedByOther || isTxByOther;
             
-            initAudio();
-        };
-
-        window.startTransmit = function() {
-            if (document.getElementById('transmit-btn').disabled) return;
-            isTransmitting = true;
-            document.getElementById('transmit-btn').classList.add('active');
-            set(txRef, { active: true, by: myCallsign });
-            playBeep(true);
-        };
-
-        window.stopTransmit = function() {
-            if (!isTransmitting) return;
-            isTransmitting = false;
-            document.getElementById('transmit-btn').classList.remove('active');
-            set(txRef, { active: false, by: myCallsign });
-            playBeep(false);
-        };
-
-        window.toggleChannelLock = function() {
-            set(lockRef, { locked: true, by: myCallsign });
-        };
-
-        window.releaseChannel = function() {
-            set(lockRef, { locked: false, by: "NONE" });
-        };
-
-        // Handle window close
-        window.addEventListener('beforeunload', () => {
-            if (myCallsign) {
-                // Ensure lock and TX are released if user leaves
-                get(lockRef).then(snap => {
-                    if (snap.val()?.by === myCallsign) set(lockRef, { locked: false, by: "NONE" });
-                });
-                get(txRef).then(snap => {
-                    if (snap.val()?.by === myCallsign) set(txRef, { active: false, by: "NONE" });
-                });
-            }
+            if (isLockedByOther) document.getElementById('transmit-btn').innerText = `LOCKED BY ${lock.by}`;
+            else if (isTxByOther) document.getElementById('transmit-btn').innerText = `RCV FROM ${tx.by}`;
+            else document.getElementById('transmit-btn').innerText = "TRANSMIT SIGNAL";
         });
 
     </script>
