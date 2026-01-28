@@ -2,287 +2,375 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Trio Morse Comm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MorseLive - Real-Time Communication</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
-        .tap-zone {
-            -webkit-tap-highlight-color: transparent;
-            transition: all 0.1s ease;
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'JetBrains+Mono', monospace;
+            overflow-x: hidden;
         }
-        .tap-zone:active:not(:disabled) {
-            transform: scale(0.96);
-            background-color: #3b82f6 !important;
-            box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
-        }
-        .status-dot {
-            width: 10px;
-            height: 10px;
+
+        .morse-light {
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
-            display: inline-block;
+            background: #1e293b;
+            box-shadow: 0 0 0px #38bdf8;
+            transition: background 0.05s, box-shadow 0.05s;
         }
-        .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
+
+        .morse-light.active {
+            background: #38bdf8;
+            box-shadow: 0 0 40px #0ea5e9, 0 0 80px #0ea5e9;
+        }
+
+        .btn-transmit {
+            user-select: none;
+            touch-action: manipulation;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        .btn-transmit:active:not(:disabled) {
+            transform: scale(0.95);
+            background-color: #0ea5e9;
+        }
+
+        .btn-transmit:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .log-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .log-container::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans overflow-hidden">
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
 
-    <!-- Login screen -->
-    <div id="login-layer" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
-        <h1 class="text-4xl font-black mb-2 text-blue-500 tracking-tighter">MORSE LINK</h1>
-        <p class="text-slate-500 mb-10 uppercase text-xs tracking-[0.2em]">Secure Tri-Station Network</p>
-        
-        <div class="grid grid-cols-1 gap-4 w-full max-w-xs">
-            <button onclick="bootApp('NG')" class="py-5 bg-slate-900 border border-slate-800 rounded-2xl font-bold hover:bg-slate-800 active:bg-blue-600 transition-all text-xl">STATION NG</button>
-            <button onclick="bootApp('VD')" class="py-5 bg-slate-900 border border-slate-800 rounded-2xl font-bold hover:bg-slate-800 active:bg-blue-600 transition-all text-xl">STATION VD</button>
-            <button onclick="bootApp('ST')" class="py-5 bg-slate-900 border border-slate-800 rounded-2xl font-bold hover:bg-slate-800 active:bg-blue-600 transition-all text-xl">STATION ST</button>
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-6">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-2xl max-w-md w-full shadow-2xl">
+            <h1 class="text-3xl font-bold mb-2 text-sky-400">MorseLive</h1>
+            <p class="text-slate-400 mb-6">Enter a username to join the transmission room.</p>
+            <input type="text" id="username-input" placeholder="Username" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 mb-4 outline-none focus:border-sky-500 text-white">
+            <button id="join-btn" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 rounded-lg transition-colors">JOIN STATION</button>
+            <p id="login-error" class="text-red-400 text-sm mt-3 hidden"></p>
         </div>
-        <p class="mt-8 text-slate-600 text-[10px] uppercase tracking-widest">Tap to initialize station and audio</p>
     </div>
 
-    <!-- Main UI -->
-    <div id="main-ui" class="flex-grow flex flex-col p-6 opacity-0 transition-opacity duration-500">
-        <header class="flex justify-between items-end mb-12">
-            <div>
-                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Operator</p>
-                <h2 id="display-id" class="text-3xl font-black text-blue-500">--</h2>
-            </div>
-            <div class="text-right">
-                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Network Status</p>
-                <div class="flex items-center justify-end gap-2">
-                    <span id="status-label" class="font-bold text-sm">INITIALIZING</span>
-                    <span id="status-dot" class="status-dot bg-slate-700"></span>
+    <!-- Main Interface -->
+    <div class="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-3 gap-6 opacity-0 transition-opacity duration-500" id="main-ui">
+        
+        <!-- Left Column: Status & Users -->
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Station Status</h2>
+                <div id="user-list" class="space-y-3">
+                    <!-- User Slots -->
+                    <div class="flex items-center justify-between p-2 rounded bg-slate-800/50 border border-slate-700/50">
+                        <span class="text-slate-400">User 1</span>
+                        <span id="u1-name" class="font-bold text-slate-500">Empty</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2 rounded bg-slate-800/50 border border-slate-700/50">
+                        <span class="text-slate-400">User 2</span>
+                        <span id="u2-name" class="font-bold text-slate-500">Empty</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2 rounded bg-slate-800/50 border border-slate-700/50">
+                        <span class="text-slate-400">User 3</span>
+                        <span id="u3-name" class="font-bold text-slate-500">Empty</span>
+                    </div>
                 </div>
             </div>
-        </header>
 
-        <div class="flex-grow flex flex-col items-center justify-center">
-            <!-- Transmission Alert -->
-            <div id="incoming-alert" class="mb-10 h-6 flex items-center justify-center gap-2 text-red-500 font-bold tracking-widest text-xs invisible">
-                <span class="pulse">📡</span> 
-                INCOMING FROM <span id="sender-name">--</span>
-            </div>
-
-            <!-- Morse Key -->
-            <button 
-                id="morse-key" 
-                class="tap-zone w-64 h-64 rounded-full bg-slate-900 border-4 border-slate-800 shadow-2xl flex flex-col items-center justify-center disabled:opacity-20 disabled:grayscale transition-all"
-                onpointerdown="pressKey(event)"
-                onpointerup="releaseKey(event)"
-                onpointerleave="releaseKey(event)"
-            >
-                <span id="key-emoji" class="text-5xl mb-2">⚡</span>
-                <span class="font-black text-lg tracking-widest uppercase">Transmit</span>
-            </button>
-
-            <!-- Channel Lock -->
-            <div class="mt-16 w-full max-w-xs">
-                <button 
-                    id="lock-toggle" 
-                    onclick="toggleLock()"
-                    class="w-full py-4 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center gap-3 font-bold text-sm tracking-widest disabled:opacity-20 transition-all"
-                >
-                    <span id="lock-emoji">🔓</span>
-                    <span id="lock-label">LOCK CHANNEL</span>
-                </button>
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col items-center">
+                <div id="signal-light" class="morse-light mb-4"></div>
+                <div id="transmitting-status" class="text-sm font-bold text-slate-500 animate-pulse">SYSTEM STANDBY</div>
             </div>
         </div>
 
-        <footer class="mt-auto pt-10 flex justify-center">
-            <div class="px-3 py-1 bg-slate-900 rounded-full border border-slate-800 flex items-center gap-2">
-                <div class="w-1.5 h-1.5 rounded-full bg-green-500 pulse"></div>
-                <span class="text-[9px] uppercase font-bold text-slate-500 tracking-tighter tracking-widest">Live Sync Enabled</span>
+        <!-- Center/Right Column: Communication -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest">Incoming Signal</h2>
+                    <span id="current-morse" class="text-sky-400 font-bold tracking-widest text-xl"></span>
+                </div>
+                <div id="decoded-text" class="bg-black/40 p-4 rounded-xl min-h-[60px] text-2xl text-white break-all flex items-center justify-center border border-slate-800">
+                    ...
+                </div>
             </div>
-        </footer>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                <button id="transmit-btn" class="btn-transmit w-full bg-slate-800 border-b-4 border-slate-950 py-12 rounded-2xl text-2xl font-black tracking-tighter shadow-xl active:border-b-0 active:translate-y-1">
+                    HOLD TO TRANSMIT
+                </button>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Message Log</h2>
+                <div id="message-log" class="log-container h-48 overflow-y-auto space-y-2 text-sm">
+                    <div class="text-slate-600 italic">No historical data available...</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update, onDisconnect, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-        // CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
             authDomain: "trip-tracker-57ce0.firebaseapp.com",
+            databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
             projectId: "trip-tracker-57ce0",
             storageBucket: "trip-tracker-57ce0.firebasestorage.app",
             messagingSenderId: "236146303848",
-            appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
+            appId: "1:236146303848:web:933f1e79e8a97687db6cdd",
+            measurementId: "G-ZBPCS6QPR5"
         };
 
-        // INIT FIREBASE
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const channelDocRef = doc(db, 'artifacts/trio-morse/public/data/state');
+        const db = getDatabase(app);
+        const roomRef = ref(db, 'morse_room');
 
-        // APP STATE
-        let stationId = null;
+        // State variables
+        let mySlot = null;
+        let myUsername = "";
         let audioCtx = null;
         let oscillator = null;
         let gainNode = null;
-        let localPress = false;
-        let isLockedByMe = false;
+        let currentTransmitter = null;
+        let isPressed = false;
+        let pressStartTime = 0;
+        let currentMorseBuffer = "";
+        let lastSignalTime = 0;
+        let wordTimeout = null;
 
-        // UI REFS
-        const ui = {
-            login: document.getElementById('login-layer'),
-            main: document.getElementById('main-ui'),
-            id: document.getElementById('display-id'),
-            status: document.getElementById('status-label'),
-            dot: document.getElementById('status-indicator'),
-            key: document.getElementById('morse-key'),
-            keyEmoji: document.getElementById('pad-emoji'),
-            lockBtn: document.getElementById('lock-toggle'),
-            lockLabel: document.getElementById('lock-label'),
-            lockEmoji: document.getElementById('lock-emoji'),
-            alert: document.getElementById('incoming-alert'),
-            sender: document.getElementById('sender-name')
+        const MORSE_MAP = {
+            ".-": "A", "-...": "B", "-.-.": "C", "-..": "D", ".": "E", "..-.": "F",
+            "--.": "G", "....": "H", "..": "I", ".---": "J", "-.-": "K", ".-..": "L",
+            "--": "M", "-.": "N", "---": "O", ".--.": "P", "--.-": "Q", ".-.": "R",
+            "...": "S", "-": "T", "..-": "U", "...-": "V", ".--": "W", "-..-": "X",
+            "-.--": "Y", "--..": "Z", "-----": "0", ".----": "1", "..---": "2", "...--": "3",
+            "....-": "4", ".....": "5", "-....": "6", "--...": "7", "---..": "8", "----.": "9"
         };
 
-        // BOOTSTRAP
-        window.bootApp = async (id) => {
-            stationId = id;
-            
-            // 1. Setup Audio (MUST be on user click)
-            setupAudio();
-            
-            // 2. Hide Login
-            ui.login.style.display = 'none';
-            ui.main.classList.remove('opacity-0');
-            ui.id.innerText = stationId;
+        // UI Selectors
+        const transmitBtn = document.getElementById('transmit-btn');
+        const loginOverlay = document.getElementById('login-overlay');
+        const mainUI = document.getElementById('main-ui');
+        const usernameInput = document.getElementById('username-input');
+        const joinBtn = document.getElementById('join-btn');
+        const signalLight = document.getElementById('signal-light');
+        const transmittingStatus = document.getElementById('transmitting-status');
+        const currentMorseEl = document.getElementById('current-morse');
+        const decodedTextEl = document.getElementById('decoded-text');
+        const messageLog = document.getElementById('message-log');
 
-            // 3. Auth and Sync
-            try {
-                await signInAnonymously(auth);
-                startSync();
-            } catch (err) {
-                console.error("Auth failed:", err);
-                alert("Connection failed. Check console.");
-            }
-        };
-
-        function setupAudio() {
+        // Initialize Audio
+        function initAudio() {
+            if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             gainNode = audioCtx.createGain();
-            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
             gainNode.connect(audioCtx.destination);
+            gainNode.gain.value = 0;
+        }
 
+        function startBeep() {
+            initAudio();
+            if (oscillator) oscillator.stop();
             oscillator = audioCtx.createOscillator();
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(650, audioCtx.currentTime);
+            oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
             oscillator.connect(gainNode);
             oscillator.start();
-            
-            // Resume if suspended
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            gainNode.gain.setTargetAtTime(0.1, audioCtx.currentTime, 0.01);
         }
 
-        function startSync() {
-            onSnapshot(channelDocRef, (snap) => {
-                const data = snap.data();
-                if (!data) {
-                    // Initialize if empty
-                    setDoc(channelDocRef, { activeUser: null, isPressing: false, isLocked: false });
-                    return;
-                }
-
-                const { activeUser, isPressing, isLocked } = data;
-
-                // AUDIO LOGIC
-                // We play sound if anyone is pressing (including us, so the lag feels natural)
-                if (isPressing) {
-                    gainNode.gain.setTargetAtTime(0.2, audioCtx.currentTime, 0.01);
-                } else {
-                    gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
-                }
-
-                // UI UPDATE LOGIC
-                const isForeignUser = activeUser && activeUser !== stationId;
-                
-                if (isForeignUser) {
-                    // Channel taken by someone else
-                    ui.key.disabled = true;
-                    ui.lockBtn.disabled = true;
-                    ui.status.innerText = isLocked ? "CHANNEL LOCKED" : "STATION BUSY";
-                    document.getElementById('status-dot').className = "status-dot bg-red-500";
-                    
-                    if (isPressing) {
-                        ui.alert.classList.remove('invisible');
-                        ui.sender.innerText = activeUser;
-                    } else {
-                        ui.alert.classList.add('invisible');
-                    }
-                } else {
-                    // Channel available or owned by me
-                    ui.key.disabled = false;
-                    ui.lockBtn.disabled = false;
-                    ui.alert.classList.add('invisible');
-
-                    if (isLockedByMe) {
-                        ui.status.innerText = "OWNED BY YOU";
-                        document.getElementById('status-dot').className = "status-dot bg-amber-500 shadow-[0_0_10px_#f59e0b]";
-                        ui.lockLabel.innerText = "RELEASE CHANNEL";
-                        ui.lockEmoji.innerText = "🔒";
-                    } else {
-                        ui.status.innerText = "AVAILABLE";
-                        document.getElementById('status-dot').className = "status-dot bg-green-500 shadow-[0_0_10px_#22c55e]";
-                        ui.lockLabel.innerText = "LOCK CHANNEL";
-                        ui.lockEmoji.innerText = "🔓";
-                    }
-                }
-            }, (err) => console.error("Sync Error:", err));
+        function stopBeep() {
+            if (gainNode) {
+                gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+            }
         }
 
-        // ACTIONS
-        window.pressKey = async (e) => {
-            if (e.cancelable) e.preventDefault();
-            if (ui.key.disabled) return;
-            
-            localPress = true;
-            await updateDoc(channelDocRef, { 
-                activeUser: stationId, 
-                isPressing: true,
-                isLocked: isLockedByMe
+        // Logic
+        async function joinRoom() {
+            const name = usernameInput.value.trim();
+            if (!name) return;
+            myUsername = name;
+
+            const snapshot = await get(roomRef);
+            const data = snapshot.val() || {};
+            const slots = data.slots || { u1: null, u2: null, u3: null };
+
+            if (!slots.u1) mySlot = 'u1';
+            else if (!slots.u2) mySlot = 'u2';
+            else if (!slots.u3) mySlot = 'u3';
+
+            if (!mySlot) {
+                const err = document.getElementById('login-error');
+                err.innerText = "Room full (3/3). Try again later.";
+                err.classList.remove('hidden');
+                return;
+            }
+
+            // Occupy slot
+            const updates = {};
+            updates[`slots/${mySlot}`] = { name: myUsername, online: true };
+            await update(roomRef, updates);
+
+            // Handle disconnect
+            onDisconnect(ref(db, `morse_room/slots/${mySlot}`)).set(null);
+            onDisconnect(ref(db, `morse_room/transmitter`)).transaction((current) => {
+                return current === mySlot ? null : current;
             });
-        };
 
-        window.releaseKey = async (e) => {
-            if (!localPress) return;
-            localPress = false;
+            loginOverlay.classList.add('hidden');
+            mainUI.classList.remove('opacity-0');
+            setupListeners();
+        }
+
+        function setupListeners() {
+            onValue(roomRef, (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+
+                // Update user list
+                for (let i = 1; i <= 3; i++) {
+                    const u = data.slots?.[`u${i}`];
+                    const el = document.getElementById(`u${i}-name`);
+                    if (u) {
+                        el.innerText = u.name;
+                        el.classList.remove('text-slate-500');
+                        el.classList.add('text-sky-400');
+                    } else {
+                        el.innerText = "Empty";
+                        el.classList.add('text-slate-500');
+                        el.classList.remove('text-sky-400');
+                    }
+                }
+
+                // Handle Transmitting State
+                currentTransmitter = data.transmitter;
+                const isSignalActive = data.signal === true;
+
+                if (currentTransmitter && currentTransmitter !== mySlot) {
+                    transmitBtn.disabled = true;
+                    const txName = data.slots[currentTransmitter]?.name || "Unknown";
+                    transmittingStatus.innerText = `${txName} IS TRANSMITTING...`;
+                    transmittingStatus.classList.add('text-sky-500');
+                } else if (currentTransmitter === mySlot) {
+                    transmitBtn.disabled = false;
+                    transmittingStatus.innerText = `YOU ARE TRANSMITTING`;
+                    transmittingStatus.classList.add('text-green-500');
+                } else {
+                    transmitBtn.disabled = false;
+                    transmittingStatus.innerText = `STATION READY`;
+                    transmittingStatus.classList.remove('text-sky-500', 'text-green-500');
+                }
+
+                // Visual/Audio Signal
+                if (isSignalActive) {
+                    signalLight.classList.add('active');
+                    startBeep();
+                } else {
+                    signalLight.classList.remove('active');
+                    stopBeep();
+                }
+
+                // Sync decoded text from the transmitter
+                if (data.activeText) {
+                    decodedTextEl.innerText = data.activeText;
+                }
+            });
+        }
+
+        // Morse Processing
+        function handleSignalDown() {
+            if (transmitBtn.disabled || isPressed) return;
+            isPressed = true;
+            pressStartTime = Date.now();
             
-            // If we have a lock, keep the user as activeUser but stop the press
-            // If no lock, release the whole channel
-            if (isLockedByMe) {
-                await updateDoc(channelDocRef, { isPressing: false });
-            } else {
-                await updateDoc(channelDocRef, { activeUser: null, isPressing: false, isLocked: false });
-            }
-        };
+            // Set global transmission lock
+            update(roomRef, { 
+                transmitter: mySlot,
+                signal: true 
+            });
 
-        window.toggleLock = async () => {
-            if (isLockedByMe) {
-                // Unlock
-                isLockedByMe = false;
-                await updateDoc(channelDocRef, { activeUser: null, isPressing: false, isLocked: false });
-            } else {
-                // Attempt Lock
-                isLockedByMe = true;
-                await updateDoc(channelDocRef, { activeUser: stationId, isPressing: false, isLocked: true });
-            }
-        };
+            if (wordTimeout) clearTimeout(wordTimeout);
+        }
 
-        // Safety release on close/hide
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && isLockedByMe) {
-                updateDoc(channelDocRef, { activeUser: null, isPressing: false, isLocked: false });
-                isLockedByMe = false;
-            }
+        async function handleSignalUp() {
+            if (!isPressed) return;
+            isPressed = false;
+            const duration = Date.now() - pressStartTime;
+            
+            // Signal stopped
+            await update(roomRef, { signal: false });
+
+            // Determine Dot or Dash
+            const char = duration < 200 ? "." : "-";
+            currentMorseBuffer += char;
+            currentMorseEl.innerText = currentMorseBuffer;
+
+            // Release transmitter lock after a short delay of inactivity
+            if (wordTimeout) clearTimeout(wordTimeout);
+            wordTimeout = setTimeout(async () => {
+                const letter = MORSE_MAP[currentMorseBuffer] || "?";
+                const currentTxt = decodedTextEl.innerText === "..." ? "" : decodedTextEl.innerText;
+                const newText = currentTxt + letter;
+                
+                // Clear buffer
+                currentMorseBuffer = "";
+                currentMorseEl.innerText = "";
+
+                // Update shared text and release lock
+                await update(roomRef, { 
+                    transmitter: null,
+                    activeText: newText
+                });
+
+                // Reset timeout for "Word complete" space
+                wordTimeout = setTimeout(async () => {
+                    const finalTxt = decodedTextEl.innerText + " ";
+                    await update(roomRef, { activeText: finalTxt });
+                    
+                    // Add to log if it's a real sentence/word
+                    if (finalTxt.trim().length > 0) {
+                        const logEntry = document.createElement('div');
+                        logEntry.innerHTML = `<span class="text-sky-500 font-bold">${myUsername}:</span> <span class="text-slate-300">${finalTxt}</span>`;
+                        messageLog.prepend(logEntry);
+                    }
+                }, 2000);
+
+            }, 800);
+        }
+
+        // Event Listeners
+        joinBtn.addEventListener('click', joinRoom);
+        usernameInput.addEventListener('keypress', (e) => e.key === 'Enter' && joinRoom());
+
+        transmitBtn.addEventListener('mousedown', handleSignalDown);
+        transmitBtn.addEventListener('mouseup', handleSignalUp);
+        transmitBtn.addEventListener('mouseleave', handleSignalUp);
+        
+        transmitBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleSignalDown();
+        });
+        transmitBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleSignalUp();
         });
 
     </script>
