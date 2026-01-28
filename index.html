@@ -3,130 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MorseLive - Real-Time Communication</title>
+    <title>Real-time Morse Communicator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
         
         body {
-            background-color: #0f172a;
-            color: #f8fafc;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
             font-family: 'JetBrains+Mono', monospace;
-            overflow-x: hidden;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
         }
 
-        .morse-light {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: #1e293b;
-            box-shadow: 0 0 0px #38bdf8;
-            transition: background 0.05s, box-shadow 0.05s;
-        }
-
-        .morse-light.active {
-            background: #38bdf8;
-            box-shadow: 0 0 40px #0ea5e9, 0 0 80px #0ea5e9;
-        }
-
-        .btn-transmit {
-            user-select: none;
+        .morse-button {
             touch-action: manipulation;
+            user-select: none;
             transition: transform 0.1s, background-color 0.2s;
         }
 
-        .btn-transmit:active:not(:disabled) {
+        .morse-button:active {
             transform: scale(0.95);
-            background-color: #0ea5e9;
         }
 
-        .btn-transmit:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
+        .blinker {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #333;
+            transition: background-color 0.05s;
+        }
+
+        .blinker.active {
+            background-color: #fbbf24;
+            box-shadow: 0 0 20px #fbbf24;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .log-container::-webkit-scrollbar {
-            width: 6px;
+            width: 4px;
         }
         .log-container::-webkit-scrollbar-thumb {
-            background: #334155;
+            background: #333;
             border-radius: 10px;
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4">
+<body>
 
-    <!-- Login Overlay -->
-    <div id="login-overlay" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-6">
-        <div class="bg-slate-900 border border-slate-700 p-8 rounded-2xl max-w-md w-full shadow-2xl">
-            <h1 class="text-3xl font-bold mb-2 text-sky-400">MorseLive</h1>
-            <p class="text-slate-400 mb-6">Enter a username to join the transmission room.</p>
-            <input type="text" id="username-input" placeholder="Username" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 mb-4 outline-none focus:border-sky-500 text-white">
-            <button id="join-btn" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 rounded-lg transition-colors">JOIN STATION</button>
-            <p id="login-error" class="text-red-400 text-sm mt-3 hidden"></p>
+    <!-- Selection Screen -->
+    <div id="selection-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
+        <h1 class="text-3xl font-bold mb-8 text-amber-500">SELECT STATION</h1>
+        <div id="account-list" class="flex gap-4">
+            <button id="btn-NG" class="w-24 h-24 rounded-lg border-2 border-amber-500 flex flex-col items-center justify-center hover:bg-amber-500/10 disabled:opacity-30 disabled:border-gray-600" onclick="selectAccount('NG')">
+                <span class="text-2xl font-bold">NG</span>
+                <span class="text-xs mt-2 status-label">Checking...</span>
+            </button>
+            <button id="btn-VD" class="w-24 h-24 rounded-lg border-2 border-amber-500 flex flex-col items-center justify-center hover:bg-amber-500/10 disabled:opacity-30 disabled:border-gray-600" onclick="selectAccount('VD')">
+                <span class="text-2xl font-bold">VD</span>
+                <span class="text-xs mt-2 status-label">Checking...</span>
+            </button>
+            <button id="btn-ST" class="w-24 h-24 rounded-lg border-2 border-amber-500 flex flex-col items-center justify-center hover:bg-amber-500/10 disabled:opacity-30 disabled:border-gray-600" onclick="selectAccount('ST')">
+                <span class="text-2xl font-bold">ST</span>
+                <span class="text-xs mt-2 status-label">Checking...</span>
+            </button>
         </div>
+        <div id="room-full-msg" class="hidden mt-6 text-red-500 animate-pulse">ROOM FULL - ALL STATIONS OCCUPIED</div>
     </div>
 
-    <!-- Main Interface -->
-    <div class="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-3 gap-6 opacity-0 transition-opacity duration-500" id="main-ui">
-        
-        <!-- Left Column: Status & Users -->
-        <div class="lg:col-span-1 space-y-6">
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Station Status</h2>
-                <div id="user-list" class="space-y-3">
-                    <!-- User Slots -->
-                    <div class="flex items-center justify-between p-2 rounded bg-slate-800/50 border border-slate-700/50">
-                        <span class="text-slate-400">User 1</span>
-                        <span id="u1-name" class="font-bold text-slate-500">Empty</span>
-                    </div>
-                    <div class="flex items-center justify-between p-2 rounded bg-slate-800/50 border border-slate-700/50">
-                        <span class="text-slate-400">User 2</span>
-                        <span id="u2-name" class="font-bold text-slate-500">Empty</span>
-                    </div>
-                    <div class="flex items-center justify-between p-2 rounded bg-slate-800/50 border border-slate-700/50">
-                        <span class="text-slate-400">User 3</span>
-                        <span id="u3-name" class="font-bold text-slate-500">Empty</span>
-                    </div>
-                </div>
+    <!-- App UI -->
+    <div id="app-ui" class="hidden h-screen flex flex-col max-w-2xl mx-auto p-4">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4 glass-panel p-4 rounded-xl">
+            <div>
+                <span class="text-xs text-gray-500 uppercase">Current Station</span>
+                <div id="my-id" class="text-xl font-bold text-amber-500">-</div>
             </div>
-
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col items-center">
-                <div id="signal-light" class="morse-light mb-4"></div>
-                <div id="transmitting-status" class="text-sm font-bold text-slate-500 animate-pulse">SYSTEM STANDBY</div>
+            <div class="text-right">
+                <span class="text-xs text-gray-500 uppercase">Live Transmission</span>
+                <div id="tx-status" class="text-sm font-bold text-green-500 italic uppercase">Standby</div>
             </div>
         </div>
 
-        <!-- Center/Right Column: Communication -->
-        <div class="lg:col-span-2 space-y-6">
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest">Incoming Signal</h2>
-                    <span id="current-morse" class="text-sky-400 font-bold tracking-widest text-xl"></span>
-                </div>
-                <div id="decoded-text" class="bg-black/40 p-4 rounded-xl min-h-[60px] text-2xl text-white break-all flex items-center justify-center border border-slate-800">
-                    ...
-                </div>
-            </div>
+        <!-- Visual Monitor -->
+        <div class="glass-panel rounded-xl p-8 mb-4 flex flex-col items-center justify-center relative">
+            <div id="visual-blinker" class="blinker mb-4"></div>
+            <div id="current-morse" class="text-3xl tracking-widest min-h-[40px] text-amber-400 font-bold"></div>
+            <div id="current-char" class="text-xl text-gray-400 h-6"></div>
+        </div>
 
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                <button id="transmit-btn" class="btn-transmit w-full bg-slate-800 border-b-4 border-slate-950 py-12 rounded-2xl text-2xl font-black tracking-tighter shadow-xl active:border-b-0 active:translate-y-1">
-                    HOLD TO TRANSMIT
-                </button>
+        <!-- History -->
+        <div class="flex-grow glass-panel rounded-xl p-4 mb-4 overflow-hidden flex flex-col">
+            <div class="text-xs text-gray-500 mb-2 uppercase border-b border-white/10 pb-1">Signal History</div>
+            <div id="log-container" class="log-container flex-grow overflow-y-auto space-y-2 text-sm">
+                <!-- Messages will appear here -->
             </div>
+        </div>
 
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Message Log</h2>
-                <div id="message-log" class="log-container h-48 overflow-y-auto space-y-2 text-sm">
-                    <div class="text-slate-600 italic">No historical data available...</div>
-                </div>
-            </div>
+        <!-- Controls -->
+        <div class="pb-8">
+            <button id="transmit-btn" class="morse-button w-full h-40 rounded-2xl bg-amber-600 hover:bg-amber-500 active:bg-amber-700 flex flex-col items-center justify-center shadow-lg disabled:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                <span class="text-4xl font-black mb-2">SIGNAL</span>
+                <span id="lock-reason" class="text-xs opacity-70">HOLD FOR DASH, TAP FOR DOT</span>
+            </button>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue, update, onDisconnect, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+        import { getDatabase, ref, set, onValue, update, onDisconnect, serverTimestamp, push } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
@@ -141,237 +132,196 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const roomRef = ref(db, 'morse_room');
 
         // State variables
-        let mySlot = null;
-        let myUsername = "";
-        let audioCtx = null;
-        let oscillator = null;
-        let gainNode = null;
-        let currentTransmitter = null;
-        let isPressed = false;
+        let myId = null;
+        let isTransmitting = false;
         let pressStartTime = 0;
         let currentMorseBuffer = "";
-        let lastSignalTime = 0;
-        let wordTimeout = null;
+        let morseTimeout = null;
+        let audioCtx = null;
+        let oscillator = null;
 
         const MORSE_MAP = {
-            ".-": "A", "-...": "B", "-.-.": "C", "-..": "D", ".": "E", "..-.": "F",
-            "--.": "G", "....": "H", "..": "I", ".---": "J", "-.-": "K", ".-..": "L",
-            "--": "M", "-.": "N", "---": "O", ".--.": "P", "--.-": "Q", ".-.": "R",
-            "...": "S", "-": "T", "..-": "U", "...-": "V", ".--": "W", "-..-": "X",
-            "-.--": "Y", "--..": "Z", "-----": "0", ".----": "1", "..---": "2", "...--": "3",
-            "....-": "4", ".....": "5", "-....": "6", "--...": "7", "---..": "8", "----.": "9"
+            ".-": "A", "-...": "B", "-.-.": "C", "-..": "D", ".": "E", "..-.": "F", "--.": "G", "....": "H", "..": "I", ".---": "J", "-.-": "K", ".-..": "L", "--": "M", "-.": "N", "---": "O", ".--.": "P", "--.-": "Q", ".-.": "R", "...": "S", "-": "T", "..-": "U", "...-": "V", ".--": "W", "-..-": "X", "-.--": "Y", "--..": "Z", "-----": "0", ".----": "1", "..---": "2", "...--": "3", "....-": "4", ".....": "5", "-....": "6", "--...": "7", "---..": "8", "----.": "9"
         };
 
-        // UI Selectors
-        const transmitBtn = document.getElementById('transmit-btn');
-        const loginOverlay = document.getElementById('login-overlay');
-        const mainUI = document.getElementById('main-ui');
-        const usernameInput = document.getElementById('username-input');
-        const joinBtn = document.getElementById('join-btn');
-        const signalLight = document.getElementById('signal-light');
-        const transmittingStatus = document.getElementById('transmitting-status');
-        const currentMorseEl = document.getElementById('current-morse');
-        const decodedTextEl = document.getElementById('decoded-text');
-        const messageLog = document.getElementById('message-log');
+        // Presence Logic
+        onValue(ref(db, 'accounts'), (snapshot) => {
+            const accounts = snapshot.val() || {};
+            let occupiedCount = 0;
+            ['NG', 'VD', 'ST'].forEach(id => {
+                const btn = document.getElementById(`btn-${id}`);
+                const status = btn.querySelector('.status-label');
+                const isOnline = accounts[id] && accounts[id].active;
+                
+                if (isOnline) {
+                    btn.disabled = true;
+                    status.innerText = "TAKEN";
+                    occupiedCount++;
+                } else {
+                    btn.disabled = false;
+                    status.innerText = "AVAILABLE";
+                }
+            });
 
-        // Initialize Audio
+            document.getElementById('room-full-msg').classList.toggle('hidden', occupiedCount < 3);
+        });
+
+        // Main Transmission Lock
+        onValue(ref(db, 'transmission/current'), (snapshot) => {
+            const tx = snapshot.val();
+            const btn = document.getElementById('transmit-btn');
+            const statusLabel = document.getElementById('tx-status');
+            const lockReason = document.getElementById('lock-reason');
+
+            if (tx && tx.userId && tx.userId !== myId) {
+                btn.disabled = true;
+                statusLabel.innerText = `RX FROM: ${tx.userId}`;
+                statusLabel.classList.replace('text-green-500', 'text-amber-500');
+                lockReason.innerText = "TRANSMISSION LOCKED BY OTHER STATION";
+                
+                // Visual feedback from remote
+                if (tx.signal) {
+                    toggleVisualSignal(true);
+                } else {
+                    toggleVisualSignal(false);
+                }
+            } else if (tx && tx.userId === myId) {
+                statusLabel.innerText = "YOU ARE TRANSMITTING";
+                statusLabel.classList.replace('text-amber-500', 'text-green-500');
+            } else {
+                btn.disabled = false;
+                statusLabel.innerText = "STANDBY";
+                statusLabel.classList.replace('text-amber-500', 'text-green-500');
+                lockReason.innerText = "HOLD FOR DASH, TAP FOR DOT";
+                toggleVisualSignal(false);
+            }
+        });
+
+        // Chat History
+        onValue(ref(db, 'history'), (snapshot) => {
+            const log = document.getElementById('log-container');
+            log.innerHTML = "";
+            const data = snapshot.val();
+            if (data) {
+                Object.values(data).sort((a,b) => a.timestamp - b.timestamp).slice(-20).forEach(msg => {
+                    const div = document.createElement('div');
+                    div.className = "flex justify-between border-l-2 border-amber-500/30 pl-2 bg-white/5 p-1 rounded";
+                    div.innerHTML = `<span class="font-bold text-amber-500">${msg.userId}:</span> <span class="flex-grow ml-2">${msg.text}</span>`;
+                    log.appendChild(div);
+                });
+                log.scrollTop = log.scrollHeight;
+            }
+        });
+
+        window.selectAccount = async (id) => {
+            myId = id;
+            document.getElementById('my-id').innerText = id;
+            
+            // Set presence
+            const accRef = ref(db, `accounts/${id}`);
+            await update(accRef, { active: true, lastSeen: serverTimestamp() });
+            onDisconnect(accRef).update({ active: false, lastSeen: serverTimestamp() });
+
+            document.getElementById('selection-screen').classList.add('hidden');
+            document.getElementById('app-ui').classList.remove('hidden');
+            initAudio();
+        };
+
         function initAudio() {
-            if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            gainNode = audioCtx.createGain();
-            gainNode.connect(audioCtx.destination);
-            gainNode.gain.value = 0;
         }
 
-        function startBeep() {
-            initAudio();
-            if (oscillator) oscillator.stop();
+        function playTone() {
+            if (!audioCtx) return;
             oscillator = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
             oscillator.type = 'sine';
             oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
-            oscillator.connect(gainNode);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            oscillator.connect(gain);
+            gain.connect(audioCtx.destination);
             oscillator.start();
-            gainNode.gain.setTargetAtTime(0.1, audioCtx.currentTime, 0.01);
         }
 
-        function stopBeep() {
-            if (gainNode) {
-                gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.01);
+        function stopTone() {
+            if (oscillator) {
+                oscillator.stop();
+                oscillator.disconnect();
+                oscillator = null;
             }
         }
 
-        // Logic
-        async function joinRoom() {
-            const name = usernameInput.value.trim();
-            if (!name) return;
-            myUsername = name;
-
-            const snapshot = await get(roomRef);
-            const data = snapshot.val() || {};
-            const slots = data.slots || { u1: null, u2: null, u3: null };
-
-            if (!slots.u1) mySlot = 'u1';
-            else if (!slots.u2) mySlot = 'u2';
-            else if (!slots.u3) mySlot = 'u3';
-
-            if (!mySlot) {
-                const err = document.getElementById('login-error');
-                err.innerText = "Room full (3/3). Try again later.";
-                err.classList.remove('hidden');
-                return;
+        function toggleVisualSignal(active) {
+            const blinker = document.getElementById('visual-blinker');
+            if (active) {
+                blinker.classList.add('active');
+                if (oscillator === null && myId) playTone();
+            } else {
+                blinker.classList.remove('active');
+                stopTone();
             }
-
-            // Occupy slot
-            const updates = {};
-            updates[`slots/${mySlot}`] = { name: myUsername, online: true };
-            await update(roomRef, updates);
-
-            // Handle disconnect
-            onDisconnect(ref(db, `morse_room/slots/${mySlot}`)).set(null);
-            onDisconnect(ref(db, `morse_room/transmitter`)).transaction((current) => {
-                return current === mySlot ? null : current;
-            });
-
-            loginOverlay.classList.add('hidden');
-            mainUI.classList.remove('opacity-0');
-            setupListeners();
         }
 
-        function setupListeners() {
-            onValue(roomRef, (snapshot) => {
-                const data = snapshot.val();
-                if (!data) return;
-
-                // Update user list
-                for (let i = 1; i <= 3; i++) {
-                    const u = data.slots?.[`u${i}`];
-                    const el = document.getElementById(`u${i}-name`);
-                    if (u) {
-                        el.innerText = u.name;
-                        el.classList.remove('text-slate-500');
-                        el.classList.add('text-sky-400');
-                    } else {
-                        el.innerText = "Empty";
-                        el.classList.add('text-slate-500');
-                        el.classList.remove('text-sky-400');
-                    }
-                }
-
-                // Handle Transmitting State
-                currentTransmitter = data.transmitter;
-                const isSignalActive = data.signal === true;
-
-                if (currentTransmitter && currentTransmitter !== mySlot) {
-                    transmitBtn.disabled = true;
-                    const txName = data.slots[currentTransmitter]?.name || "Unknown";
-                    transmittingStatus.innerText = `${txName} IS TRANSMITTING...`;
-                    transmittingStatus.classList.add('text-sky-500');
-                } else if (currentTransmitter === mySlot) {
-                    transmitBtn.disabled = false;
-                    transmittingStatus.innerText = `YOU ARE TRANSMITTING`;
-                    transmittingStatus.classList.add('text-green-500');
-                } else {
-                    transmitBtn.disabled = false;
-                    transmittingStatus.innerText = `STATION READY`;
-                    transmittingStatus.classList.remove('text-sky-500', 'text-green-500');
-                }
-
-                // Visual/Audio Signal
-                if (isSignalActive) {
-                    signalLight.classList.add('active');
-                    startBeep();
-                } else {
-                    signalLight.classList.remove('active');
-                    stopBeep();
-                }
-
-                // Sync decoded text from the transmitter
-                if (data.activeText) {
-                    decodedTextEl.innerText = data.activeText;
-                }
-            });
-        }
-
-        // Morse Processing
-        function handleSignalDown() {
-            if (transmitBtn.disabled || isPressed) return;
-            isPressed = true;
+        const handlePress = async (e) => {
+            if (e.repeat) return;
             pressStartTime = Date.now();
+            isTransmitting = true;
             
-            // Set global transmission lock
-            update(roomRef, { 
-                transmitter: mySlot,
-                signal: true 
+            // Acquire Global Lock
+            await set(ref(db, 'transmission/current'), {
+                userId: myId,
+                signal: true,
+                timestamp: serverTimestamp()
             });
 
-            if (wordTimeout) clearTimeout(wordTimeout);
-        }
+            toggleVisualSignal(true);
+            clearTimeout(morseTimeout);
+        };
 
-        async function handleSignalUp() {
-            if (!isPressed) return;
-            isPressed = false;
+        const handleRelease = async () => {
+            if (!isTransmitting) return;
             const duration = Date.now() - pressStartTime;
+            isTransmitting = false;
+
+            const signal = duration > 200 ? "-" : ".";
+            currentMorseBuffer += signal;
+            document.getElementById('current-morse').innerText = currentMorseBuffer;
             
-            // Signal stopped
-            await update(roomRef, { signal: false });
+            // Release Signal, but keep lock momentarily for the same user sequence
+            await update(ref(db, 'transmission/current'), {
+                signal: false
+            });
 
-            // Determine Dot or Dash
-            const char = duration < 200 ? "." : "-";
-            currentMorseBuffer += char;
-            currentMorseEl.innerText = currentMorseBuffer;
+            toggleVisualSignal(false);
 
-            // Release transmitter lock after a short delay of inactivity
-            if (wordTimeout) clearTimeout(wordTimeout);
-            wordTimeout = setTimeout(async () => {
-                const letter = MORSE_MAP[currentMorseBuffer] || "?";
-                const currentTxt = decodedTextEl.innerText === "..." ? "" : decodedTextEl.innerText;
-                const newText = currentTxt + letter;
-                
-                // Clear buffer
-                currentMorseBuffer = "";
-                currentMorseEl.innerText = "";
-
-                // Update shared text and release lock
-                await update(roomRef, { 
-                    transmitter: null,
-                    activeText: newText
-                });
-
-                // Reset timeout for "Word complete" space
-                wordTimeout = setTimeout(async () => {
-                    const finalTxt = decodedTextEl.innerText + " ";
-                    await update(roomRef, { activeText: finalTxt });
+            // Timeout to decode character and clear lock
+            morseTimeout = setTimeout(async () => {
+                if (currentMorseBuffer) {
+                    const char = MORSE_MAP[currentMorseBuffer] || "?";
+                    document.getElementById('current-char').innerText = `DECODED: ${char}`;
                     
-                    // Add to log if it's a real sentence/word
-                    if (finalTxt.trim().length > 0) {
-                        const logEntry = document.createElement('div');
-                        logEntry.innerHTML = `<span class="text-sky-500 font-bold">${myUsername}:</span> <span class="text-slate-300">${finalTxt}</span>`;
-                        messageLog.prepend(logEntry);
-                    }
-                }, 2000);
+                    // Add to global history
+                    await push(ref(db, 'history'), {
+                        userId: myId,
+                        text: char,
+                        timestamp: serverTimestamp()
+                    });
 
+                    currentMorseBuffer = "";
+                    document.getElementById('current-morse').innerText = "";
+                }
+                // Clear the global lock
+                await set(ref(db, 'transmission/current'), null);
             }, 800);
-        }
+        };
 
-        // Event Listeners
-        joinBtn.addEventListener('click', joinRoom);
-        usernameInput.addEventListener('keypress', (e) => e.key === 'Enter' && joinRoom());
-
-        transmitBtn.addEventListener('mousedown', handleSignalDown);
-        transmitBtn.addEventListener('mouseup', handleSignalUp);
-        transmitBtn.addEventListener('mouseleave', handleSignalUp);
-        
-        transmitBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            handleSignalDown();
-        });
-        transmitBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            handleSignalUp();
-        });
+        const txBtn = document.getElementById('transmit-btn');
+        txBtn.addEventListener('mousedown', handlePress);
+        txBtn.addEventListener('mouseup', handleRelease);
+        txBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handlePress(e); });
+        txBtn.addEventListener('touchend', (e) => { e.preventDefault(); handleRelease(e); });
 
     </script>
 </body>
