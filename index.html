@@ -3,306 +3,237 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TERMINAL 95 | SECURE COMM-LINK</title>
+    <title>TELECOM-98 MORSE RELAY</title>
     <style>
         :root {
-            --win-bg: #000033;
-            --win-gray: #c0c0c0;
-            --win-blue: #000080;
-            --neon-green: #00ff00;
-            --neon-cyan: #00ffff;
-            --danger: #ff0000;
+            --bg-color: #000040;
+            --panel-color: #c0c0c0;
+            --text-neon: #00ff00;
+            --text-cyan: #00ffff;
+            --shadow-light: #ffffff;
+            --shadow-dark: #808080;
+            --border-width: 2px;
         }
 
-        @font-face {
-            font-family: 'Pixel';
-            src: local('Courier New'), local('Courier'), monospace;
-        }
-
-        * { 
-            box-sizing: border-box; 
-            font-family: 'Pixel', monospace;
+        * {
+            box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
-            user-select: none;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
         }
 
         body {
-            background-color: var(--win-bg);
-            color: var(--neon-green);
+            background-color: var(--bg-color);
             margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-
-        /* Login Screen */
-        #selector-overlay {
-            position: fixed;
-            inset: 0;
-            background: var(--win-bg);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            padding: 20px;
-        }
-
-        .win-panel {
-            background: var(--win-gray);
-            border: 2px solid #ffffff;
-            border-right-color: #808080;
-            border-bottom-color: #808080;
-            padding: 4px;
-            box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
-        }
-
-        .win-title {
-            background: var(--win-blue);
-            color: white;
-            padding: 4px 8px;
-            font-size: 14px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-
-        .callsign-btn {
-            background: var(--win-gray);
-            border: 2px solid #ffffff;
-            border-right-color: #808080;
-            border-bottom-color: #808080;
-            color: #000;
-            padding: 15px;
-            margin: 10px 0;
-            font-size: 20px;
-            width: 250px;
-            font-weight: bold;
-        }
-
-        .callsign-btn:active:not(:disabled) {
-            border: 2px solid #808080;
-            border-right-color: #ffffff;
-            border-bottom-color: #ffffff;
-        }
-
-        .callsign-btn:disabled {
-            color: #808080;
-            background: #d4d4d4;
-        }
-
-        /* Main Console */
-        #console {
-            width: 100%;
-            height: 100%;
-            max-width: 600px;
-            max-height: 900px;
             padding: 10px;
-            display: none;
-            flex-direction: column;
-        }
-
-        .status-bar {
-            background: var(--win-gray);
-            color: #000;
-            padding: 5px;
-            font-size: 12px;
-            display: flex;
-            justify-content: space-between;
-            border: 1px solid #808080;
-            margin-bottom: 10px;
-        }
-
-        .display-area {
-            flex: 1;
-            background: #000;
-            border: 2px inset #808080;
-            padding: 15px;
-            margin-bottom: 15px;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .info-box {
-            border: 1px solid var(--neon-cyan);
-            padding: 8px;
-            font-size: 11px;
-        }
-
-        .label { color: var(--neon-cyan); display: block; margin-bottom: 4px; }
-        .val { font-size: 16px; font-weight: bold; }
-
-        .signal-indicator {
-            width: 100%;
-            height: 60px;
-            border: 1px solid var(--neon-green);
+            color: var(--text-neon);
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-bottom: 20px;
+            min-height: 100vh;
+            overflow: hidden;
         }
 
-        #lamp {
-            width: 40px;
-            height: 40px;
-            background: #003300;
-            border-radius: 4px;
+        /* Win95 Style Panels */
+        .window {
+            background: var(--panel-color);
+            border: var(--border-width) solid;
+            border-color: var(--shadow-light) var(--shadow-dark) var(--shadow-dark) var(--shadow-light);
+            width: 100%;
+            max-width: 500px;
+            padding: 4px;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.5);
         }
 
-        #lamp.active {
-            background: var(--neon-green);
-            box-shadow: 0 0 20px var(--neon-green);
+        .title-bar {
+            background: linear-gradient(90deg, #000080, #1084d0);
+            padding: 3px 6px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            margin-bottom: 4px;
         }
 
-        /* Controls */
-        .controls {
+        .content-area {
+            border: var(--border-width) inset var(--shadow-dark);
+            background: #000;
+            padding: 15px;
+            height: 100%;
             display: flex;
             flex-direction: column;
             gap: 15px;
         }
 
-        .btn {
-            background: var(--win-gray);
-            border: 3px solid #ffffff;
-            border-right-color: #404040;
-            border-bottom-color: #404040;
-            color: #000;
-            font-weight: bold;
-            padding: 20px;
-            font-size: 16px;
-            touch-action: manipulation;
+        /* Login Screen */
+        #login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            text-align: center;
         }
 
-        .btn:active:not(:disabled) {
-            border: 3px solid #404040;
-            border-right-color: #ffffff;
-            border-bottom-color: #ffffff;
-            transform: translateY(2px);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            color: #666;
-        }
-
-        #transmit-btn {
-            height: 150px;
-            font-size: 24px;
-            background: #808080;
-            color: #fff;
-        }
-
-        #transmit-btn.active {
-            background: var(--neon-green);
-            color: #000;
-        }
-
-        .lock-group {
+        .btn-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
+            width: 100%;
             gap: 10px;
         }
 
-        #log {
-            height: 100px;
-            font-size: 10px;
-            color: #008800;
-            overflow-y: auto;
-            border-top: 1px solid #333;
-            margin-top: auto;
-            padding-top: 10px;
+        /* Retro Buttons */
+        .retro-btn {
+            background: var(--panel-color);
+            border: var(--border-width) solid;
+            border-color: var(--shadow-light) var(--shadow-dark) var(--shadow-dark) var(--shadow-light);
+            color: #000;
+            padding: 15px;
+            font-size: 18px;
+            cursor: pointer;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
         }
+
+        .retro-btn:active:not(:disabled) {
+            border-color: var(--shadow-dark) var(--shadow-light) var(--shadow-light) var(--shadow-dark);
+            padding: 16px 14px 14px 16px;
+        }
+
+        .retro-btn:disabled {
+            color: #808080;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        .retro-btn.danger { color: #800000; }
+        .retro-btn.success { color: #008000; }
+
+        /* Indicators */
+        .status-strip {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .led {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            background: #300;
+            border: 1px solid #100;
+        }
+
+        .led.on {
+            background: #f00;
+            box-shadow: 0 0 8px #f00;
+        }
+
+        .led.active {
+            background: #0f0;
+            box-shadow: 0 0 8px #0f0;
+        }
+
+        /* Transmission UI */
+        #transmit-btn {
+            height: 180px;
+            background: #222;
+            border: 4px solid #444;
+            color: var(--text-neon);
+            font-size: 24px;
+            width: 100%;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #transmit-btn:active:not(:disabled) {
+            background: #003300;
+            border-color: var(--text-neon);
+        }
+
+        .display-box {
+            background: #050505;
+            border: 1px solid #1a1a1a;
+            padding: 10px;
+            min-height: 40px;
+            color: var(--text-cyan);
+            font-size: 14px;
+        }
+
+        .hidden { display: none !important; }
+
+        .blinker {
+            width: 100%;
+            height: 5px;
+            background: #111;
+            margin-top: 5px;
+        }
+        .blinker.active { background: var(--text-neon); box-shadow: 0 0 10px var(--text-neon); }
+
+        .channel-info {
+            font-size: 12px;
+            text-align: center;
+        }
+
     </style>
 </head>
 <body>
-    <!-- Selector -->
-    <div id="selector-overlay">
-        <div class="win-panel">
-            <div class="win-title">
-                <span>LOGIN_PROMPT.EXE</span>
-                <span>[X]</span>
-            </div>
-            <div style="padding: 10px; color: #000;">
-                IDENTIFY OPERATOR CALLSIGN:
-                <div id="buttons-container" style="display: flex; flex-direction: column; margin-top: 15px;">
-                    <button class="callsign-btn" id="btn-NG" onclick="selectCallsign('NG')">NG</button>
-                    <button class="callsign-btn" id="btn-VD" onclick="selectCallsign('VD')">VD</button>
-                    <button class="callsign-btn" id="btn-ST" onclick="selectCallsign('ST')">ST</button>
-                </div>
-                <div id="occupied-msg" style="display: none; color: red; margin-top: 10px; font-weight: bold;">CHANNEL FULL - SLOTS OCCUPIED</div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Main -->
-    <div id="console" class="win-panel">
-        <div class="win-title">
-            <span>NETSCAPE_COMM_V4.1 - [SESSION: ENCRYPTED]</span>
-            <span>[?] [_] [X]</span>
-        </div>
-        
-        <div class="status-bar">
-            <span>CALLSIGN: <b id="my-id">--</b></span>
-            <span>SND: LIVE_RELAY</span>
-            <span>LATENCY: <span id="ping">--</span>ms</span>
+    <div class="window">
+        <div class="title-bar">
+            <span>TERMINAL: MORSE_RELAY_V1.0</span>
+            <span style="cursor:help">[?]</span>
         </div>
 
-        <div class="display-area">
-            <div class="info-grid">
-                <div class="info-box">
-                    <span class="label">CHANNEL LOCK</span>
-                    <span id="lock-status" class="val">OPEN</span>
+        <div class="content-area">
+            <!-- Login Selection -->
+            <div id="login-screen">
+                <div style="font-size: 20px; color: var(--text-cyan)">SELECT CALLSIGN</div>
+                <div class="btn-grid" id="callsign-grid">
+                    <button class="retro-btn" data-id="NG">NG [OFFLINE]</button>
+                    <button class="retro-btn" data-id="VD">VD [OFFLINE]</button>
+                    <button class="retro-btn" data-id="ST">ST [OFFLINE]</button>
                 </div>
-                <div class="info-box">
-                    <span class="label">LOCK OWNER</span>
-                    <span id="lock-by" class="val">NONE</span>
-                </div>
-                <div class="info-box">
-                    <span class="label">LAST SIGNAL</span>
-                    <span id="last-sig" class="val">IDLE</span>
-                </div>
-                <div class="info-box">
-                    <span class="label">OPERATORS</span>
-                    <span id="online-count" class="val">0/3</span>
-                </div>
+                <div id="full-msg" class="hidden" style="color: red; font-weight: bold;">[!] CHANNEL FULL</div>
             </div>
 
-            <div class="signal-indicator">
-                <div id="lamp"></div>
-            </div>
+            <!-- Main Terminal -->
+            <div id="terminal" class="hidden">
+                <div class="status-strip">
+                    <div>USER: <span id="my-callsign" style="color:var(--text-cyan)">--</span></div>
+                    <div>FREQ: 144.500 MHz</div>
+                </div>
 
-            <div id="log">
-                [SYSTEM] CONNECTED TO GLOBAL RELAY NETWORK...<br>
-                [SYSTEM] LISTENING FOR INCOMING SIGNALS...
-            </div>
-        </div>
+                <div class="display-box" id="info-display">
+                    READY TO TRANSMIT...
+                </div>
+                
+                <div class="blinker" id="visual-relay"></div>
 
-        <div class="controls">
-            <button id="transmit-btn" class="btn" ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)" onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)">
-                TRANSMIT SIGNAL
-            </button>
-            <div class="lock-group">
-                <button id="lock-btn" class="btn" onclick="toggleLock(true)">LOCK CH</button>
-                <button id="release-btn" class="btn" onclick="toggleLock(false)" disabled>RELEASE</button>
+                <div class="channel-info">
+                    STATUS: <span id="lock-status" style="color:var(--text-neon)">OPEN</span><br>
+                    ACTIVE TX: <span id="current-tx">NONE</span>
+                </div>
+
+                <button id="transmit-btn">PUSH TO TRANSMIT</button>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <button class="retro-btn success" id="lock-btn" style="font-size: 12px;">LOCK CH</button>
+                    <button class="retro-btn danger" id="release-btn" style="font-size: 12px;">RELEASE CH</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, set, push, onValue, update, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+        import { getDatabase, ref, set, push, onValue, update, onDisconnect, serverTimestamp, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
@@ -317,179 +248,198 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-
-        let myCallsign = null;
+        
+        // --- State ---
+        let myId = null;
+        let isTransmitting = false;
+        let pressStartTime = 0;
         let audioCtx = null;
         let oscillator = null;
         let gainNode = null;
-        let isDown = false;
-        let pressStartTime = 0;
 
-        // Refs
-        const presenceRef = ref(db, 'presence');
-        const lockRef = ref(db, 'channel/lock');
-        const signalsRef = ref(db, 'signals');
-        const activeTxRef = ref(db, 'channel/active_tx');
+        // --- DOM Elements ---
+        const loginScreen = document.getElementById('login-screen');
+        const terminal = document.getElementById('terminal');
+        const callsignButtons = document.querySelectorAll('#callsign-grid button');
+        const transmitBtn = document.getElementById('transmit-btn');
+        const lockBtn = document.getElementById('lock-btn');
+        const releaseBtn = document.getElementById('release-btn');
+        const infoDisplay = document.getElementById('info-display');
+        const currentTxSpan = document.getElementById('current-tx');
+        const lockStatusSpan = document.getElementById('lock-status');
+        const visualRelay = document.getElementById('visual-relay');
 
-        // Audio Setup
-        const initAudio = () => {
+        // --- Audio Logic ---
+        function initAudio() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             gainNode = audioCtx.createGain();
-            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
             gainNode.connect(audioCtx.destination);
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
             
             oscillator = audioCtx.createOscillator();
             oscillator.type = 'sine';
             oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
             oscillator.connect(gainNode);
             oscillator.start();
-        };
+        }
 
-        const playBeep = (active) => {
+        function playBeep(active) {
             if (!gainNode) return;
             const now = audioCtx.currentTime;
-            gainNode.gain.setTargetAtTime(active ? 0.3 : 0, now, 0.015);
-            document.getElementById('lamp').classList.toggle('active', active);
-        };
-
-        // Presence Logic
-        onValue(presenceRef, (snap) => {
-            const data = snap.val() || {};
-            const online = Object.values(data).map(u => u.callsign);
-            ['NG', 'VD', 'ST'].forEach(id => {
-                const btn = document.getElementById(`btn-${id}`);
-                btn.disabled = online.includes(id) && id !== myCallsign;
-            });
-            document.getElementById('online-count').innerText = `${online.length}/3`;
-            document.getElementById('occupied-msg').style.display = (online.length >= 3 && !myCallsign) ? 'block' : 'none';
-        });
-
-        // Channel Status
-        onValue(lockRef, (snap) => {
-            const lock = snap.val() || { locked: false, by: "NONE" };
-            const statusEl = document.getElementById('lock-status');
-            const byEl = document.getElementById('lock-by');
-            
-            statusEl.innerText = lock.locked ? "LOCKED" : "OPEN";
-            statusEl.style.color = lock.locked ? "red" : "var(--neon-green)";
-            byEl.innerText = lock.by;
-
-            const isLockedByOther = lock.locked && lock.by !== myCallsign;
-            document.getElementById('lock-btn').disabled = lock.locked;
-            document.getElementById('release-btn').disabled = !lock.locked || lock.by !== myCallsign;
-            
-            updateTxPermissions(isLockedByOther);
-        });
-
-        // Broadcast Audio Logic
-        onValue(activeTxRef, (snap) => {
-            const tx = snap.val() || { active: false, by: "NONE" };
-            if (tx.by !== myCallsign) {
-                playBeep(tx.active);
-                document.getElementById('last-sig').innerText = tx.active ? tx.by : "IDLE";
-                if (tx.active) {
-                    addLog(`[SIGNAL] INCOMING FROM ${tx.by}...`);
-                }
+            gainNode.gain.cancelScheduledValues(now);
+            gainNode.gain.linearRampToValueAtTime(active ? 0.3 : 0, now + 0.01);
+            if (active) {
+                visualRelay.classList.add('active');
+            } else {
+                visualRelay.classList.remove('active');
             }
-            updateTxPermissions(null, tx);
+        }
+
+        // --- Firebase Logic ---
+        
+        // Listen for users presence
+        onValue(ref(db, 'users'), (snapshot) => {
+            const users = snapshot.val() || {};
+            let takenCount = 0;
+            callsignButtons.forEach(btn => {
+                const id = btn.dataset.id;
+                if (users[id] && users[id].online) {
+                    btn.disabled = true;
+                    btn.textContent = `${id} [OCCUPIED]`;
+                    takenCount++;
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = `${id} [OFFLINE]`;
+                }
+            });
+            document.getElementById('full-msg').className = (takenCount >= 3) ? "" : "hidden";
         });
 
-        function updateTxPermissions(lockedByOther = null, currentTx = null) {
-            const txBtn = document.getElementById('transmit-btn');
-            // We'll re-check state
-            getDatabase(); // dummy
-        }
+        // Login
+        callsignButtons.forEach(btn => {
+            btn.onclick = async () => {
+                const id = btn.dataset.id;
+                const userRef = ref(db, `users/${id}`);
+                
+                await set(userRef, { online: true, timestamp: serverTimestamp() });
+                onDisconnect(userRef).remove();
+                
+                myId = id;
+                document.getElementById('my-callsign').textContent = id;
+                loginScreen.classList.add('hidden');
+                terminal.classList.remove('hidden');
+                initAudio();
+            };
+        });
 
-        // Transmission Handling
-        window.handleMouseDown = (e) => { if (e.button === 0) startPress(); };
-        window.handleMouseUp = (e) => { if (e.button === 0) endPress(); };
-        window.handleTouchStart = (e) => { e.preventDefault(); startPress(); };
-        window.handleTouchEnd = (e) => { e.preventDefault(); endPress(); };
+        // Channel Lock Monitoring
+        onValue(ref(db, 'channel/lock'), (snapshot) => {
+            const lock = snapshot.val();
+            if (lock && lock.locked) {
+                lockStatusSpan.textContent = `LOCKED BY ${lock.by}`;
+                lockStatusSpan.style.color = 'red';
+                if (lock.by !== myId) {
+                    transmitBtn.disabled = true;
+                    lockBtn.disabled = true;
+                    releaseBtn.disabled = true;
+                } else {
+                    transmitBtn.disabled = false;
+                    lockBtn.disabled = true;
+                    releaseBtn.disabled = false;
+                }
+            } else {
+                lockStatusSpan.textContent = "OPEN";
+                lockStatusSpan.style.color = "var(--text-neon)";
+                transmitBtn.disabled = false;
+                lockBtn.disabled = false;
+                releaseBtn.disabled = true;
+            }
+        });
 
-        async function startPress() {
-            if (isDown) return;
-            const txBtn = document.getElementById('transmit-btn');
-            if (txBtn.disabled) return;
+        // Signal Relay Listener (Live Audio)
+        onValue(ref(db, 'signals'), (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+            
+            // We find the newest signal
+            const keys = Object.keys(data);
+            const latestKey = keys[keys.length - 1];
+            const signal = data[latestKey];
 
-            isDown = true;
+            // Safety: Don't echo own audio if we are the transmitter (handled locally for zero lag)
+            if (signal.by !== myId) {
+                currentTxSpan.textContent = signal.active ? signal.by : "NONE";
+                infoDisplay.textContent = signal.active ? `RECEIVING: ${signal.by}` : "READY TO TRANSMIT...";
+                playBeep(signal.active);
+            }
+        });
+
+        // Transmit Actions
+        const startTransmit = () => {
+            if (transmitBtn.disabled || isTransmitting) return;
+            isTransmitting = true;
             pressStartTime = Date.now();
-            txBtn.classList.add('active');
             
-            // Broadcast start
-            set(activeTxRef, { active: true, by: myCallsign });
+            // Set local audio for zero lag feedback
             playBeep(true);
-        }
+            currentTxSpan.textContent = myId;
+            infoDisplay.textContent = "TRANSMITTING...";
 
-        async function endPress() {
-            if (!isDown) return;
-            isDown = false;
-            const duration = Date.now() - pressStartTime;
-            document.getElementById('transmit-btn').classList.remove('active');
-            
-            // Broadcast stop
-            set(activeTxRef, { active: false, by: myCallsign });
-            playBeep(false);
-
-            // Log signal type
-            const type = duration < 200 ? "dot" : "dash";
-            push(signalsRef, {
-                by: myCallsign,
-                type: type,
-                duration: duration,
+            // Update Firebase for others
+            set(ref(db, 'signals/live'), {
+                by: myId,
+                active: true,
                 timestamp: serverTimestamp()
             });
-        }
-
-        window.selectCallsign = async (call) => {
-            myCallsign = call;
-            initAudio();
-            
-            const userRef = ref(db, `presence/${call}`);
-            await set(userRef, { callsign: call, login: serverTimestamp() });
-            onDisconnect(userRef).remove();
-
-            // Auto-release lock and tx on disconnect
-            onDisconnect(lockRef).get().then(s => {
-                if (s.val()?.by === call) onDisconnect(lockRef).set({ locked: false, by: "NONE" });
-            });
-            onDisconnect(activeTxRef).get().then(s => {
-                if (s.val()?.by === call) onDisconnect(activeTxRef).set({ active: false, by: "NONE" });
-            });
-
-            document.getElementById('selector-overlay').style.display = 'none';
-            document.getElementById('console').style.display = 'flex';
-            document.getElementById('my-id').innerText = call;
-            addLog(`[USER] SIGNED IN AS ${call}`);
         };
 
-        window.toggleLock = (state) => {
-            set(lockRef, { locked: state, by: state ? myCallsign : "NONE" });
-            addLog(`[SYSTEM] CHANNEL ${state ? 'LOCKED' : 'RELEASED'} BY ${myCallsign}`);
+        const stopTransmit = () => {
+            if (!isTransmitting) return;
+            isTransmitting = false;
+            
+            playBeep(false);
+            currentTxSpan.textContent = "NONE";
+            infoDisplay.textContent = "SIGNAL SENT";
+
+            set(ref(db, 'signals/live'), {
+                by: myId,
+                active: false,
+                timestamp: serverTimestamp()
+            });
         };
 
-        function addLog(msg) {
-            const log = document.getElementById('log');
-            const time = new Date().toLocaleTimeString().split(' ')[0];
-            log.innerHTML += `<div>[${time}] ${msg}</div>`;
-            log.scrollTop = log.scrollHeight;
-        }
+        // UI Events
+        transmitBtn.onmousedown = (e) => { e.preventDefault(); startTransmit(); };
+        transmitBtn.onmouseup = (e) => { e.preventDefault(); stopTransmit(); };
+        transmitBtn.ontouchstart = (e) => { e.preventDefault(); startTransmit(); };
+        transmitBtn.ontouchend = (e) => { e.preventDefault(); stopTransmit(); };
 
-        // Block transmit if others are using it
-        onValue(ref(db, 'channel'), (snap) => {
-            const data = snap.val() || {};
-            const lock = data.lock || { locked: false, by: "NONE" };
-            const tx = data.active_tx || { active: false, by: "NONE" };
+        lockBtn.onclick = () => {
+            set(ref(db, 'channel/lock'), {
+                locked: true,
+                by: myId
+            });
+        };
 
-            const isLockedByOther = lock.locked && lock.by !== myCallsign;
-            const isTxByOther = tx.active && tx.by !== myCallsign;
+        releaseBtn.onclick = () => {
+            set(ref(db, 'channel/lock'), {
+                locked: false,
+                by: null
+            });
+        };
 
-            document.getElementById('transmit-btn').disabled = isLockedByOther || isTxByOther;
-            
-            if (isLockedByOther) document.getElementById('transmit-btn').innerText = `LOCKED BY ${lock.by}`;
-            else if (isTxByOther) document.getElementById('transmit-btn').innerText = `RCV FROM ${tx.by}`;
-            else document.getElementById('transmit-btn').innerText = "TRANSMIT SIGNAL";
-        });
+        // Cleanup on close
+        window.onbeforeunload = () => {
+            if (myId) {
+                remove(ref(db, `users/${myId}`));
+                onValue(ref(db, 'channel/lock'), (snap) => {
+                    if (snap.val()?.by === myId) {
+                        set(ref(db, 'channel/lock'), { locked: false });
+                    }
+                }, { onlyOnce: true });
+            }
+        };
 
     </script>
 </body>
