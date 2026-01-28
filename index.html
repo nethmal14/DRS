@@ -102,14 +102,26 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, deleteDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Configuration
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Firebase Configuration with Safety Checks for Vercel/External environments
+        let db, auth;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-morse-app';
+        
+        const initFirebase = async () => {
+            try {
+                if (typeof __firebase_config !== 'undefined') {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    return true;
+                }
+            } catch (e) {
+                console.error("Firebase config error:", e);
+            }
+            return false;
+        };
 
         // Local State
         let currentUser = null;
@@ -163,26 +175,41 @@
             currentUser = id;
             initAudio();
             
-            // Handle environment-provided auth
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
+            const hasFirebase = await initFirebase();
+            
+            if (hasFirebase) {
+                // Handle environment-provided auth
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
             } else {
-                await signInAnonymously(auth);
+                // Fallback for environment without Firebase (Offline/Demo mode)
+                console.warn("Running in Offline/Demo mode - No Firebase detected.");
+                showApp();
             }
         };
 
+        function showApp() {
+            loginScreen.classList.add('hidden');
+            appScreen.classList.remove('hidden');
+            myIdDisplay.innerText = currentUser;
+        }
+
         // Main Auth Listener
-        onAuthStateChanged(auth, (user) => {
-            if (user && currentUser) {
-                loginScreen.classList.add('hidden');
-                appScreen.classList.remove('hidden');
-                myIdDisplay.innerText = currentUser;
-                startSync();
-            }
-        });
+        if (typeof auth !== 'undefined') {
+            onAuthStateChanged(auth, (user) => {
+                if (user && currentUser) {
+                    showApp();
+                    startSync();
+                }
+            });
+        }
 
         // Firestore Sync
         function startSync() {
+            if (!db) return;
             const channelDoc = doc(db, 'artifacts', appId, 'public', 'data', 'channel_state');
 
             // Listen for channel changes
@@ -225,7 +252,6 @@
                         }
                     }
                 } else {
-                    // Fresh state
                     resetChannelLocally();
                 }
             }, (err) => console.error(err));
@@ -241,33 +267,42 @@
 
         // Lock Control
         window.toggleLock = async () => {
+            if (!db) return;
             const channelDoc = doc(db, 'artifacts', appId, 'public', 'data', 'channel_state');
             
-            if (isLockedByMe) {
-                await updateDoc(channelDoc, { owner: null, isTransmitting: false });
-                isLockedByMe = false;
-            } else {
-                if (channelOwner && channelOwner !== currentUser) return;
-                await setDoc(channelDoc, { owner: currentUser, isTransmitting: false });
-                isLockedByMe = true;
+            try {
+                if (isLockedByMe) {
+                    await updateDoc(channelDoc, { owner: null, isTransmitting: false });
+                    isLockedByMe = false;
+                } else {
+                    if (channelOwner && channelOwner !== currentUser) return;
+                    await setDoc(channelDoc, { owner: currentUser, isTransmitting: false });
+                    isLockedByMe = true;
+                }
+            } catch (e) {
+                console.error("Lock error:", e);
             }
         };
 
         // Morse Pad Control
         window.startTransmit = async (e) => {
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
             if (morsePad.disabled) return;
             
             isTransmitting = true;
             playTone();
 
+            if (!db) return;
             const channelDoc = doc(db, 'artifacts', appId, 'public', 'data', 'channel_state');
-            // If not already locked, we "soft-lock" by setting ourselves as owner while pressing
-            await setDoc(channelDoc, { 
-                owner: currentUser, 
-                isTransmitting: true,
-                locked: isLockedByMe 
-            });
+            try {
+                await setDoc(channelDoc, { 
+                    owner: currentUser, 
+                    isTransmitting: true,
+                    locked: isLockedByMe 
+                });
+            } catch (e) {
+                console.error("Transmit error:", e);
+            }
         };
 
         window.stopTransmit = async (e) => {
@@ -275,20 +310,23 @@
             isTransmitting = false;
             stopTone();
 
+            if (!db) return;
             const channelDoc = doc(db, 'artifacts', appId, 'public', 'data', 'channel_state');
             
-            if (isLockedByMe) {
-                // Stay as owner, just stop tone
-                await updateDoc(channelDoc, { isTransmitting: false });
-            } else {
-                // Release channel immediately
-                await updateDoc(channelDoc, { owner: null, isTransmitting: false });
+            try {
+                if (isLockedByMe) {
+                    await updateDoc(channelDoc, { isTransmitting: false });
+                } else {
+                    await updateDoc(channelDoc, { owner: null, isTransmitting: false });
+                }
+            } catch (e) {
+                console.error("Stop transmit error:", e);
             }
         };
 
         // Tab/Window Visibility - Auto release lock if page hidden
         document.addEventListener('visibilitychange', async () => {
-            if (document.hidden && isLockedByMe) {
+            if (document.hidden && isLockedByMe && db) {
                 const channelDoc = doc(db, 'artifacts', appId, 'public', 'data', 'channel_state');
                 await updateDoc(channelDoc, { owner: null, isTransmitting: false });
                 isLockedByMe = false;
