@@ -108,7 +108,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
@@ -148,34 +148,42 @@
         const busyMsg = document.getElementById('busy-msg');
         const busyUserSpan = document.getElementById('busy-user');
 
-        function initAudio() {
-            if (audioCtx) return;
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            gainNode = audioCtx.createGain();
-            gainNode.gain.value = 0;
-            gainNode.connect(audioCtx.destination);
-            
-            oscillator = audioCtx.createOscillator();
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(700, audioCtx.currentTime);
-            oscillator.connect(gainNode);
-            oscillator.start();
+        // Robust Audio Initialization
+        async function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+            if (!oscillator) {
+                gainNode = audioCtx.createGain();
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator = audioCtx.createOscillator();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(700, audioCtx.currentTime);
+                oscillator.connect(gainNode);
+                oscillator.start();
+            }
         }
 
         function playTone() {
-            if (!gainNode) initAudio();
-            gainNode.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.005);
+            if (gainNode && audioCtx) {
+                gainNode.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.005);
+            }
         }
 
         function stopTone() {
-            if (gainNode) {
+            if (gainNode && audioCtx) {
                 gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.005);
             }
         }
 
         window.login = async (id) => {
             currentUser = id;
-            initAudio();
+            await initAudio(); // Initialize audio on first user click
             try {
                 await signInAnonymously(auth);
             } catch (e) {
@@ -197,7 +205,16 @@
             }
         });
 
-        function startSync() {
+        async function ensureDocExists() {
+            const channelDocRef = doc(db, channelPath);
+            const snap = await getDoc(channelDocRef);
+            if (!snap.exists()) {
+                await setDoc(channelDocRef, { owner: null, isTransmitting: false, locked: false });
+            }
+        }
+
+        async function startSync() {
+            await ensureDocExists();
             const channelDoc = doc(db, channelPath);
 
             onSnapshot(channelDoc, (snapshot) => {
@@ -208,16 +225,16 @@
                 const transmitting = data.isTransmitting;
                 const isLocked = data.locked;
 
-                // Audio Logic: Play if SOMEONE ELSE is transmitting
-                if (transmitting && channelOwner !== currentUser) {
+                // Live Audio Sync
+                // Play if someone ELSE is transmitting, or if WE are transmitting locally
+                if (transmitting) {
                     playTone();
-                } else if (!isLocalTransmitting) {
+                } else {
                     stopTone();
                 }
 
                 // UI Logic
                 if (channelOwner && channelOwner !== currentUser) {
-                    // Channel taken by someone else
                     morsePad.disabled = true;
                     lockBtn.disabled = true;
                     statusText.innerText = isLocked ? 'LOCKED' : 'BUSY';
@@ -226,7 +243,6 @@
                     busyUserSpan.innerText = channelOwner;
                     document.getElementById('busy-emoji').innerText = isLocked ? '🔒' : '📡';
                 } else {
-                    // Channel free or owned by me
                     morsePad.disabled = false;
                     lockBtn.disabled = false;
                     busyMsg.style.opacity = '0';
@@ -266,11 +282,11 @@
             
             try {
                 if (isLockedByMe) {
-                    await setDoc(channelDoc, { owner: null, isTransmitting: false, locked: false });
+                    await updateDoc(channelDoc, { owner: null, isTransmitting: false, locked: false });
                     isLockedByMe = false;
                 } else {
                     if (channelOwner && channelOwner !== currentUser) return;
-                    await setDoc(channelDoc, { owner: currentUser, isTransmitting: false, locked: true });
+                    await updateDoc(channelDoc, { owner: currentUser, isTransmitting: false, locked: true });
                     isLockedByMe = true;
                 }
             } catch (e) { console.error("Lock error:", e); }
@@ -281,11 +297,11 @@
             if (morsePad.disabled || !auth.currentUser) return;
             
             isLocalTransmitting = true;
-            playTone();
+            // No need for playTone() here, onSnapshot will trigger it globally
 
             const channelDoc = doc(db, channelPath);
             try {
-                await setDoc(channelDoc, { 
+                await updateDoc(channelDoc, { 
                     owner: currentUser, 
                     isTransmitting: true,
                     locked: isLockedByMe 
@@ -296,14 +312,13 @@
         window.stopTransmit = async (e) => {
             if (!isLocalTransmitting || !auth.currentUser) return;
             isLocalTransmitting = false;
-            stopTone();
 
             const channelDoc = doc(db, channelPath);
             try {
                 if (isLockedByMe) {
                     await updateDoc(channelDoc, { isTransmitting: false });
                 } else {
-                    await setDoc(channelDoc, { owner: null, isTransmitting: false, locked: false });
+                    await updateDoc(channelDoc, { owner: null, isTransmitting: false, locked: false });
                 }
             } catch (e) { console.error("RX error:", e); }
         };
@@ -311,7 +326,7 @@
         document.addEventListener('visibilitychange', async () => {
             if (document.hidden && isLockedByMe && auth.currentUser) {
                 const channelDoc = doc(db, channelPath);
-                await setDoc(channelDoc, { owner: null, isTransmitting: false, locked: false });
+                await updateDoc(channelDoc, { owner: null, isTransmitting: false, locked: false });
                 isLockedByMe = false;
             }
         });
