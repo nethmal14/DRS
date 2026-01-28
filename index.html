@@ -101,27 +101,29 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Configuration with Safety Checks for Vercel/External environments
-        let db, auth;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-morse-app';
-        
-        const initFirebase = async () => {
-            try {
-                if (typeof __firebase_config !== 'undefined') {
-                    const firebaseConfig = JSON.parse(__firebase_config);
-                    const app = initializeApp(firebaseConfig);
-                    auth = getAuth(app);
-                    db = getFirestore(app);
-                    return true;
-                }
-            } catch (e) {
-                console.error("Firebase config error:", e);
-            }
-            return false;
+        // Your provided Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
+            authDomain: "trip-tracker-57ce0.firebaseapp.com",
+            databaseURL: "https://trip-tracker-57ce0-default-rtdb.firebaseio.com",
+            projectId: "trip-tracker-57ce0",
+            storageBucket: "trip-tracker-57ce0.firebasestorage.app",
+            messagingSenderId: "236146303848",
+            appId: "1:236146303848:web:933f1e79e8a97687db6cdd",
+            measurementId: "G-ZBPCS6QPR5"
         };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Path used for the specific channel state
+        const appId = 'trio-morse-comm-v1';
+        const channelPath = `artifacts/${appId}/public/data/channel_state`;
 
         // Local State
         let currentUser = null;
@@ -175,18 +177,12 @@
             currentUser = id;
             initAudio();
             
-            const hasFirebase = await initFirebase();
-            
-            if (hasFirebase) {
-                // Handle environment-provided auth
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } else {
-                // Fallback for environment without Firebase (Offline/Demo mode)
-                console.warn("Running in Offline/Demo mode - No Firebase detected.");
+            try {
+                // Sign in anonymously to enable Firestore operations
+                await signInAnonymously(auth);
+            } catch (e) {
+                console.error("Auth error:", e);
+                // Even if auth fails, show UI (though Firestore will fail if rules are strict)
                 showApp();
             }
         };
@@ -198,19 +194,16 @@
         }
 
         // Main Auth Listener
-        if (typeof auth !== 'undefined') {
-            onAuthStateChanged(auth, (user) => {
-                if (user && currentUser) {
-                    showApp();
-                    startSync();
-                }
-            });
-        }
+        onAuthStateChanged(auth, (user) => {
+            if (user && currentUser) {
+                showApp();
+                startSync();
+            }
+        });
 
         // Firestore Sync
         function startSync() {
-            if (!db) return;
-            const channelDoc = doc(db, 'artifacts', appId, 'public', 'data', 'channel_state');
+            const channelDoc = doc(db, channelPath);
 
             // Listen for channel changes
             onSnapshot(channelDoc, (snapshot) => {
@@ -254,7 +247,7 @@
                 } else {
                     resetChannelLocally();
                 }
-            }, (err) => console.error(err));
+            }, (err) => console.error("Firestore sync error:", err));
         }
 
         function resetChannelLocally() {
@@ -267,8 +260,8 @@
 
         // Lock Control
         window.toggleLock = async () => {
-            if (!db) return;
-            const channelDoc = doc(db, 'artifacts', appId, 'public', 'data', 'channel_state');
+            if (!auth.currentUser) return;
+            const channelDoc = doc(db, channelPath);
             
             try {
                 if (isLockedByMe) {
@@ -287,13 +280,12 @@
         // Morse Pad Control
         window.startTransmit = async (e) => {
             if (e.cancelable) e.preventDefault();
-            if (morsePad.disabled) return;
+            if (morsePad.disabled || !auth.currentUser) return;
             
             isTransmitting = true;
             playTone();
 
-            if (!db) return;
-            const channelDoc = doc(db, 'artifacts', appId, 'public', 'data', 'channel_state');
+            const channelDoc = doc(db, channelPath);
             try {
                 await setDoc(channelDoc, { 
                     owner: currentUser, 
@@ -306,12 +298,11 @@
         };
 
         window.stopTransmit = async (e) => {
-            if (!isTransmitting) return;
+            if (!isTransmitting || !auth.currentUser) return;
             isTransmitting = false;
             stopTone();
 
-            if (!db) return;
-            const channelDoc = doc(db, 'artifacts', appId, 'public', 'data', 'channel_state');
+            const channelDoc = doc(db, channelPath);
             
             try {
                 if (isLockedByMe) {
@@ -326,8 +317,8 @@
 
         // Tab/Window Visibility - Auto release lock if page hidden
         document.addEventListener('visibilitychange', async () => {
-            if (document.hidden && isLockedByMe && db) {
-                const channelDoc = doc(db, 'artifacts', appId, 'public', 'data', 'channel_state');
+            if (document.hidden && isLockedByMe && auth.currentUser) {
+                const channelDoc = doc(db, channelPath);
                 await updateDoc(channelDoc, { owner: null, isTransmitting: false });
                 isLockedByMe = false;
             }
