@@ -11,7 +11,7 @@
             -webkit-tap-highlight-color: transparent;
             transition: transform 0.05s, background-color 0.1s;
         }
-        .morse-btn:active {
+        .morse-btn:active:not(:disabled) {
             transform: scale(0.95);
             background-color: #3b82f6 !important;
         }
@@ -21,10 +21,10 @@
             border-radius: 50%;
             display: inline-block;
         }
-        .status-busy { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
-        .status-idle { background-color: #22c55e; box-shadow: 0 0 8px #22c55e; }
+        .status-busy { background-color: #ef4444; box-shadow: 0 0 12px #ef4444; }
+        .status-idle { background-color: #22c55e; box-shadow: 0 0 12px #22c55e; }
+        .status-locked { background-color: #f59e0b; box-shadow: 0 0 12px #f59e0b; }
         
-        /* Disable text selection during tapping */
         .noselect {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -47,7 +47,7 @@
         </div>
     </div>
 
-    <!-- Main App Screen (Hidden initially) -->
+    <!-- Main App Screen -->
     <div id="app-screen" class="hidden flex-grow flex flex-col p-4 max-w-lg mx-auto w-full">
         <header class="flex justify-between items-center mb-8 bg-slate-800 p-4 rounded-xl border border-slate-700">
             <div>
@@ -66,18 +66,23 @@
         <div class="flex-grow flex flex-col items-center justify-center gap-8">
             <!-- Occupied Warning -->
             <div id="busy-msg" class="opacity-0 transition-opacity duration-300 text-center">
-                <p class="text-red-400 font-bold animate-pulse">TRANSMISSION IN PROGRESS BY <span id="busy-user">?</span></p>
+                <p class="text-red-400 font-bold animate-pulse">
+                    <span id="busy-emoji">📡</span> TRANSMISSION BY <span id="busy-user">?</span>
+                </p>
             </div>
 
             <!-- The Big Button -->
             <button 
                 id="morse-pad" 
-                class="morse-btn w-64 h-64 rounded-full bg-slate-800 border-8 border-slate-700 flex items-center justify-center shadow-2xl active:shadow-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed noselect"
+                class="morse-btn w-64 h-64 rounded-full bg-slate-800 border-8 border-slate-700 flex items-center justify-center shadow-2xl active:shadow-blue-500/50 disabled:opacity-30 disabled:grayscale noselect"
                 onpointerdown="startTransmit(event)"
                 onpointerup="stopTransmit(event)"
                 onpointerleave="stopTransmit(event)"
             >
-                <span id="pad-label" class="text-4xl font-black">TAP</span>
+                <div class="flex flex-col items-center">
+                    <span id="pad-emoji" class="text-6xl mb-2">⚡</span>
+                    <span id="pad-label" class="text-2xl font-black">TAP</span>
+                </div>
             </button>
 
             <!-- Lock Toggle -->
@@ -85,17 +90,18 @@
                 <button 
                     id="lock-btn" 
                     onclick="toggleLock()"
-                    class="w-full py-4 bg-red-600 hover:bg-red-700 rounded-xl font-bold transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+                    class="w-full py-4 bg-amber-600 hover:bg-amber-700 rounded-xl font-bold transition-all disabled:opacity-30 flex items-center justify-center gap-3"
                 >
-                    <span id="lock-icon">🔓</span>
+                    <span id="lock-icon" class="text-xl">🔓</span>
                     <span id="lock-text">LOCK CHANNEL</span>
                 </button>
-                <p class="text-xs text-slate-500 text-center px-4">Lock the channel to prevent others from interrupting your sequence.</p>
+                <p id="lock-hint" class="text-xs text-slate-500 text-center px-4">Lock the channel to prevent others from transmitting.</p>
             </div>
         </div>
 
-        <footer class="mt-8 text-center text-slate-600 text-xs">
-            SECURE TRI-USER LINK ACTIVE
+        <footer class="mt-8 text-center text-slate-600 text-xs flex items-center justify-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            LIVE ENCRYPTED LINK
         </footer>
     </div>
 
@@ -104,7 +110,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Your provided Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
             authDomain: "trip-tracker-57ce0.firebaseapp.com",
@@ -116,25 +121,21 @@
             measurementId: "G-ZBPCS6QPR5"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Path used for the specific channel state
         const appId = 'trio-morse-comm-v1';
         const channelPath = `artifacts/${appId}/public/data/channel_state`;
 
-        // Local State
         let currentUser = null;
         let isLockedByMe = false;
         let channelOwner = null;
         let audioCtx = null;
         let oscillator = null;
         let gainNode = null;
-        let isTransmitting = false;
+        let isLocalTransmitting = false;
 
-        // UI Elements
         const loginScreen = document.getElementById('login-screen');
         const appScreen = document.getElementById('app-screen');
         const myIdDisplay = document.getElementById('my-id');
@@ -143,10 +144,10 @@
         const morsePad = document.getElementById('morse-pad');
         const lockBtn = document.getElementById('lock-btn');
         const lockText = document.getElementById('lock-text');
+        const lockIcon = document.getElementById('lock-icon');
         const busyMsg = document.getElementById('busy-msg');
         const busyUserSpan = document.getElementById('busy-user');
 
-        // Initialize Audio
         function initAudio() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -156,14 +157,14 @@
             
             oscillator = audioCtx.createOscillator();
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+            oscillator.frequency.setValueAtTime(700, audioCtx.currentTime);
             oscillator.connect(gainNode);
             oscillator.start();
         }
 
         function playTone() {
             if (!gainNode) initAudio();
-            gainNode.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.005);
+            gainNode.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.005);
         }
 
         function stopTone() {
@@ -172,17 +173,13 @@
             }
         }
 
-        // Global Auth Login
         window.login = async (id) => {
             currentUser = id;
             initAudio();
-            
             try {
-                // Sign in anonymously to enable Firestore operations
                 await signInAnonymously(auth);
             } catch (e) {
                 console.error("Auth error:", e);
-                // Even if auth fails, show UI (though Firestore will fail if rules are strict)
                 showApp();
             }
         };
@@ -193,7 +190,6 @@
             myIdDisplay.innerText = currentUser;
         }
 
-        // Main Auth Listener
         onAuthStateChanged(auth, (user) => {
             if (user && currentUser) {
                 showApp();
@@ -201,88 +197,90 @@
             }
         });
 
-        // Firestore Sync
         function startSync() {
             const channelDoc = doc(db, channelPath);
 
-            // Listen for channel changes
             onSnapshot(channelDoc, (snapshot) => {
                 const data = snapshot.data();
-                
-                if (data) {
-                    channelOwner = data.owner;
-                    const transmitting = data.isTransmitting;
+                if (!data) return resetChannelLocally();
 
-                    // Update UI based on ownership
-                    if (channelOwner && channelOwner !== currentUser) {
-                        // Someone else has the channel
-                        morsePad.disabled = true;
-                        lockBtn.disabled = true;
-                        statusText.innerText = 'BUSY';
-                        statusIndicator.className = 'indicator-dot status-busy';
-                        busyMsg.style.opacity = '1';
-                        busyUserSpan.innerText = channelOwner;
-                        
-                        // Audio response to remote transmission
-                        if (transmitting) playTone();
-                        else stopTone();
-                    } else {
-                        // Channel is free or owned by me
-                        morsePad.disabled = false;
-                        lockBtn.disabled = false;
-                        busyMsg.style.opacity = '0';
+                channelOwner = data.owner;
+                const transmitting = data.isTransmitting;
+                const isLocked = data.locked;
 
-                        if (isLockedByMe) {
-                            statusText.innerText = 'LOCKED';
-                            statusIndicator.className = 'indicator-dot status-busy';
-                            lockText.innerText = 'UNLOCK CHANNEL';
-                            lockBtn.classList.replace('bg-red-600', 'bg-green-600');
-                        } else {
-                            statusText.innerText = 'IDLE';
-                            statusIndicator.className = 'indicator-dot status-idle';
-                            lockText.innerText = 'LOCK CHANNEL';
-                            lockBtn.classList.replace('bg-green-600', 'bg-red-600');
-                        }
-                    }
-                } else {
-                    resetChannelLocally();
+                // Audio Logic: Play if SOMEONE ELSE is transmitting
+                if (transmitting && channelOwner !== currentUser) {
+                    playTone();
+                } else if (!isLocalTransmitting) {
+                    stopTone();
                 }
-            }, (err) => console.error("Firestore sync error:", err));
+
+                // UI Logic
+                if (channelOwner && channelOwner !== currentUser) {
+                    // Channel taken by someone else
+                    morsePad.disabled = true;
+                    lockBtn.disabled = true;
+                    statusText.innerText = isLocked ? 'LOCKED' : 'BUSY';
+                    statusIndicator.className = 'indicator-dot status-busy';
+                    busyMsg.style.opacity = '1';
+                    busyUserSpan.innerText = channelOwner;
+                    document.getElementById('busy-emoji').innerText = isLocked ? '🔒' : '📡';
+                } else {
+                    // Channel free or owned by me
+                    morsePad.disabled = false;
+                    lockBtn.disabled = false;
+                    busyMsg.style.opacity = '0';
+
+                    if (isLockedByMe) {
+                        statusText.innerText = 'LOCKED BY YOU';
+                        statusIndicator.className = 'indicator-dot status-locked';
+                        lockText.innerText = 'RELEASE CHANNEL';
+                        lockIcon.innerText = '🔒';
+                        lockBtn.classList.remove('bg-amber-600');
+                        lockBtn.classList.add('bg-green-600');
+                    } else {
+                        statusText.innerText = 'IDLE';
+                        statusIndicator.className = 'indicator-dot status-idle';
+                        lockText.innerText = 'LOCK CHANNEL';
+                        lockIcon.innerText = '🔓';
+                        lockBtn.classList.remove('bg-green-600');
+                        lockBtn.classList.add('bg-amber-600');
+                    }
+                }
+            }, (err) => console.error("Sync error:", err));
         }
 
         function resetChannelLocally() {
             channelOwner = null;
+            isLockedByMe = false;
             morsePad.disabled = false;
             lockBtn.disabled = false;
             statusText.innerText = 'IDLE';
             statusIndicator.className = 'indicator-dot status-idle';
+            busyMsg.style.opacity = '0';
         }
 
-        // Lock Control
         window.toggleLock = async () => {
             if (!auth.currentUser) return;
             const channelDoc = doc(db, channelPath);
             
             try {
                 if (isLockedByMe) {
-                    await updateDoc(channelDoc, { owner: null, isTransmitting: false });
+                    await setDoc(channelDoc, { owner: null, isTransmitting: false, locked: false });
                     isLockedByMe = false;
                 } else {
                     if (channelOwner && channelOwner !== currentUser) return;
-                    await setDoc(channelDoc, { owner: currentUser, isTransmitting: false });
+                    await setDoc(channelDoc, { owner: currentUser, isTransmitting: false, locked: true });
                     isLockedByMe = true;
                 }
-            } catch (e) {
-                console.error("Lock error:", e);
-            }
+            } catch (e) { console.error("Lock error:", e); }
         };
 
-        // Morse Pad Control
         window.startTransmit = async (e) => {
             if (e.cancelable) e.preventDefault();
             if (morsePad.disabled || !auth.currentUser) return;
             
-            isTransmitting = true;
+            isLocalTransmitting = true;
             playTone();
 
             const channelDoc = doc(db, channelPath);
@@ -292,34 +290,28 @@
                     isTransmitting: true,
                     locked: isLockedByMe 
                 });
-            } catch (e) {
-                console.error("Transmit error:", e);
-            }
+            } catch (e) { console.error("TX error:", e); }
         };
 
         window.stopTransmit = async (e) => {
-            if (!isTransmitting || !auth.currentUser) return;
-            isTransmitting = false;
+            if (!isLocalTransmitting || !auth.currentUser) return;
+            isLocalTransmitting = false;
             stopTone();
 
             const channelDoc = doc(db, channelPath);
-            
             try {
                 if (isLockedByMe) {
                     await updateDoc(channelDoc, { isTransmitting: false });
                 } else {
-                    await updateDoc(channelDoc, { owner: null, isTransmitting: false });
+                    await setDoc(channelDoc, { owner: null, isTransmitting: false, locked: false });
                 }
-            } catch (e) {
-                console.error("Stop transmit error:", e);
-            }
+            } catch (e) { console.error("RX error:", e); }
         };
 
-        // Tab/Window Visibility - Auto release lock if page hidden
         document.addEventListener('visibilitychange', async () => {
             if (document.hidden && isLockedByMe && auth.currentUser) {
                 const channelDoc = doc(db, channelPath);
-                await updateDoc(channelDoc, { owner: null, isTransmitting: false });
+                await setDoc(channelDoc, { owner: null, isTransmitting: false, locked: false });
                 isLockedByMe = false;
             }
         });
