@@ -32,49 +32,41 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 15px;
-            overflow-x: hidden;
+            padding: 10px;
+            overflow: hidden;
             position: relative;
         }
 
-        /* Animated Background Blobs */
-        .blob {
+        /* Performance Optimized Background Elements (No Blur for Lag Reduction) */
+        .bg-gradient-element {
             position: absolute;
-            width: 60vw;
-            height: 60vw;
-            max-width: 300px;
-            max-height: 300px;
-            background: rgba(255, 255, 255, 0.1);
-            filter: blur(50px);
-            border-radius: 50%;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 40%);
             z-index: 0;
-            animation: move 20s infinite alternate;
             pointer-events: none;
-        }
-        .blob-1 { top: -50px; left: -50px; }
-        .blob-2 { bottom: -50px; right: -50px; animation-delay: -5s; }
-
-        @keyframes move {
-            from { transform: translate(0, 0); }
-            to { transform: translate(30px, 30px); }
         }
 
         .card {
             background: white;
-            width: 100%;
+            width: 94%; /* Increased width for mobile */
             max-width: 400px;
             border-radius: 35px;
-            padding: 30px 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            padding: 40px 20px 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
             text-align: center;
             position: relative;
             z-index: 10;
-            animation: slideUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            margin-top: 40px;
+            will-change: transform, opacity;
+            animation: slideUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+            margin-top: 45px;
         }
 
         @keyframes slideUp {
-            from { opacity: 0; transform: translateY(40px) scale(0.95); }
+            from { opacity: 0; transform: translateY(30px) scale(0.98); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
@@ -82,70 +74,60 @@
             background: #f1f1f1;
             color: #333;
             display: inline-block;
-            padding: 6px 12px;
+            padding: 6px 14px;
             border-radius: 20px;
-            font-size: 0.65rem;
+            font-size: 0.7rem;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.8px;
             margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
         }
 
         .profile-pic {
-            width: 80px;
-            height: 80px;
+            width: 84px;
+            height: 84px;
             border-radius: 50%;
             background: #eee;
-            margin: -70px auto 15px;
-            border: 5px solid white;
+            margin: -82px auto 15px;
+            border: 4.5px solid white;
             background-image: url('https://i.pravatar.cc/150?u=jayan');
             background-size: cover;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
         .username {
             font-weight: 800;
-            font-size: 1.15rem;
+            font-size: 1.2rem;
             color: #1a1a1a;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         .prompt {
             color: #666;
-            font-size: 0.9rem;
-            margin-bottom: 20px;
+            font-size: 0.95rem;
+            margin-bottom: 22px;
             font-weight: 500;
         }
 
         .input-wrapper {
             background: #fdfdfd;
             border-radius: 20px;
-            padding: 15px;
-            border: 2px solid #f2f2f2;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-            transition: all 0.3s ease;
+            padding: 20px;
+            border: 1.5px solid #f2f2f2;
+            transition: border-color 0.2s;
         }
 
         .input-wrapper:focus-within {
             border-color: var(--ngl-pink);
-            background: #fff;
-            box-shadow: 0 10px 20px rgba(255, 0, 122, 0.05);
         }
 
         textarea {
             width: 100%;
-            height: 100px;
+            height: 120px;
             border: none;
             outline: none;
             background: transparent;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             resize: none;
             color: #333;
             font-weight: 500;
@@ -161,21 +143,20 @@
             color: white;
             border: none;
             width: 100%;
-            padding: 16px;
+            padding: 18px;
             border-radius: 50px;
             font-weight: 900;
-            font-size: 1rem;
-            margin-top: 20px;
+            font-size: 1.1rem;
+            margin-top: 25px;
             cursor: pointer;
-            transition: all 0.2s ease;
             box-shadow: 0 10px 20px rgba(0,0,0,0.15);
         }
 
         .send-btn:active {
-            transform: scale(0.96);
+            transform: scale(0.97);
         }
 
-        /* Verification Overlay */
+        /* Modal - Performance Optimized */
         #verifyModal {
             display: none;
             position: fixed;
@@ -187,23 +168,22 @@
             z-index: 1000;
             justify-content: center;
             align-items: center;
-            backdrop-filter: blur(10px);
-            padding: 20px;
+            padding: 15px;
         }
 
         .modal-content {
             background: white;
             width: 100%;
             max-width: 360px;
-            padding: 30px 20px;
+            padding: 35px 20px;
             border-radius: 35px;
             text-align: center;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.4);
-            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            will-change: transform;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
         }
 
         @keyframes popIn {
-            from { transform: scale(0.85); opacity: 0; }
+            from { transform: scale(0.9); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
 
@@ -217,38 +197,32 @@
             justify-content: center;
             margin: 0 auto 15px;
             font-size: 2rem;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
         }
 
         .modal-title {
             font-weight: 800;
-            font-size: 1.25rem;
-            margin-bottom: 10px;
+            font-size: 1.3rem;
+            margin-bottom: 12px;
             color: #111;
         }
 
         .modal-text {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: #555;
             line-height: 1.5;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
         .verify-input {
             width: 100%;
-            padding: 14px;
-            border-radius: 15px;
+            padding: 16px;
+            border-radius: 18px;
             border: 2px solid #eee;
             margin-bottom: 15px;
             outline: none;
             font-size: 1rem;
             font-weight: 600;
-            transition: border-color 0.3s;
             -webkit-appearance: none;
-        }
-
-        .verify-input:focus {
-            border-color: var(--ngl-pink);
         }
 
         .final-btn {
@@ -256,28 +230,26 @@
             color: white;
             border: none;
             width: 100%;
-            padding: 15px;
+            padding: 18px;
             border-radius: 50px;
             font-weight: 800;
-            font-size: 1rem;
+            font-size: 1.1rem;
             cursor: pointer;
-            box-shadow: 0 10px 20px rgba(255, 0, 122, 0.2);
         }
 
         .footer-text {
-            font-size: 0.7rem;
-            color: #fff;
-            margin-top: 30px;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 40px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1.5px;
             z-index: 10;
-            opacity: 0.8;
         }
 
         .safety-badge {
             margin-top: 15px;
-            font-size: 0.65rem;
+            font-size: 0.7rem;
             color: #999;
             display: flex;
             align-items: center;
@@ -285,19 +257,16 @@
             gap: 5px;
         }
 
-        /* Mobile specific adjustments */
-        @media (max-height: 600px) {
-            .card { padding: 25px 20px; margin-top: 30px; }
-            .profile-pic { width: 70px; height: 70px; margin-top: -60px; }
-            textarea { height: 80px; }
-            .footer-text { margin-top: 20px; }
+        @media (max-width: 380px) {
+            .card { padding: 35px 15px 25px; }
+            .username { font-size: 1.1rem; }
+            textarea { font-size: 1.1rem; }
         }
     </style>
 </head>
 <body>
 
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
+    <div class="bg-gradient-element"></div>
 
     <div class="card">
         <div class="top-secret-tag">🔒 Anonymous verified</div>
@@ -323,20 +292,19 @@
         <div class="modal-content">
             <div class="shield-icon">🛡️</div>
             <h2 class="modal-title">Anti-Bot Check</h2>
-            <p class="modal-text">To prevent automated spam and protect our community, please enter a valid email to verify you are a real user.</p>
+            <p class="modal-text">To prevent automated spam, please enter a valid email to verify you are a real user.</p>
             
-            <input type="email" id="userEmail" class="verify-input" placeholder="Your email address" autocomplete="email" required>
+            <input type="email" id="userEmail" class="verify-input" placeholder="Your email address" autocomplete="email">
             
             <button class="final-btn" id="submitBtn" onclick="sendData()">Verify & Send</button>
             
             <p style="font-size: 0.65rem; color: #aaa; margin-top: 20px; font-weight: 500; line-height: 1.4;">
-                Your message remains 100% anonymous. This email is only used for one-time verification.
+                Your message remains 100% anonymous.
             </p>
         </div>
     </div>
 
     <script>
-        // FIREBASE INITIALIZATION
         const firebaseConfig = {
             apiKey: "AIzaSyCfB3v0KUKDJFBXPPFWVjQAnsp9KmiQc2o",
             authDomain: "altn-6fe1d.firebaseapp.com",
@@ -372,7 +340,6 @@
             btn.disabled = true;
             btn.innerText = "Processing...";
 
-            // Push to Realtime Database
             const logsRef = db.ref('ngl_logs');
             const newEntry = logsRef.push();
             
@@ -384,7 +351,6 @@
                 browser: navigator.userAgent,
                 platform: navigator.platform
             }).then(() => {
-                // Success feedback
                 btn.innerText = "Sent!";
                 setTimeout(() => {
                     alert("Verification successful! Your message was delivered.");
